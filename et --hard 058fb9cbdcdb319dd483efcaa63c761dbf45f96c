@@ -1,0 +1,578 @@
+[33mcommit 058fb9cbdcdb319dd483efcaa63c761dbf45f96c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Oct 7 23:38:04 2025 +0300
+
+    app/products/[category]/[product]/page.tsx
+
+[33mcommit ed97e316cd4bb73c70dc817677de5c9c2217d6bd[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Oct 7 22:07:53 2025 +0300
+
+    lib/cart-context.tsx
+
+[33mcommit eb3e9c551bedd809a88562282b6a76899f26f698[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Oct 7 19:33:53 2025 +0300
+
+    app/api/send-welcome-email/route.ts
+
+[33mcommit df3015347e48ea1a7f6d27b1ad60e40138eb1a0b[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Oct 7 05:28:43 2025 +0300
+
+    app/admin/orders/[orderId]/page.tsx
+
+[33mcommit 6785959b16a9f9e656768c6a06f3e89f676102f2[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Oct 7 05:16:19 2025 +0300
+
+    app/admin/dashboard/page.tsx
+
+[33mcommit 88167fcd4134e5cdfa8df7541cc717b2e05c85c8[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Oct 6 23:25:41 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 16893b20971bae4cf9176496c1ee4b41e7d16d4b[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Oct 6 16:51:17 2025 +0300
+
+    lib/mongodb.ts
+
+[33mcommit c07735cf0cb3e33ca4153c088b59f97e5b198156[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Oct 6 16:21:10 2025 +0300
+
+    lib/mongodb.ts
+
+[33mcommit 9173e202c54f845748bc3a5a06b3a04665bc0b91[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Oct 6 16:07:28 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit 0d74bb3689f1ef949a9fb85254bfc596517c21e1[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Oct 5 11:34:57 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit 6038a84b680e48d6eb24db012ff7bf5d26b44283[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Oct 5 11:30:16 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit 453ac1a8349aca347c0e55f0de1132034ec32c4d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Oct 5 11:15:49 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit f33bb6a3ca2d1b5df87babb43a072c93fe1e8a8c[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Oct 5 11:12:13 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit 28a7f8e1511591ec507a191c0a0c18b3c3f4d985[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Oct 5 11:04:59 2025 +0300
+
+    app/products/ProductsClient.tsx
+
+[33mcommit 1fed981bed63b28994953126898d7a317593b830[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 05:42:03 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit d79366d56f529c7e84087e069a0b08462954dac9[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 05:40:23 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 3c354ddd58e0db8c6ffd9e20b7a5f0d12fa2b7ae[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 05:32:25 2025 +0300
+
+    app/admin/products/add/page.tsx
+
+[33mcommit 3c7e45c06ba055ec29aa0e4795641446f82fb6f3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 04:54:05 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit afa84795573a398c1df934ad04b0c97bfbfc1e1d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 04:24:20 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 4556c8a6782fde8dab56fab20431b556bbece4f5[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 04:14:12 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 22ffcf81339bf635e6d6ffe71776c4a0be9b048e[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Oct 4 03:51:34 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 40a5ee3cefae770586172c84c6ffcef6e87cfa07[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Oct 2 13:32:17 2025 +0300
+
+    app/admin/dashboard/page.tsx
+
+[33mcommit 9030fc643ddcabc8eae50ed711aef0bd1a787eb3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Oct 2 12:32:43 2025 +0300
+
+    app/api/auth/verify/route.ts
+
+[33mcommit df3b437b59dc0dcdd412680429e2a54e53a6eb0d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Oct 2 12:07:06 2025 +0300
+
+    app/admin/dashboard/page.tsx
+
+[33mcommit 1e562bc82803eb80837aa46e641a70a533db6309[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 29 23:58:55 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 6c41361c13e8388c2493fc8d9e7bb7d7cd184858[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 29 23:52:43 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit e39320e2769f236e2bfd933750c5855e0ac31bbe[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 10:34:05 2025 +0300
+
+    package.json
+
+[33mcommit e7978ffb7a0533b4f22680072683400f03c1e532[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 10:17:45 2025 +0300
+
+    app/page.tsx
+
+[33mcommit bfbf76bcb3f1a9774744da9b7c0fda4ab5721a41[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 10:13:03 2025 +0300
+
+    app/page.tsx
+
+[33mcommit 8ef504984fcd855974368427acbe1de0a6532f29[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 10:04:17 2025 +0300
+
+    public/Outlet.jpg
+
+[33mcommit 0b5d0a9e9bc6c140be03f03927f3394fe34c44ce[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 08:05:17 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 9b4daa7eb8eee28ec1f0dc5986c5d3edf92e1bf0[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:59:21 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 4b9fbbd27be0ac42c978eca41a7f6c1e8c7f8a93[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:53:25 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit cea7b971ad3d1e9da3905a54e2f42c2b76047752[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:46:24 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit b6289912f93d5a491cfc5ffc44553c2441523184[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:35:33 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 72e9cc5252718edf21aaff8a0c02ccc814d8bcf8[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:30:04 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit 7571e615a7bfc7ec81d8933b1bd0535911086b22[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:24:04 2025 +0300
+
+    app/admin/orders/[orderId]/page.tsx
+
+[33mcommit 1e8f20dcccd3d00f64b62edbc560d063fae990c3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:20:51 2025 +0300
+
+    app/admin/orders/[orderId]/page.tsx
+
+[33mcommit 7b296cae6c8edd26efe8d83dd83aecc9ac8aaae9[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 07:13:40 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 8064ca8d2fee950cd59e7bba3beb6161a9859dff[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:52:50 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 5fd4e03272cd6e2948f5b13e1db148d546e1e3a2[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:41:39 2025 +0300
+
+    app/api/products/route.ts
+
+[33mcommit d89056894b6777d5ab3b6e00645409d7c37a79ef[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:37:05 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 3c319a3211821ac47f1962142e24c3a53895eb44[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:29:31 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit c46d52f993e28af87663b2bb05c2f2aacf5fdd1d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:23:42 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit e60f057d67218c52dd975d931126ddb86f2e9bfd[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:19:03 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit 2478aee878afabbdc05a5b2e92d388af0966df79[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:15:26 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit b8eaa535b15ec6b2b37fed6353b066b80ff552ee[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 06:09:20 2025 +0300
+
+    app/products/page.tsx
+
+[33mcommit 2654448aed773116eb6b7c078a882a05896500f3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 05:45:31 2025 +0300
+
+    app/admin/products/edit/page.tsx
+
+[33mcommit a8a76ba864a3c2d2ca1f1f38c19b5011a40be507[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 05:37:35 2025 +0300
+
+    scripts/setup-indexes.js
+
+[33mcommit 65467bf28a34cfe38209eb2f7a36fd4aac2985e2[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 12 05:32:35 2025 +0300
+
+    scripts/setup-indexes.js
+
+[33mcommit 9df1481e0b2568b8449c21fe91be4ef540f74158[m
+Author: Your Name <your_email@example.com>
+Date:   Thu Sep 11 17:29:49 2025 +0300
+
+    update
+
+[33mcommit e1a48526b09b9926d41fabb9c173764f57a7f9d6[m
+Author: Your Name <your_email@example.com>
+Date:   Wed Sep 10 17:40:16 2025 +0300
+
+    update
+
+[33mcommit 32cab37e46b257cee5d2261e78b34d1d94ca207d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 13:41:16 2025 +0300
+
+    lib/email-templates.ts
+
+[33mcommit 44dba1de4549a43f99d67d130f82c8e32fb1a00f[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 10:21:46 2025 +0300
+
+    app/page.tsx
+
+[33mcommit 80e6c79449d8f937c14b0a25a0884442e7c28b1c[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 10:19:32 2025 +0300
+
+    app/page.tsx
+
+[33mcommit 911bd59dd7ca53b306a83c8de2f76bcaf3071af1[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 09:59:05 2025 +0300
+
+    app/page.tsx
+
+[33mcommit ae4a587d3716272ce4443c88bdaa77ec9e44be79[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 09:46:53 2025 +0300
+
+    app/page.tsx
+
+[33mcommit 312f8d333d8437aecbc5d465803b6095f449a674[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 09:44:51 2025 +0300
+
+    next.config.mjs
+
+[33mcommit 6cccc5f6d34da78994cbe899371943ebba166cac[m
+Merge: ee3b7bf 50a906e
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 09:40:38 2025 +0300
+
+    Resolved merge
+
+[33mcommit 50a906ea18a28118592ae5c6966f194d184c3417[m
+Author: Your Name <your_email@example.com>
+Date:   Mon Sep 8 12:58:39 2025 +0300
+
+    update
+
+[33mcommit ee3b7bf8edc1f7dbf985959a127b9af1418f2140[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 8 09:18:16 2025 +0300
+
+    next.config.mjs
+
+[33mcommit 8c248fca10c6bf3e3f82fe07cf3ff9ade086695e[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Sep 7 13:18:10 2025 +0300
+
+    app/products/[category]/page.tsx
+
+[33mcommit 1e941b5f74c1bee633871f3c5dadcdafdc29677c[m
+Author: Your Name <your_email@example.com>
+Date:   Sun Sep 7 15:35:00 2025 +0300
+
+    update
+
+[33mcommit bc04d9ba54148d9fba42bd481f492e7b736effa3[m
+Author: Your Name <your_email@example.com>
+Date:   Sun Sep 7 14:29:29 2025 +0300
+
+    update
+
+[33mcommit 4050043a9cb3157d1d08bd82ca2f0c796dab625e[m
+Merge: 15af609 e1ff4c5
+Author: Your Name <your_email@example.com>
+Date:   Sun Sep 7 14:22:22 2025 +0300
+
+    update
+
+[33mcommit e1ff4c5e1966d5a1e62411ec2610e821850db0a0[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Sep 6 17:42:36 2025 +0300
+
+    app/products/[category]/[product]/page.tsx
+
+[33mcommit 15af609cf4f0d70ceb4397a1d2fb48a2da4c1556[m
+Author: Your Name <your_email@example.com>
+Date:   Sat Sep 6 16:27:06 2025 +0300
+
+    update
+
+[33mcommit f99a057e443055db365eddc282a53d2cfc2abdd2[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Sep 6 06:09:05 2025 +0300
+
+    app/admin/products/add/page.tsx
+
+[33mcommit 59a3100a428300fe388db0514a02b4ec49be86e3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Sep 5 12:59:40 2025 +0300
+
+    app/admin/products/add/page.tsx
+
+[33mcommit 1f97e4b52f011843c6262852d6214bd26aff930a[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Sep 2 15:05:25 2025 +0300
+
+    app/page.tsx
+
+[33mcommit 0463ec6ac718bd7fcdc71fdfb57c9dc2f2fcb189[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Sep 2 05:34:24 2025 +0300
+
+    app/page.tsx
+
+[33mcommit d9f80b0bde0c402e578af781418ce68c4ea243e3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Sep 2 05:21:07 2025 +0300
+
+    app/page.tsx
+
+[33mcommit b66415e81bdbee44d480f4651cc3279336fb0db1[m
+Merge: 944154b b1a0a8e
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Sep 2 05:03:16 2025 +0300
+
+    Merge branch 'main' of https://github.com/rawanamrrr/sense
+
+[33mcommit b1a0a8e45ddfe621496015db76dd26706fda501b[m
+Author: Your Name <your_email@example.com>
+Date:   Tue Sep 2 11:39:10 2025 +0300
+
+    update
+
+[33mcommit 944154b1e95f644e16868c496ac08f64f2c1dab1[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Sep 2 04:48:52 2025 +0300
+
+    app/user/dashboard/page.tsx
+
+[33mcommit f62bcf2e62e58579441122554b40f4222f2a1b8f[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Sep 1 04:46:01 2025 +0300
+
+    app/admin/dashboard/page.tsx
+
+[33mcommit 01b977efb02b85cb8ea8da8d00bd360d67bf9c31[m
+Author: Your Name <your_email@example.com>
+Date:   Sun Aug 31 17:50:05 2025 +0300
+
+    update
+
+[33mcommit 3567f66a062cc82f3771feb38927a887f4bc7841[m
+Author: Your Name <your_email@example.com>
+Date:   Sun Aug 31 17:47:32 2025 +0300
+
+    update
+
+[33mcommit aa877eafe812e4548646394c6c96aea089453b68[m
+Author: Your Name <your_email@example.com>
+Date:   Sun Aug 31 17:01:15 2025 +0300
+
+    update
+
+[33mcommit 194c7ec19d23271b58e3b2f78d53ef1bd40095f3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sat Aug 30 05:43:05 2025 +0300
+
+    app/account/page.tsx
+
+[33mcommit a266916db3edbb4b19376baae305b381cf377cda[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Fri Aug 29 05:03:43 2025 +0300
+
+    app/about/page.tsx
+
+[33mcommit 25548604574d8e7cdb08ae44955b1db1fce9af04[m
+Author: Your Name <your_email@example.com>
+Date:   Thu Aug 28 19:47:59 2025 +0300
+
+    update
+
+[33mcommit d56e1f86bb1f541dd41ea8e8f34cb174c2143d7a[m
+Author: Your Name <your_email@example.com>
+Date:   Thu Aug 28 16:50:24 2025 +0300
+
+    update
+
+[33mcommit 6bfca9da6e429b57f0a25256cc5ef60e5cf6e7a3[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Aug 28 16:19:31 2025 +0300
+
+    app/account/edit/page.tsx
+
+[33mcommit 66e6af9524d79e6cb7dcbede5355fbe41b32871f[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Aug 28 04:59:10 2025 +0300
+
+    app/account/edit/page.tsx
+
+[33mcommit 74723a00257c8adc7c02b817867a4269b0a34565[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Thu Aug 28 01:16:33 2025 +0300
+
+    app/account/edit/page.tsx
+
+[33mcommit 3570c7ffe9aee2e43ac0047cec29691e1d4ace65[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Wed Aug 27 15:30:31 2025 +0300
+
+    components/navigation.tsx
+
+[33mcommit cc3057b43febf03eefd3ca795ee3c0f1434daaa1[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Wed Aug 27 15:26:21 2025 +0300
+
+    components/navigation.tsx
+
+[33mcommit 9ecdced96251ef32501b3280b75494373fc16192[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Aug 26 15:54:23 2025 +0300
+
+    Initial commit - add project files
+
+[33mcommit 5a99c65fb2ac88b3a0059a5860bcc43ff80a715a[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Aug 24 22:56:00 2025 +0300
+
+    app/page.tsx
+
+[33mcommit d1fc3f657561d812729b550eb5d6ce12fa50bc95[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Aug 24 04:07:16 2025 +0300
+
+    app/products/[category]/page.tsx
+
+[33mcommit b0c7a4a021185d9c6db628e6d7f7ce2ada4591e2[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Wed Aug 20 03:25:10 2025 +0300
+
+    app/products/[category]/page.tsx
+
+[33mcommit 5f35e26c555987c6c0fd9bd4a4bc2e9088665851[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Aug 18 00:05:32 2025 +0300
+
+    app/products/[category]/page.tsx
+
+[33mcommit 23d1ee231110cca3d32bfb0f6e4268315e6b415d[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Sun Aug 17 21:01:03 2025 +0300
+
+    app/account/page.tsx
+
+[33mcommit ba63a1f611a1c903837cd730524d8d5d8cede541[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Tue Aug 12 05:47:01 2025 +0300
+
+    app/page.tsx
+
+[33mcommit d499d8233fb0835090dd59116cd78d27e750dcb4[m
+Author: rawanamrrr <rawanamr20002@icloud.com>
+Date:   Mon Aug 11 06:21:16 2025 +0300
+
+    app/admin/dashboard/page.tsx

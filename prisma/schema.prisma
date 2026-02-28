@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user")
+  favorites Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  orders    Order[]
+  reviews   Review[]
+
+  @@map("users")
+}
+
+model Product {
+  productId            String   @id @map("product_id")
+  name                 String
+  description          String?  @db.Text
+  longDescription      String?  @db.LongText @map("long_description")
+  price                Float    @default(0)
+  beforeSalePrice      Float?   @map("before_sale_price")
+  afterSalePrice       Float?   @map("after_sale_price")
+  sizes                Json     @default("[]")
+  images               Json     @default("[]")
+  rating               Float    @default(0)
+  reviewCount          Int      @default(0) @map("reviews")
+  notes                Json     @default("{\"top\":[],\"middle\":[],\"base\":[]}")
+  category             String?
+  isNew                Boolean  @default(false) @map("is_new")
+  isBestseller         Boolean  @default(false) @map("is_bestseller")
+  isActive             Boolean  @default(true) @map("is_active")
+  isOutOfStock         Boolean  @default(false) @map("is_out_of_stock")
+  isGiftPackage        Boolean  @default(false) @map("is_gift_package")
+  packagePrice         Float?   @map("package_price")
+  packageOriginalPrice Float?   @map("package_original_price")
+  giftPackageSizes     Json     @default("[]") @map("gift_package_sizes")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  reviewsList          Review[]
+
+  @@map("products")
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  orderId         String   @unique @map("order_id")
+  userId          String   @map("user_id")
+  items           Json
+  total           Float
+  status          String   @default("pending")
+  shippingAddress Json     @map("shipping_address")
+  paymentMethod   String   @default("cod") @map("payment_method")
+  paymentDetails  Json?    @map("payment_details")
+  discountCode    String?  @map("discount_code")
+  discountAmount  Float    @default(0) @map("discount_amount")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("orders")
+}
+
+model Review {
+  id                String   @id @default(uuid())
+  productId         String   @map("product_id")
+  originalProductId String?  @map("original_product_id")
+  userId            String   @map("user_id")
+  userName          String   @map("user_name")
+  rating            Float
+  comment           String?  @db.Text
+  orderId           String   @map("order_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  product           Product  @relation(fields: [productId], references: [productId])
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model DiscountCode {
+  id                 String    @id @default(uuid())
+  code               String    @unique
+  description        String?   @db.Text
+  discountType       String    @map("discount_type")
+  discountValue      Float     @default(0) @map("discount_value")
+  minPurchase        Float?    @map("min_purchase")
+  maxDiscount        Float?    @map("max_discount")
+  validFrom          DateTime? @map("valid_from")
+  validUntil         DateTime? @map("valid_until")
+  usageLimit         Int?      @map("usage_limit")
+  usageCount         Int       @default(0) @map("usage_count")
+  isActive           Boolean   @default(true) @map("is_active")
+  originalType       String?   @map("original_type")
+  buyX               Int?      @map("buy_x")
+  getX               Int?      @map("get_x")
+  discountPercentage Float?    @map("discount_percentage")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("discount_codes")
+}
+
+model Offer {
+  id           String   @id @default(uuid())
+  title        String?
+  description  String   @db.Text
+  imageUrl     String?  @db.LongText @map("image_url")
+  linkUrl      String?  @map("link_url")
+  discountCode String?  @map("discount_code")
+  isActive     Boolean  @default(true) @map("is_active")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("offers")
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("newsletter_subscribers")
+}
