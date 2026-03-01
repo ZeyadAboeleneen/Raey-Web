@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { Instagram, Mail, Phone } from "lucide-react"
+import { Instagram, Mail, Phone, Facebook } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 
@@ -127,6 +127,16 @@ export function Footer() {
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-lg">
                     <Instagram className="h-4 w-4 text-white" />
+                  </div>
+                </Link>
+                <Link
+                  href="https://www.facebook.com/raey4dress/?ref=NONE_xav_ig_profile_page_web#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-lg">
+                    <Facebook className="h-4 w-4 text-white" />
                   </div>
                 </Link>
                 <Link
