@@ -154,11 +154,11 @@ export function Footer() {
           className="border-t border-rose-200 mt-8 pt-8 text-center text-sm text-rose-700"
         >
           <p>
-            &copy; 2026 ELRAEY Atelier. All rights reserved. | 
+            &copy; 2026 Raey Atelier. All rights reserved. |
             <span className="text-rose-600"> Made by </span>
-            <a 
-              href="https://www.instagram.com/digitiva.co?igsh=MXNteGgyZjIzenQwaQ==" 
-              target="_blank" 
+            <a
+              href="https://www.instagram.com/digitiva.co?igsh=MXNteGgyZjIzenQwaQ=="
+              target="_blank"
               rel="noopener noreferrer"
               className="text-rose-600 hover:text-rose-900 transition-colors"
             >

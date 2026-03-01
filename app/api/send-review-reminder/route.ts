@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         </div>
         
         <h2>Hello ${order.shippingAddress.name},</h2>
-        <p>Thank you for choosing El Raey! We hope you're enjoying your new couture look.</p>
+        <p>Thank you for choosing Raey! We hope you're enjoying your new couture look.</p>
       `
     })
 
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
       highlight: true,
       content: `
         ${createProductCard({
-          name: product.name,
-          description: `Order #${order.id} • Your honest feedback helps other customers make informed decisions and helps us improve our products and service.`
-        })}
+        name: product.name,
+        description: `Order #${order.id} • Your honest feedback helps other customers make informed decisions and helps us improve our products and service.`
+      })}
         
         <div style="text-align: center; margin: 20px 0;">
           <div style="color: #FFD700; font-size: 28px; letter-spacing: 5px;">★★★★★</div>
@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
         </p>
         
         <p style="text-align: center;">
-          Have questions? Contact us at <a href="mailto:Elraey@gmail.com">Elraey@gmail.com</a> or WhatsApp: +971 50 299 6885
+          Have questions? Contact us at <a href="mailto:Raey@gmail.com">Raey@gmail.com</a> or WhatsApp: +971 50 299 6885
         </p>
         
         <p style="text-align: center; margin-top: 30px; font-weight: 600;">
-          Thank you for being part of the El Raey family!
+          Thank you for being part of the Raey family!
         </p>
       `
     })
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const emailContent = greeting + productSection + whyReviewSection
 
     const htmlContent = createEmailTemplate({
-      title: "Share Your Experience - El Raey",
+      title: "Share Your Experience - Raey",
       preheader: `How was your ${product.name}? Share your experience with us!`,
       content: emailContent,
       theme: { mode: 'light' }
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       to: customerEmail,
       subject: `How was your ${product.name}? Share your experience!`,
       html: htmlContent,
-      fromName: "El Raey",
+      fromName: "Raey",
     })
 
     console.log(`✅ Review reminder email sent to ${customerEmail} for product: ${product.name}`)

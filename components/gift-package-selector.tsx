@@ -49,12 +49,12 @@ interface GiftPackageSelectorProps {
   isFavorite: (id: string) => boolean
 }
 
-export function GiftPackageSelector({ 
-  product, 
-  isOpen, 
-  onClose, 
-  onToggleFavorite, 
-  isFavorite 
+export function GiftPackageSelector({
+  product,
+  isOpen,
+  onClose,
+  onToggleFavorite,
+  isFavorite
 }: GiftPackageSelectorProps) {
   const [selectedProducts, setSelectedProducts] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
@@ -84,7 +84,7 @@ export function GiftPackageSelector({
 
   const addToCart = () => {
     if (!product.packagePrice) return
-    
+
     // Check if product is out of stock
     if (product.isOutOfStock) {
       alert("This gift package is out of stock and cannot be added to cart.")
@@ -130,7 +130,7 @@ export function GiftPackageSelector({
       }
 
       console.log("Dispatching cart item:", cartItem)
-      
+
       cartDispatch({
         type: "ADD_ITEM",
         payload: cartItem
@@ -152,21 +152,18 @@ export function GiftPackageSelector({
 
         let message = `Hello, I'd like to ${actionVerb} this gift package.\n\n`
         message += `Name: ${product.name}\n`
-        message += `Package code: ${product.id}\n`
-        message += `Category: ${product.category}\n`
+        message += `Package Code: ${product.id}\n`
+        message += `Category: ${product.category}\n\n`
 
-        message += "Selected items:\n"
+        message += `Selected Items:\n`
         selectedProductsList.forEach((item) => {
           const selected = item.selectedProduct
           message += `- ${item.size} (${item.volume}): ${selected.productName}\n`
         })
+        message += `\n`
 
         message += `Quantity: ${quantity}\n`
-        message += `Request date: ${requestDate}\n`
-
-        if (imageUrl) {
-          message += `Image: ${imageUrl}\n`
-        }
+        message += `Request Date: ${requestDate}\n`
 
         const encoded = encodeURIComponent(message)
         if (typeof window !== "undefined") {
@@ -176,7 +173,7 @@ export function GiftPackageSelector({
         console.error("Error opening WhatsApp order", err)
       }
     }
-    
+
     onClose()
   }
 
@@ -197,7 +194,7 @@ export function GiftPackageSelector({
       className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <motion.div 
+      <motion.div
         className="bg-white rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto mx-2 sm:mx-4"
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
@@ -220,15 +217,14 @@ export function GiftPackageSelector({
                 }}
                 className="mr-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors"
               >
-                <Heart 
-                  className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                    isFavorite(product.id) 
-                      ? "text-red-500 fill-red-500" 
-                      : "text-gray-700"
-                  }`} 
+                <Heart
+                  className={`h-4 w-4 sm:h-5 sm:w-5 ${isFavorite(product.id)
+                    ? "text-red-500 fill-red-500"
+                    : "text-gray-700"
+                    }`}
                 />
               </button>
-              <button 
+              <button
                 onClick={onClose}
                 className="text-gray-500 hover:text-gray-700 transition-colors"
               >
@@ -236,7 +232,7 @@ export function GiftPackageSelector({
               </button>
             </div>
           </div>
-          
+
           <div className="flex items-center mb-6">
             <div className="relative w-20 h-20 mr-4">
               <Image
@@ -255,11 +251,10 @@ export function GiftPackageSelector({
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${
-                        product.rating && product.rating > 0 && i < Math.floor(product.rating)
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-300"
-                      }`}
+                      className={`h-4 w-4 ${product.rating && product.rating > 0 && i < Math.floor(product.rating)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                        }`}
                     />
                   ))}
                 </div>
@@ -277,7 +272,7 @@ export function GiftPackageSelector({
               {(() => {
                 const packagePrice = product.packagePrice || 0;
                 const packageOriginalPrice = product.packageOriginalPrice || 0;
-                
+
                 if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
                   return (
                     <div className="flex items-center justify-center space-x-2">
@@ -312,11 +307,11 @@ export function GiftPackageSelector({
                           <div className="font-medium text-base sm:text-lg">{size.size}</div>
                           <div className="text-xs sm:text-sm text-gray-600">{size.volume}</div>
                         </div>
-                        
+
                         <div className="flex-1">
                           <Label className="text-xs sm:text-sm font-medium mb-2 block">Select Product:</Label>
-                          <Select 
-                            value={selectedProducts[size.size] || ""} 
+                          <Select
+                            value={selectedProducts[size.size] || ""}
                             onValueChange={(value) => handleProductSelect(size.size, value)}
                           >
                             <SelectTrigger className="w-full text-sm">
@@ -342,7 +337,7 @@ export function GiftPackageSelector({
                           </Select>
                         </div>
                       </div>
-                      
+
                       {/* Selected Product Preview */}
                       {selectedProducts[size.size] && (
                         <div className="flex items-center space-x-3 min-w-[200px]">
@@ -368,7 +363,7 @@ export function GiftPackageSelector({
               ))}
             </div>
           </div>
-          
+
           {/* Quantity Selection */}
           <div className="mb-6">
             <h4 className="font-medium mb-3">Quantity</h4>
@@ -402,7 +397,7 @@ export function GiftPackageSelector({
                 const packageOriginalPrice = product.packageOriginalPrice || 0;
                 const totalPrice = packagePrice * quantity;
                 const totalOriginalPrice = packageOriginalPrice * quantity;
-                
+
                 if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
                   return (
                     <div className="flex items-center space-x-2">
@@ -419,9 +414,9 @@ export function GiftPackageSelector({
                 }
               })()}
             </div>
-            
-            <Button 
-              onClick={addToCart} 
+
+            <Button
+              onClick={addToCart}
               className="flex items-center justify-center bg-black hover:bg-gray-800 rounded-full px-4 sm:px-6 py-3 sm:py-5 w-full sm:w-auto text-sm sm:text-base"
               disabled={!isAllSizesSelected()}
             >

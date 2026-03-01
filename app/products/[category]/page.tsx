@@ -259,40 +259,38 @@ export default function CategoryPage() {
 
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${selectedProduct.name}\n`
-    message += `Dress code: ${selectedProduct.id}\n`
-    message += `Category: ${selectedProduct.category}\n`
+    message += `Dress Code: ${selectedProduct.id}\n`
+    message += `Category: ${selectedProduct.category}\n\n`
 
     if (isCustomSizeMode) {
-      message += `Size mode: Custom (${measurementUnit})\n`
-      message += "Measurements:\n"
+      message += `Size Mode: Custom (${measurementUnit})\n`
+      message += `Measurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
         if (value == null || value === "") return
         message += `- ${key}: ${value} ${measurementUnit}\n`
       })
+      message += `\n`
     } else if (selectedSize) {
-      message += "Selected size:\n"
+      message += `Selected Size:\n`
       if (selectedSize.size) {
         message += `- Size: ${selectedSize.size}\n`
       }
       if (selectedSize.volume) {
         message += `- Volume: ${selectedSize.volume}\n`
       }
+      message += `\n`
     }
 
     if (occasionDate) {
       try {
-        message += `Occasion date: ${occasionDate.toLocaleDateString()}\n`
+        message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n`
       } catch {
         // ignore formatting errors
       }
     }
 
     message += `Quantity: ${quantity}\n`
-    message += `Request date: ${requestDate}\n`
-
-    if (imageUrl) {
-      message += `Image: ${imageUrl}\n`
-    }
+    message += `Request Date: ${requestDate}\n`
 
     const encoded = encodeURIComponent(message)
     if (typeof window !== "undefined") {

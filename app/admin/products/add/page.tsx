@@ -327,9 +327,9 @@ export default function AddProductPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                            <SelectItem value="el-raey-1">El Raey 1</SelectItem>
-                            <SelectItem value="el-raey-2">El Raey 2</SelectItem>
-                            <SelectItem value="el-raey-the-yard">EL Raey The Yard</SelectItem>
+                            <SelectItem value="el-raey-1">Raey 1</SelectItem>
+                            <SelectItem value="el-raey-2">Raey 2</SelectItem>
+                            <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
                             <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
                           </SelectContent>
                         </Select>

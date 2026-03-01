@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       content: `
         <div style="text-align: center; margin-bottom: 30px;">
           <h1>New Contact Form Submission</h1>
-          <p style="font-size: 18px;">El Raey Website</p>
+          <p style="font-size: 18px;">Raey Website</p>
         </div>
       `
     })

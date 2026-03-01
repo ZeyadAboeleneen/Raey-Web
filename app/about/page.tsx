@@ -81,7 +81,7 @@ export default function AboutPage() {
             >
               <Image
                 src="/elraey-bg.PNG"
-                alt="El Raey Brand"
+                alt="Raey Brand"
                 width={800}
                 height={1000}
                 className="w-full h-[600px] object-cover rounded-lg shadow-lg"

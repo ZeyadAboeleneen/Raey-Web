@@ -29,9 +29,9 @@ const crimsonText = Crimson_Text({
 })
 
 export const metadata: Metadata = {
-  title: "El Raey – Soirée & Couture Dresses",
-  description: "Step into the world of El Raey. Discover couture-inspired soirée gowns, modern bridal looks, and bespoke eveningwear crafted for unforgettable moments.",
-  keywords: "El Raey, soirée dresses, couture gowns, eveningwear, bridal couture, luxury fashion",
+  title: "Raey – Soirée & Couture Dresses",
+  description: "Step into the world of Raey. Discover couture-inspired soirée gowns, modern bridal looks, and bespoke eveningwear crafted for unforgettable moments.",
+  keywords: "Raey, soirée dresses, couture gowns, eveningwear, bridal couture, luxury fashion",
   generator: "el-raey-atelier",
   icons: {
     icon: "/raey-logo-black.png",

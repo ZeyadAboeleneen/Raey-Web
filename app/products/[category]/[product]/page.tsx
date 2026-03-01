@@ -326,43 +326,41 @@ export default function ProductDetailPage() {
 
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${product.name}\n`
-    message += `Dress code: ${product.id}\n`
-    message += `Category: ${product.category}\n`
+    message += `Dress Code: ${product.id}\n`
+    message += `Category: ${product.category}\n\n`
 
     if (isCustomSizeMode) {
-      message += `Size mode: Custom (${measurementUnit})\n`
-      message += "Measurements:\n"
+      message += `Size Mode: Custom (${measurementUnit})\n`
+      message += `Measurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
         if (value == null || value === "") return
         message += `- ${key}: ${value} ${measurementUnit}\n`
       })
+      message += `\n`
     } else if (product.sizes && product.sizes.length > 0 && selectedSize >= 0) {
       const selectedSizeObj: any = product.sizes[selectedSize] as any
       if (selectedSizeObj) {
-        message += "Selected size:\n"
+        message += `Selected Size:\n`
         if (selectedSizeObj.size) {
           message += `- Size: ${selectedSizeObj.size}\n`
         }
         if (selectedSizeObj.volume) {
           message += `- Volume: ${selectedSizeObj.volume}\n`
         }
+        message += `\n`
       }
     }
 
     if (occasionDate) {
       try {
-        message += `Occasion date: ${occasionDate.toLocaleDateString()}\n`
+        message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n`
       } catch {
         // ignore formatting errors
       }
     }
 
     message += `Quantity: ${quantity}\n`
-    message += `Request date: ${requestDate}\n`
-
-    if (imageUrl) {
-      message += `Image: ${imageUrl}\n`
-    }
+    message += `Request Date: ${requestDate}\n`
 
     const encoded = encodeURIComponent(message)
     if (typeof window !== "undefined") {
@@ -653,10 +651,12 @@ export default function ProductDetailPage() {
                   onMouseEnter={() => setIsHovered(true)}
                   onMouseLeave={() => setIsHovered(false)}
                   onKeyDown={handleKeyDown}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
                   tabIndex={0}
                   role="img"
                   aria-label="Product image gallery. Use the arrows or thumbnails to change image."
-                  style={{ userSelect: "none", touchAction: "none" }}
+                  style={{ userSelect: "none", touchAction: "pan-y" }}
                 >
                   <Image
                     src={mainImage}

@@ -339,35 +339,33 @@ export default function ProductsPage() {
 
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${selectedProduct.name}\n`
-    message += `Dress code: ${selectedProduct.id}\n`
-    message += `Category: ${selectedProduct.category}\n`
+    message += `Dress Code: ${selectedProduct.id}\n`
+    message += `Category: ${selectedProduct.category}\n\n`
 
     if (isCustomSizeMode) {
-      message += `Size mode: Custom (${measurementUnit})\n`
-      message += "Measurements:\n"
+      message += `Size Mode: Custom (${measurementUnit})\n`
+      message += `Measurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
         if (value == null || value === "") return
         message += `- ${key}: ${value} ${measurementUnit}\n`
       })
+      message += `\n`
     } else {
       const baseSize = selectedSize || (selectedProduct.sizes && selectedProduct.sizes[0])
       if (baseSize) {
-        message += "Selected size:\n"
+        message += `Selected Size:\n`
         if (baseSize.size) {
           message += `- Size: ${baseSize.size}\n`
         }
         if (baseSize.volume) {
           message += `- Volume: ${baseSize.volume}\n`
         }
+        message += `\n`
       }
     }
 
     message += `Quantity: ${quantity}\n`
-    message += `Request date: ${requestDate}\n`
-
-    if (imageUrl) {
-      message += `Image: ${imageUrl}\n`
-    }
+    message += `Request Date: ${requestDate}\n`
 
     const encoded = encodeURIComponent(message)
     if (typeof window !== "undefined") {

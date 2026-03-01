@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const greeting = createEmailSection({
       content: `
-        <h2>Welcome to El Raey, ${name}!</h2>
+        <h2>Welcome to Raey, ${name}!</h2>
         <p>Thank you for joining our couture community. We cannot wait to dress your unforgettable evenings with silhouettes that shimmer, sculpt, and celebrate you.</p>
       `,
     })
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     })
 
     const whyChooseUs = createEmailSection({
-      title: "Why El Raey?",
+      title: "Why Raey?",
       content: `
         <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
           <li>Hand-finished gowns crafted by specialist artisans</li>
@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
 
     await sendEmail({
       to: email,
-      subject: "Welcome to El Raey",
+      subject: "Welcome to Raey",
       html: createEmailTemplate({
-        title: "Welcome to El Raey",
+        title: "Welcome to Raey",
         preheader: `Welcome ${name}! Discover couture benefits and styling support.`,
         content: emailContent,
         theme: { mode: "light" },

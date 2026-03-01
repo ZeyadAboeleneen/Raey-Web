@@ -12,21 +12,21 @@ export const translations = {
     signOut: "Sign Out",
     myAccount: "My Account",
     adminDashboard: "Admin Dashboard",
-    
+
     // Home Page
     embraceYour: "Where Elegance",
     soiréeMoment: "Meets Evening",
-    homeDescription: "Discover gowns crafted with poetic motion. Each El Raey silhouette is meticulously draped, beaded, and tailored by hand, ensuring every entrance is cinematic and every celebration unforgettable.",
+    homeDescription: "Discover gowns crafted with poetic motion. Each Raey silhouette is meticulously draped, beaded, and tailored by hand, ensuring every entrance is cinematic and every celebration unforgettable.",
     exploreCollections: "Explore Collections",
     coutureCapsules: "Couture Capsules",
-    coutureCapsulesDesc: "Explore four signature worlds of El Raey—each curated for a different kind of celebration, from intimate soirées to grand ballroom affairs.",
+    coutureCapsulesDesc: "Explore four signature worlds of Raey—each curated for a different kind of celebration, from intimate soirées to grand ballroom affairs.",
     allProducts: "All Products",
     allProductsDesc: "Explore our complete collection of elegant designs for every season.",
     theArtOfCouture: "The Art of Couture",
-    artOfCoutureDesc1: "At El Raey, every gown begins with a story. Our design house sketches with emotion, sculpts with purpose, and celebrates the grace of the women who wear our work.",
+    artOfCoutureDesc1: "At Raey, every gown begins with a story. Our design house sketches with emotion, sculpts with purpose, and celebrates the grace of the women who wear our work.",
     artOfCoutureDesc2: "From the first fitting to the final bow, each piece is hand-finished with couture techniques—intricate draping, delicate embroidery, and luminous beadwork that captures the light with every step.",
     learnMoreAboutUs: "Learn More About Us",
-    
+
     // Collections
     winterCollection: "Winter Collection",
     summerCollection: "Summer Collection",
@@ -37,16 +37,16 @@ export const translations = {
 
     // Named Collections
     monaSalehCollection: "Mona Saleh",
-    elRaey1Collection: "El Raey 1",
-    elRaey2Collection: "El Raey 2",
-    elRaeyTheYardCollection: "EL Raey The Yard",
+    elRaey1Collection: "Raey 1",
+    elRaey2Collection: "Raey 2",
+    elRaeyTheYardCollection: "Raey The Yard",
     sellDressesCollection: "Sell Dresses",
     monaSalehDesc: "El Mansoura – Hay El Gamea",
     elRaey1Desc: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
-    elRaey2Desc: "New silhouettes from the second El Raey collection.",
+    elRaey2Desc: "New silhouettes from the second Raey collection.",
     elRaeyTheYardDesc: "Cairo - Rehab - The yard mall.",
     sellDressesDesc: "Ready-to-ship dresses available for immediate purchase.",
-    
+
     // Products
     selectSize: "Select your preferred size",
     addToCart: "Add to Cart",
@@ -55,13 +55,13 @@ export const translations = {
     total: "Total",
     loadingProducts: "Loading products...",
     noProducts: "No products available at the moment.",
-    
+
     // Footer
     footerDesc: "Couture-crafted soirée dresses inspired by Middle Eastern artistry and modern glamour.",
     navigation: "Navigation",
     collectionsFooter: "Collections",
     followMaison: "Follow the maison",
-    
+
     // Common
     customSizeAssistance: "If you need any assistance, you can contact our friendly customer service via whatsapp",
     continue: "Continue",
@@ -73,18 +73,18 @@ export const translations = {
     language: "Language",
     english: "English",
     arabic: "العربية",
-    
+
     // About Page
     backToHome: "Back to Home",
     ourStory: "ABOUT US",
-    aboutHeroDesc: "El Raey is a couture house dedicated to an exquisite collection of dresses, designed exclusively for the modern and confident woman.",
-    newChapter: "About El Raey",
-    newChapterDesc1: "At El Raey, we believe that every occasion deserves a stunning outfit that reflects your unique style and personality.",
-    newChapterDesc2: "Quality is of utmost importance to us, which is why we carefully select the finest fabrics and materials for our dresses. From luxurious silks to delicate lace, each piece is made with attention to detail and precision, ensuring a perfect fit and impeccable finish.",
-    newChapterDesc3: "El Raey",
+    aboutHeroDesc: "Raey is a couture house dedicated to an exquisite collection of dresses, designed exclusively for the modern and confident woman.",
+    newChapter: "About Raey",
+    newChapterDesc1: "At Raey, we believe that every occasion deserves a stunning outfit that reflects your unique style and personality.",
+    newChapterDesc2: "Our carefully curated selection features a wide range of designs, from timeless classics to the latest trends, ensuring that you'll find the perfect dress for weddings, galas, cocktail parties, and more.",
+    newChapterDesc3: "Raey",
     ourPhilosophy: "Our Philosophy",
     philosophyDesc1: "Diversity is at the core of our values, and we firmly believe that beauty comes in all shapes and sizes. That’s why our dresses are available in a wide range of sizes, catering to every woman who wants to embrace her femininity and feel confident in her own skin.",
-    philosophyDesc2: "We understand that shopping for the perfect dress can be overwhelming, which is why our friendly and knowledgeable customer service team is here to assist you every step of the way. Whether you require guidance on sizing, styling, or any other inquiries, we are dedicated to ensuring that your shopping experience with El Raey is nothing short of exceptional.",
+    philosophyDesc2: "We understand that shopping for the perfect dress can be overwhelming, which is why our friendly and knowledgeable customer service team is here to assist you every step of the way. Whether you require guidance on sizing, styling, or any other inquiries, we are dedicated to ensuring that your shopping experience with Raey is nothing short of exceptional.",
     ourValues: "Our Values",
     valuesDesc: "The principles that guide our craft and define our commitment to excellence.",
     excellence: "Excellence",
@@ -99,7 +99,7 @@ export const translations = {
     signatureSoiree: "Signature Soirée",
     luminousCouture: "Luminous Couture",
     styleCapsules: "Style Capsules",
-    
+
     // Collections/Products Page
     collectionsTitle: "Collections",
     collectionsDesc: "Discover our curated gowns, jumpsuits, and accessories—each designed to spotlight your individuality at every celebration.",
@@ -111,7 +111,7 @@ export const translations = {
     elegantWinterPieces: "Elegant Winter Pieces",
     elegantSummerPieces: "Light & Airy Designs",
     elegantFallPieces: "Rich Textures & Warm Tones",
-    
+
     // Contact Page
     getInTouch: "Get in Touch",
     contactHeroDesc: "From bespoke fittings to styling advice, our atelier team is here to help you craft an unforgettable soirée look.",
@@ -137,14 +137,14 @@ export const translations = {
     businessHoursWeekend: "Friday - Saturday: 10:00 AM - 4:00 PM",
     followUs: "Follow Us",
     followUsDesc: "Step behind the scenes for atelier diaries, runway teasers, and styling inspiration.",
-    
+
     // Contact Details
     instagramLink: "https://www.instagram.com/raeygroup?igsh=MTU2d2Jrcm1qczhhZQ==",
     phoneWhatsApp: "201094448044",
     phoneWhatsAppDisplay: "01094448044",
     contactEmail: "raey888@gmail.com",
     tiktokLink: "https://www.tiktok.com/@monasalehhautecouture?_r=1&_t=ZS-944Bim2ZRCu",
-    
+
     frequentlyAskedQuestions: "Frequently Asked Questions",
     faqDesc: "Find answers to common questions about fittings, customization, and delivery.",
     faq1Question: "Do you offer custom sizing?",
@@ -156,7 +156,7 @@ export const translations = {
     faq4Question: "What is your return and exchange policy?",
     faq4Answer: "In our commitment to quality and product integrity, please note that our items are non-refundable or exchangeable. We take great care to ensure that every product leaving our facility meets the highest standards of excellence. If, however, you receive a damaged or defective item, please contact our customer support team, and we will gladly assist you in resolving any issues promptly. Your satisfaction is important to us and we stand by the quality of our products.",
     ifAnythingIncorrect: "If anything looks incorrect, choose \"Review Again\" to adjust your measurements before adding to cart.",
-    
+
     // Auth Pages - Login
     welcomeBack: "Welcome Back",
     signInToAccount: "Sign in to your account",
@@ -168,7 +168,7 @@ export const translations = {
     loginFailed: "Login failed. Please check your credentials and try again.",
     loginError: "An error occurred during login. Please try again.",
     dontHaveAccount: "Don't have an account?",
-    
+
     // Auth Pages - Register
     joinTheAtelier: "Join the Atelier",
     createAccountDesc: "Create your account to access bespoke styling and private releases.",
@@ -180,7 +180,7 @@ export const translations = {
     emailAlreadyExists: "Email already exists",
     creatingAccount: "Creating Account...",
     alreadyHaveAccount: "Already have an account?",
-    
+
     // Auth Pages - Forgot Password
     forgotPasswordTitle: "Forgot Password",
     forgotPasswordDesc: "Enter your email to receive a password reset link.",
@@ -188,7 +188,7 @@ export const translations = {
     somethingWentWrong: "Something went wrong.",
     networkError: "Network error. Please try again.",
     backToLoginPage: "Back to Login Page",
-    
+
     // Cart Page
     shoppingCart: "Shopping Cart",
     yourCartIsEmpty: "Your cart is empty",
@@ -200,7 +200,7 @@ export const translations = {
     proceedToCheckout: "Proceed to Checkout",
     remove: "Remove",
     update: "Update",
-    
+
     // Favorites Page
     myFavorites: "My Favorites",
     noFavoritesYet: "No Favorites Yet",
@@ -214,7 +214,7 @@ export const translations = {
     item: "item",
     items: "items",
     orderSummary: "Order Summary",
-    
+
     // Subscription
     stayUpdated: "Stay Updated",
     subscribeForOffers: "Subscribe to receive updates on new arrivals, special offers, and exclusive content.",
@@ -234,7 +234,7 @@ export const translations = {
     signOut: "تسجيل الخروج",
     myAccount: "حسابي",
     adminDashboard: "لوحة التحكم",
-    
+
     // Home Page
     embraceYour: "حيث تلتقي الأناقة",
     soiréeMoment: "بالمساء",
@@ -248,7 +248,7 @@ export const translations = {
     artOfCoutureDesc1: "في أتيليه الرأي، يبدأ كل فستان بقصة. بيت التصميم الخاص بنا يرسم بالعاطفة، ينحت بالهدف، ويحتفي بأناقة النساء اللواتي يرتدين أعمالنا.",
     artOfCoutureDesc2: "من القياس الأول إلى القوس الأخير، كل قطعة تُنهى يدوياً بتقنيات الكوتور—التشكيل المعقد، التطريز الدقيق، والتطريز المضيء الذي يلتقط الضوء مع كل خطوة.",
     learnMoreAboutUs: "اعرف المزيد عنا",
-    
+
     // Collections
     winterCollection: "مجموعة الشتاء",
     summerCollection: "مجموعة الصيف",
@@ -268,7 +268,7 @@ export const translations = {
     elRaey2Desc: "القاهرة - الرحاب - The Yard Mall",
     elRaeyTheYardDesc: "إطلالات مميزة من مجموعة الرأي ذا يارد.",
     sellDressesDesc: "فساتين جاهزة للبيع والشحن الفوري.",
-    
+
     // Products
     selectSize: "اختر المقاس المفضل",
     addToCart: "أضف إلى السلة",
@@ -277,13 +277,13 @@ export const translations = {
     total: "الإجمالي",
     loadingProducts: "جاري تحميل المنتجات...",
     noProducts: "لا توجد منتجات متاحة في الوقت الحالي.",
-    
+
     // Footer
     footerDesc: "فساتين سواريه مصنوعة بالكوتور مستوحاة من الفن الشرقي الحديث والجاذبية العصرية.",
     navigation: "التنقل",
     collectionsFooter: "المجموعات",
     followMaison: "تابع البيت",
-    
+
     // Common
     customSizeAssistance: "إذا كنت بحاجة إلي أي مساعدة, يمكنك التواصل مع خدمة العملاء الودودة عبر واتساب",
     continue: "متابعة",
@@ -295,7 +295,7 @@ export const translations = {
     language: "اللغة",
     english: "English",
     arabic: "العربية",
-    
+
     // About Page
     backToHome: "العودة إلى الرئيسية",
     ourStory: "قصتنا",
@@ -321,7 +321,7 @@ export const translations = {
     signatureSoiree: "السواريه المميزة",
     luminousCouture: "الكوتور المضيء",
     styleCapsules: "كبسولات الأسلوب",
-    
+
     // Collections/Products Page
     collectionsTitle: "المجموعات",
     collectionsDesc: "اكتشفي فساتيننا المنتقاة وبدلات القفز والإكسسوارات—كل واحدة مصممة لإبراز فرديتك في كل احتفال.",
@@ -333,7 +333,7 @@ export const translations = {
     elegantWinterPieces: "قطع شتوية أنيقة",
     elegantSummerPieces: "تصاميم خفيفة وناعمة",
     elegantFallPieces: "أنسجة غنية وألوان دافئة",
-    
+
     // Contact Page
     getInTouch: "تواصلي معنا",
     contactHeroDesc: "من القياسات المخصصة إلى نصائح التصميم، فريق الأتيليه لدينا هنا لمساعدتك في صنع إطلالة سواريه لا تُنسى.",
@@ -359,14 +359,14 @@ export const translations = {
     businessHoursWeekend: "الجمعة - السبت: 10:00 صباحاً - 4:00 مساءً",
     followUs: "تابعينا",
     followUsDesc: "تعرفي على كواليس الأتيليه، معاينات العرض، وإلهام التصميم.",
-    
+
     // Contact Details
     instagramLink: "https://www.instagram.com/raeygroup?igsh=MTU2d2Jrcm1qczhhZQ==",
     phoneWhatsApp: "201094448044",
     phoneWhatsAppDisplay: "01094448044",
     contactEmail: "raey888@gmail.com",
     tiktokLink: "https://www.tiktok.com/@monasalehhautecouture?_r=1&_t=ZS-944Bim2ZRCu",
-    
+
     frequentlyAskedQuestions: "الأسئلة الشائعة",
     faqDesc: "احصلي على إجابات للأسئلة الشائعة حول القياسات والتخصيص والتسليم.",
     faq1Question: "هل تقدمون مقاسات مخصصة؟",
@@ -378,7 +378,7 @@ export const translations = {
     faq4Question: "ما هي سياسة الاسترجاع والاستبدال الخاصة بكم؟",
     faq4Answer: "في إطار التزامنا بالجودة وسلامة المنتج، يرجى ملاحظة أن منتجاتنا غير قابلة للاسترداد أو الاستبدال. نحن نحرص بشدة على التأكد من أن كل منتج يغادر منشأتنا يفي بأعلى معايير التميز. ومع ذلك، إذا استلمت منتجًا تالفًا أو به عيب، فيرجى الاتصال بفريق دعم العملاء لدينا، وسنسعد بمساعدتك في حل أي مشكلات على الفور. رضاكم مهم لنا ونحن نضمن جودة منتجاتنا.",
     ifAnythingIncorrect: "إذا بدا أي شيء غير صحيح، اختاري \"مراجعة مرة أخرى\" لتعديل مقاساتك قبل إضافتها إلى السلة.",
-    
+
     // Auth Pages - Login
     welcomeBack: "مرحباً بعودتك",
     signInToAccount: "تسجيل الدخول إلى حسابك",
@@ -390,7 +390,7 @@ export const translations = {
     loginFailed: "فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد الخاصة بك والمحاولة مرة أخرى.",
     loginError: "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.",
     dontHaveAccount: "ليس لديك حساب؟",
-    
+
     // Auth Pages - Register
     joinTheAtelier: "انضمي إلى الأتيليه",
     createAccountDesc: "أنشئي حسابك للوصول إلى التصميمات المخصصة والإصدارات الخاصة.",
@@ -402,7 +402,7 @@ export const translations = {
     emailAlreadyExists: "البريد الإلكتروني موجود بالفعل",
     creatingAccount: "جاري إنشاء الحساب...",
     alreadyHaveAccount: "لديك حساب بالفعل؟",
-    
+
     // Auth Pages - Forgot Password
     forgotPasswordTitle: "نسيت كلمة المرور",
     forgotPasswordDesc: "أدخلي بريدك الإلكتروني لاستلام رابط إعادة تعيين كلمة المرور.",
@@ -410,7 +410,7 @@ export const translations = {
     somethingWentWrong: "حدث خطأ ما.",
     networkError: "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
     backToLoginPage: "العودة إلى صفحة تسجيل الدخول",
-    
+
     // Cart Page
     shoppingCart: "سلة التسوق",
     yourCartIsEmpty: "سلتك فارغة",
@@ -422,7 +422,7 @@ export const translations = {
     proceedToCheckout: "المتابعة إلى الدفع",
     remove: "إزالة",
     update: "تحديث",
-    
+
     // Favorites Page
     myFavorites: "مفضلاتي",
     noFavoritesYet: "لا توجد مفضلات بعد",
@@ -436,7 +436,7 @@ export const translations = {
     item: "عنصر",
     items: "عناصر",
     orderSummary: "ملخص الطلب",
-    
+
     // Subscription
     stayUpdated: "ابقى على اطلاع",
     subscribeForOffers: "اشترك لتلقي تحديثات حول الوصولات الجديدة والعروض الخاصة والمحتوى الحصري.",

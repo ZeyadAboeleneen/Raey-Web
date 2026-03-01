@@ -44,7 +44,7 @@ export function getEmailColors(theme: EmailTheme = { mode: 'light' }) {
       destructive: '#ef4444',
     }
   }
-  
+
   return colors[theme.mode]
 }
 
@@ -58,7 +58,7 @@ export function createEmailTemplate(options: {
   const { title, preheader = '', theme = { mode: 'light' }, content, includeUnsubscribe = true } = options
   const colors = getEmailColors(theme)
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alanoudalqadi.com'
-  
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -393,7 +393,7 @@ export function createEmailTemplate(options: {
     <div class="email-container">
       <!-- Header -->
       <div class="email-header">
-        <h1 class="brand-name">EL RAEY</h1>
+        <h1 class="brand-name">RAEY</h1>
         <p class="brand-tagline">COUTURE ATELIER</p>
       </div>
       
@@ -405,7 +405,7 @@ export function createEmailTemplate(options: {
       <!-- Footer -->
       <div class="email-footer">
         <p style="margin: 0 0 15px 0;">
-          © 2025 El Raey. All rights reserved.
+          © 2025 Raey. All rights reserved.
         </p>
         <p style="margin: 0;">
           <a href="${baseUrl}/contact">Contact Us</a> • 
@@ -427,7 +427,7 @@ export function createEmailSection(options: {
   className?: string
 }) {
   const { title, content, highlight = false, className = '' } = options
-  
+
   return `
     <div class="${highlight ? 'email-card-highlight' : 'email-card'} ${className}">
       ${title ? `<h3>${title}</h3>` : ''}
@@ -481,7 +481,7 @@ export function createOrderItemsTable(items: Array<{
       <td style="text-align: right; font-weight: 600;">${item.total.toFixed(0)} ${safeCurrency}</td>
     </tr>
   `).join('')
-  
+
   return `
     <table>
       <thead>
@@ -510,12 +510,12 @@ export function createEmailWithDarkModeVariant(options: {
     ...options,
     theme: { mode: 'light' }
   })
-  
+
   const darkMode = createEmailTemplate({
     ...options,
     theme: { mode: 'dark' }
   })
-  
+
   return {
     light: lightMode,
     dark: darkMode,
@@ -530,7 +530,7 @@ export function getEmailForPreference(emails: { light: string; dark: string }, u
   if (userPreference) {
     return userPreference === 'dark' ? emails.dark : emails.light
   }
-  
+
   // Default to light mode for maximum compatibility
   return emails.light
 }

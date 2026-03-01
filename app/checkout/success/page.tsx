@@ -117,7 +117,7 @@ export default function CheckoutSuccessPage() {
                 </CardContent>
               </Card>
 
-              
+
             </motion.div>
 
             <motion.div
@@ -134,7 +134,7 @@ export default function CheckoutSuccessPage() {
                 >
                   Track Your Order
                 </Button>
-                <Button 
+                <Button
                   className="bg-black text-white hover:bg-gray-800"
                   onClick={() => router.push("/products")}
                 >
@@ -145,14 +145,14 @@ export default function CheckoutSuccessPage() {
               <div className="text-sm text-gray-600 space-y-4 pt-4 border-t border-gray-200">
                 <p>
                   Need help? Contact us at{" "}
-                  <a href="mailto:Elraey@gmail.com" className="text-black hover:underline">
-                    Elraey@gmail.com
+                  <a href="mailto:Raey@gmail.com" className="text-black hover:underline">
+                    Raey@gmail.com
                   </a>
                   {" or on WhatsApp at +971 50 299 6885"}
                 </p>
                 <div className="flex justify-center space-x-4">
                   <a
-                    href="mailto:Elraey@gmail.com"
+                    href="mailto:Raey@gmail.com"
                     className="group"
                   >
                     <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-lg">

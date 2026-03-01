@@ -87,14 +87,14 @@ export async function POST(request: NextRequest) {
               </div>` : ""
           const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f9f9f9;padding:24px;">
             <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;">
-              <h1 style="font-size:24px;margin-bottom:16px;">${title || "New Offer from El Raey"}</h1>
+              <h1 style="font-size:24px;margin-bottom:16px;">${title || "New Offer from Raey"}</h1>
               <p style="font-size:16px;color:#374151;">${description}</p>
               ${discountSection}${buttonSection}
-              <p style="font-size:12px;color:#9ca3af;margin-top:32px;">El Raey — You received this because you subscribed to our newsletter.</p>
+              <p style="font-size:12px;color:#9ca3af;margin-top:32px;">Raey — You received this because you subscribed to our newsletter.</p>
             </div></body></html>`
 
           // Send in batches — fire and forget
-          Promise.all(emails.map((to: string) => sendEmail({ to, subject: title || "New Offer from El Raey", html }))).catch(
+          Promise.all(emails.map((to: string) => sendEmail({ to, subject: title || "New Offer from Raey", html }))).catch(
             (err) => console.error("Error sending offer emails:", err)
           )
         }

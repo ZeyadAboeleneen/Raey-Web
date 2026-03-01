@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const greeting = createEmailSection({
       content: `
         <h2>Reset Your Password</h2>
-        <p>We received a request to reset your password for your El Raey account. Click the button below to create a new password:</p>
+        <p>We received a request to reset your password for your Raey account. Click the button below to create a new password:</p>
       `,
     })
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         <hr class="divider">
         
         <p style="text-align: center;">
-          Still having trouble? Contact us at <a href="mailto:Elraey@gmail.com">Elraey@gmail.com</a> or WhatsApp: +971 50 299 6885
+          Still having trouble? Contact us at <a href="mailto:Raey@gmail.com">Raey@gmail.com</a> or WhatsApp: +971 50 299 6885
         </p>
       `,
     })
@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
     // Send email
     await sendEmail({
       to: email,
-      subject: "Reset Your El Raey Password",
+      subject: "Reset Your Raey Password",
       html: createEmailTemplate({
-        title: "Reset Your Password - El Raey",
+        title: "Reset Your Password - Raey",
         preheader: "Reset your password to regain access to your account",
         content: emailContent,
         theme: { mode: "light" },

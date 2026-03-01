@@ -348,40 +348,38 @@ export default function HomePage() {
 
       let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
       message += `Name: ${selectedProduct.name}\n`
-      message += `Dress code: ${selectedProduct.id}\n`
-      message += `Category: ${selectedProduct.category}\n`
+      message += `Dress Code: ${selectedProduct.id}\n`
+      message += `Category: ${selectedProduct.category}\n\n`
 
       if (isCustomSizeMode) {
-        message += `Size mode: Custom (${measurementUnit})\n`
-        message += "Measurements:\n"
+        message += `Size Mode: Custom (${measurementUnit})\n`
+        message += `Measurements:\n`
         Object.entries(measurements || {}).forEach(([key, value]) => {
           if (value == null || value === "") return
           message += `- ${key}: ${value} ${measurementUnit}\n`
         })
+        message += `\n`
       } else {
-        message += "Selected size:\n"
+        message += `Selected Size:\n`
         if (baseSize.size) {
           message += `- Size: ${baseSize.size}\n`
         }
         if (baseSize.volume) {
           message += `- Volume: ${baseSize.volume}\n`
         }
+        message += `\n`
       }
 
       if (occasionDate) {
         try {
-          message += `Occasion date: ${occasionDate.toLocaleDateString()}\n`
+          message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n`
         } catch {
           // ignore formatting errors
         }
       }
 
       message += `Quantity: ${quantity}\n`
-      message += `Request date: ${requestDate}\n`
-
-      if (imageUrl) {
-        message += `Image: ${imageUrl}\n`
-      }
+      message += `Request Date: ${requestDate}\n`
 
       const encoded = encodeURIComponent(message)
       if (typeof window !== "undefined") {
@@ -856,7 +854,7 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
           >
             <p className="text-xs sm:text-sm tracking-[0.35em] uppercase text-rose-200 mb-4">
-              El Raey · Soiree Dresses
+              Raey · Soiree Dresses
             </p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-white mb-4 leading-tight">
               Rent or buy your perfect dress for every occasion.
@@ -908,7 +906,7 @@ export default function HomePage() {
             className="max-w-2xl mx-auto text-center space-y-4"
           >
             <p className="text-[10px] sm:text-xs tracking-[0.35em] uppercase text-rose-600">
-              El Raey evenings
+              Raey evenings
             </p>
 
             <div className="flex flex-col items-center gap-3">
@@ -1002,7 +1000,7 @@ export default function HomePage() {
               Best Sellers · Rent
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
-              Discover the most-loved gowns available to rent across all El Raey collections.
+              Discover the most-loved gowns available to rent across all Raey collections.
             </p>
           </motion.div>
 
@@ -1434,7 +1432,7 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="order-1 md:order-2"
             >
-              <h2 className="text-3xl md:text-4xl font-light tracking-wider mb-6">Why choose El Raey</h2>
+              <h2 className="text-3xl md:text-4xl font-light tracking-wider mb-6">Why choose Raey</h2>
               <motion.p
                 className="text-gray-600 mb-6 leading-relaxed"
                 initial={{ opacity: 0 }}

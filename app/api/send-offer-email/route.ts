@@ -76,12 +76,12 @@ export async function POST(request: NextRequest) {
       to: email,
       subject: `🎉 New Exclusive Offer: ${offer.title}`,
       html: createEmailTemplate({
-        title: "New Offer - El Raey",
+        title: "New Offer - Raey",
         preheader: `${offer.title} - Don't miss this exclusive offer!`,
         content: emailContent,
         theme: { mode: 'light' }
       }),
-      fromName: "El Raey",
+      fromName: "Raey",
     })
 
     return NextResponse.json({
