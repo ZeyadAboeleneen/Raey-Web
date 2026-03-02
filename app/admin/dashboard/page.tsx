@@ -25,7 +25,10 @@ import {
   RefreshCw,
   Percent,
   Gift,
+  Upload,
+  FileSpreadsheet,
 } from "lucide-react"
+import * as XLSX from "xlsx"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
@@ -670,6 +673,99 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        setRefreshing(true)
+        const bstr = evt.target?.result
+        const wb = XLSX.read(bstr, { type: "binary" })
+        const wsname = wb.SheetNames[0]
+        const ws = wb.Sheets[wsname]
+        const data = XLSX.utils.sheet_to_json(ws)
+
+        if (data.length === 0) {
+          toast.error("The excel sheet is empty")
+          setRefreshing(false)
+          return
+        }
+
+        // Transform excel data to match product structure
+        const productsToUpload = data.map((row: any) => ({
+          name: row["Product Name"] || row.Name || row.name,
+          description: row["Short Description"] || row.Description || row.description || "",
+          longDescription: row["Long Description"] || row.longDescription || "",
+          category: row.Category || row.category || "mona-saleh",
+          isActive: true,
+          isNew: row["Is New?"] === "Yes" || row.isNew === true,
+          isBestseller: row["Is Bestseller?"] === "Yes" || row.isBestseller === true,
+          sizes: [
+            {
+              size: row.Size || row.size || "Standard",
+              volume: row.Volume || row.volume || "100ml",
+              originalPrice: Number(row["Original Price"] || row.Price || row.price || 0),
+              discountedPrice: Number(row["Discounted Price"] || row.DiscountPrice || row.discount_price || row.Price || row.price || 0),
+              stockCount: Number(row.Stock || row.stock || 0)
+            }
+          ],
+          images: row.Image || row.image ? [row.Image || row.image] : ["/placeholder.svg"]
+        }))
+
+        const token = getAuthToken()
+        const response = await fetch("/api/products/bulk", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ products: productsToUpload }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          toast.success(result.message || "Products uploaded successfully")
+          fetchData()
+        } else {
+          const error = await response.json()
+          toast.error(error.error || "Failed to upload products")
+        }
+      } catch (err) {
+        console.error("Excel processing error:", err)
+        toast.error("Error processing excel file")
+      } finally {
+        setRefreshing(false)
+        if (e.target) e.target.value = ""
+      }
+    }
+    reader.readAsBinaryString(file)
+  }
+
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        "Product Name": "Sample Product",
+        "Category": "mona-saleh",
+        "Short Description": "A brief overview of the product",
+        "Long Description": "A detailed description including features and benefits",
+        "Original Price": 1000,
+        "Discounted Price": 900,
+        "Stock": 50,
+        "Is New?": "Yes",
+        "Is Bestseller?": "No",
+        "Image": "https://example.com/image.jpg",
+        "Size": "Standard",
+        "Volume": "100ml"
+      }
+    ]
+    const ws = XLSX.utils.json_to_sheet(templateData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Template")
+    XLSX.writeFile(wb, "product_upload_template.xlsx")
+  }
+
   // Helper functions for product pricing
   const getSmallestPrice = (sizes: ProductSize[]) => {
     if (!sizes || sizes.length === 0) return 0
@@ -741,20 +837,55 @@ export default function AdminDashboard() {
               </div>
 
               {/* Mobile-friendly button layout */}
-              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-wrap gap-2 sm:gap-4 justify-center sm:justify-end">
                 <Button
                   onClick={handleRefresh}
                   variant="outline"
                   disabled={refreshing}
-                  className="bg-transparent w-full sm:w-auto text-sm"
+                  className="bg-transparent text-xs sm:text-sm"
                   size="sm"
                 >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? "animate-spin" : ""}`} />
                   Refresh
                 </Button>
-                <Link href="/admin/products/add" prefetch={true} className="w-full sm:w-auto">
-                  <Button className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto text-sm" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
+
+                <Button
+                  onClick={downloadTemplate}
+                  variant="outline"
+                  className="bg-transparent text-xs sm:text-sm border-dashed"
+                  size="sm"
+                >
+                  <FileSpreadsheet className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  Template
+                </Button>
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleExcelUpload}
+                    className="hidden"
+                    id="excel-upload"
+                    disabled={refreshing}
+                  />
+                  <label htmlFor="excel-upload">
+                    <Button
+                      variant="outline"
+                      className="bg-transparent text-xs sm:text-sm cursor-pointer"
+                      size="sm"
+                      asChild
+                    >
+                      <span>
+                        <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        Bulk Upload
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+
+                <Link href="/admin/products/add" prefetch={true}>
+                  <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">
+                    <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     Add Product
                   </Button>
                 </Link>
