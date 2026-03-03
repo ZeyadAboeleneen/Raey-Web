@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
+import { type NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import jwt from "jsonwebtoken"
+
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {

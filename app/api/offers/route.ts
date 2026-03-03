@@ -32,13 +32,50 @@ const transformOffer = (offer: any) => ({
   updated_at: offer.updatedAt,
 })
 
+// ─── In-memory cache for offers ───
+type CachedEntry = { body: string; expiresAt: number }
+const OFFERS_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+const globalForOffers = globalThis as typeof globalThis & {
+  _offersCache?: Map<string, CachedEntry>
+}
+const offersCache = globalForOffers._offersCache ?? new Map<string, CachedEntry>()
+if (!globalForOffers._offersCache) {
+  globalForOffers._offersCache = offersCache
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get("active") !== "false"
+    const cacheKey = activeOnly ? "active" : "all"
+
+    // Check in-memory cache first
+    const cached = offersCache.get(cacheKey)
+    if (cached && Date.now() < cached.expiresAt) {
+      return new NextResponse(cached.body, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+        },
+      })
+    }
+
     const where: any = activeOnly ? { isActive: true } : {}
     const offers = await prisma.offer.findMany({ where, orderBy: { displayOrder: "asc" } })
-    return NextResponse.json(offers.map(transformOffer))
+    const body = JSON.stringify(offers.map(transformOffer))
+
+    // Store in cache
+    offersCache.set(cacheKey, { body, expiresAt: Date.now() + OFFERS_TTL_MS })
+
+    return new NextResponse(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+      },
+    })
   } catch (error) {
     console.error("Get offers error:", error)
     return NextResponse.json(
@@ -47,6 +84,7 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {

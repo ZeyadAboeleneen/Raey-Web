@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 const requireAdmin = (request: NextRequest) => {
   const token = request.headers.get("authorization")?.replace("Bearer ", "")
   if (!token) return { error: "Authorization required", status: 401 }

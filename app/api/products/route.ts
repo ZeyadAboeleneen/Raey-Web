@@ -10,7 +10,7 @@ type CachedProductsEntry = {
   expiresAt: number
 }
 
-const LIST_CACHE_TTL_MS = Number(process.env.PRODUCTS_CACHE_TTL_MS ?? 30_000)
+const LIST_CACHE_TTL_MS = Number(process.env.PRODUCTS_CACHE_TTL_MS ?? 300_000)
 const DETAIL_CACHE_TTL_MS = Number(process.env.PRODUCT_DETAIL_CACHE_TTL_MS ?? 300_000)
 
 const globalForProducts = globalThis as typeof globalThis & {
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       if (!product) return errorResponse(404, "Product not found")
 
       const body = JSON.stringify(transformProduct(product))
-      const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" }
+      const headers = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300", "Content-Type": "application/json" }
       setCachedResponse(requestUrl, 200, body, headers, DETAIL_CACHE_TTL_MS)
       return new NextResponse(body, { status: 200, headers })
     }
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
         "X-Page": String(page),
         "X-Limit": String(limit),
         "X-Total-Pages": String(totalPages),
-        "Cache-Control": "no-store",
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
       }
       const body = JSON.stringify(productsForList)
       setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
     }))
 
     console.log(`⏱️ [API] ${Date.now() - startTime}ms (all=${productsForList.length})`)
-    const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" }
+    const headers = { "Content-Type": "application/json", "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" }
     const body = JSON.stringify(productsForList)
     setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
     return new NextResponse(body, { status: 200, headers })

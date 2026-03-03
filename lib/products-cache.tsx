@@ -53,37 +53,93 @@ interface ProductsCacheContextType {
 
 const ProductsCacheContext = createContext<ProductsCacheContextType | null>(null)
 
-export function ProductsCacheProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<CachedProduct[]>([])
-  const [loading, setLoading] = useState(true)
+const STORAGE_KEY = "raey_products_cache"
+const STORAGE_TS_KEY = "raey_products_cache_ts"
+/** How long the sessionStorage cache is considered fresh (5 minutes) */
+const STORAGE_MAX_AGE_MS = 5 * 60 * 1000
+
+function readFromStorage(): CachedProduct[] | null {
+  try {
+    if (typeof window === "undefined") return null
+    const ts = sessionStorage.getItem(STORAGE_TS_KEY)
+    if (!ts || Date.now() - Number(ts) > STORAGE_MAX_AGE_MS) return null
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as CachedProduct[]
+  } catch {
+    return null
+  }
+}
+
+function writeToStorage(products: CachedProduct[]) {
+  try {
+    if (typeof window === "undefined") return
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(products))
+    sessionStorage.setItem(STORAGE_TS_KEY, String(Date.now()))
+  } catch {
+    // storage full or disabled – silently ignore
+  }
+}
+
+interface ProductsCacheProviderProps {
+  children: ReactNode
+  /** Products pre-fetched on the server and passed as props.
+   *  When provided, the first render already has data — no loading spinner. */
+  initialProducts?: CachedProduct[]
+}
+
+export function ProductsCacheProvider({ children, initialProducts }: ProductsCacheProviderProps) {
+  // Priority: server-side initialProducts > sessionStorage > empty
+  const [products, setProducts] = useState<CachedProduct[]>(() => {
+    if (initialProducts && initialProducts.length > 0) return initialProducts
+    return readFromStorage() ?? []
+  })
+
+  // If we already have data (from server or storage), start with loading=false
+  const [loading, setLoading] = useState(() => {
+    if (initialProducts && initialProducts.length > 0) return false
+    return readFromStorage() === null
+  })
+
   const fetched = useRef(false)
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
-      setLoading(true)
-      // Fetch all active products in one call (no page param = all products)
+      if (!quiet) setLoading(true)
       const response = await fetch("/api/products?limit=40")
       if (response.ok) {
-        const data = await response.json()
+        const data: CachedProduct[] = await response.json()
         setProducts(data)
+        writeToStorage(data)
       }
     } catch (error) {
       console.error("Error preloading products:", error)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [])
 
-  // Preload on mount (once)
+  // On mount: if we already have server-provided data we still do a quiet
+  // background revalidation so the client picks up any recent changes.
+  // If we have NO data, we do a loud fetch that sets loading=true.
   useEffect(() => {
     if (!fetched.current) {
       fetched.current = true
-      fetchAll()
+      const hasData = products.length > 0
+      fetchAll(/* quiet */ hasData)
     }
-  }, [fetchAll])
+  }, [fetchAll, products.length])
+
+  // Persist server-provided initialProducts to sessionStorage on first mount
+  // so subsequent client-side navigations are also instant.
+  useEffect(() => {
+    if (initialProducts && initialProducts.length > 0) {
+      writeToStorage(initialProducts)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
-    await fetchAll()
+    await fetchAll(false)
   }, [fetchAll])
 
   const getByCategory = useCallback(
