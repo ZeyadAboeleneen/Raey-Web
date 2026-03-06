@@ -74,7 +74,7 @@ function warmCacheInBackground() {
         .findMany({
             where: { isActive: true },
             orderBy: { createdAt: "desc" },
-            take: 40,
+            take: 1000,
         })
         .then((products) => {
             const transformed = products.map(transformProduct)

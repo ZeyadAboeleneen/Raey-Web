@@ -106,7 +106,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
       if (!quiet) setLoading(true)
-      const response = await fetch("/api/products?limit=40")
+      const response = await fetch("/api/products?limit=1000")
       if (response.ok) {
         const data: CachedProduct[] = await response.json()
         setProducts(data)

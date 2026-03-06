@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     const hasPageParam = searchParams.has("page")
     const hasLimitParam = searchParams.has("limit")
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1)
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 40)
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 1000)
     const skip = (page - 1) * limit
 
     // Build shared where clause
