@@ -65,7 +65,7 @@ const calculateIsOutOfStock = (sizes: any[]): boolean => {
   if (!sizes || sizes.length === 0) return false
   return sizes.every((size: any) => {
     const stockCount = size.stockCount ?? size.stock_count
-    return stockCount === undefined || stockCount === null || stockCount === 0
+    return stockCount === 0
   })
 }
 

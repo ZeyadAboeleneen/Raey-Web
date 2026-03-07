@@ -337,14 +337,13 @@ export default function AddProductPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor="description">Short Description *</Label>
+                      <Label htmlFor="description">Short Description</Label>
                       <Textarea
                         id="description"
                         value={formData.description}
                         onChange={(e) => handleChange("description", e.target.value)}
                         placeholder="Brief product description for product cards and listings"
                         rows={4}
-                        required
                       />
                       <p className="text-sm text-gray-600 mt-1">
                         This short description will be displayed on product cards and listings
@@ -352,14 +351,13 @@ export default function AddProductPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor="longDescription">Long Description *</Label>
+                      <Label htmlFor="longDescription">Long Description</Label>
                       <Textarea
                         id="longDescription"
                         value={formData.longDescription}
                         onChange={(e) => handleChange("longDescription", e.target.value)}
                         placeholder="Comprehensive product description for the product details page"
                         rows={6}
-                        required
                       />
                       <p className="text-sm text-gray-600 mt-1">
                         This detailed description will be displayed on the product details page
@@ -378,7 +376,7 @@ export default function AddProductPage() {
                       <div className="space-y-4">
                         {formData.sizes.map((size, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <div className="grid md:grid-cols-3 gap-3 items-end">
+                            <div className="grid md:grid-cols-2 gap-3 items-end">
                               <div>
                                 <Label>Original Price (EGP)</Label>
                                 <Input
@@ -400,16 +398,6 @@ export default function AddProductPage() {
                                   placeholder="150.00"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Price in EGP</p>
-                              </div>
-                              <div>
-                                <Label>Stock Count</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={size.stockCount || ""}
-                                  onChange={(e) => handleSizeChange(index, "stockCount", e.target.value)}
-                                  placeholder="10"
-                                />
                               </div>
                             </div>
                             <div className="flex justify-end mt-3">

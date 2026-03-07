@@ -431,14 +431,13 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor="description">Short Description *</Label>
+                      <Label htmlFor="description">Short Description</Label>
                       <Textarea
                         id="description"
                         value={formData.description}
                         onChange={(e) => handleChange("description", e.target.value)}
                         placeholder="Brief product description for product cards and listings"
                         rows={4}
-                        required
                       />
                       <p className="text-sm text-gray-600 mt-1">
                         This short description will be displayed on product cards and listings
@@ -468,7 +467,7 @@ export default function EditProductPage() {
                       <div className="space-y-4">
                         {formData.sizes.map((size, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <div className="grid md:grid-cols-3 gap-3 items-end">
+                            <div className="grid md:grid-cols-2 gap-3 items-end">
                               <div>
                                 <Label>Original Price (EGP)</Label>
                                 <Input
@@ -490,16 +489,6 @@ export default function EditProductPage() {
                                   placeholder="150.00"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Price in EGP</p>
-                              </div>
-                              <div>
-                                <Label>Stock Count</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={size.stockCount || ""}
-                                  onChange={(e) => handleSizeChange(index, "stockCount", e.target.value)}
-                                  placeholder="10"
-                                />
                               </div>
                             </div>
                             <div className="flex justify-end mt-3">
@@ -555,16 +544,7 @@ export default function EditProductPage() {
                         <Label htmlFor="bestseller" className="ml-2">Bestseller</Label>
                       </div>
 
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="outOfStock"
-                          checked={formData.isOutOfStock}
-                          onChange={(e) => setFormData({ ...formData, isOutOfStock: e.target.checked })}
-                          className="h-4 w-4 text-black rounded"
-                        />
-                        <Label htmlFor="outOfStock" className="ml-2">Out of Stock</Label>
-                      </div>
+
                     </div>
 
                     <div className="flex items-center justify-end space-x-4 pt-6">

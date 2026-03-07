@@ -707,8 +707,7 @@ export default function AdminDashboard() {
               size: row.Size || row.size || "Standard",
               volume: row.Volume || row.volume || "100ml",
               originalPrice: Number(row["Original Price"] || row.Price || row.price || 0),
-              discountedPrice: Number(row["Discounted Price"] || row.DiscountPrice || row.discount_price || row.Price || row.price || 0),
-              stockCount: Number(row.Stock || row.stock || 0)
+              discountedPrice: Number(row["Discounted Price"] || row.DiscountPrice || row.discount_price || row.Price || row.price || 0)
             }
           ],
           images: row.Image || row.image ? [row.Image || row.image] : ["/placeholder.svg"]
@@ -752,7 +751,6 @@ export default function AdminDashboard() {
         "Long Description": "A detailed description including features and benefits",
         "Original Price": 1000,
         "Discounted Price": 900,
-        "Stock": 50,
         "Is New?": "Yes",
         "Is Bestseller?": "No",
         "Image": "https://example.com/image.jpg",
