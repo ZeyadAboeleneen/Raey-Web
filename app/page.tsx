@@ -997,7 +997,7 @@ export default function HomePage() {
             className="text-center mb-10"
           >
             <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">
-              Best Sellers · Rent
+              Best Rental
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
               Discover the most-loved gowns available to rent across all Raey collections.
