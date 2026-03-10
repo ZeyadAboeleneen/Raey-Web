@@ -28,6 +28,7 @@ export default function AddProductPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [duplicateProduct, setDuplicateProduct] = useState<{ id: string; name: string } | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
@@ -90,9 +91,10 @@ export default function AddProductPage() {
     setUploadedImages(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent, forceReplace = false) => {
+    e?.preventDefault()
     setError("")
+    setDuplicateProduct(null)
     setLoading(true)
 
     try {
@@ -112,26 +114,74 @@ export default function AddProductPage() {
         isNew: formData.isNew,
         isBestseller: formData.isBestseller,
         sizes: formData.sizes.map((size) => ({
-          originalPrice: size.originalPrice ? parseFloat(size.originalPrice) : undefined,
-          discountedPrice: size.discountedPrice ? parseFloat(size.discountedPrice) : undefined,
+          originalPrice: size.originalPrice && size.originalPrice.trim() !== "" ? size.originalPrice : undefined,
+          discountedPrice: size.discountedPrice && size.discountedPrice.trim() !== "" ? size.discountedPrice : undefined,
           stockCount: size.stockCount && size.stockCount.trim() !== "" ? parseInt(size.stockCount, 10) : undefined,
         })),
+        checkDuplicate: !forceReplace
       }
 
-      const response = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authState.token}`,
-        },
-        body: JSON.stringify(product),
-      })
+      let response;
+      if (forceReplace && duplicateProduct) {
+        // Use PUT to replace existing product
+        response = await fetch(`/api/products?id=${duplicateProduct.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authState.token}`,
+          },
+          body: JSON.stringify(product),
+        })
+      } else {
+        // Normal creation
+        response = await fetch("/api/products", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authState.token}`,
+          },
+          body: JSON.stringify(product),
+        })
+      }
 
       if (response.ok) {
         setSuccess(true)
+        setDuplicateProduct(null)
+        // Reset form to allow adding another product
+        setFormData({
+          name: "",
+          description: "",
+          longDescription: "",
+          category: "mona-saleh",
+          sizes: [{
+            originalPrice: "",
+            discountedPrice: "",
+            stockCount: ""
+          }],
+          isActive: true,
+          isNew: false,
+          isBestseller: false
+        })
+        setUploadedImages([])
+        
+        // Scroll to top to see success message
+        window.scrollTo({ top: 0, behavior: "smooth" })
+
+        // Hide success message after 3 seconds
         setTimeout(() => {
-          router.push("/admin/dashboard")
-        }, 2000)
+          setSuccess(false)
+        }, 3000)
+      } else if (response.status === 409) {
+        const data = await response.json()
+        if (data.error === "DUPLICATE_NAME") {
+          setDuplicateProduct({ id: data.existingId, name: formData.name })
+          setError("A product with this name already exists. Do you want to replace it?")
+          // Scroll to top to see the replace message
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        } else {
+          setError(data.message || "Conflict occurred")
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        }
       } else {
         let message = "Failed to add product"
         try {
@@ -148,6 +198,7 @@ export default function AddProductPage() {
           }
         } catch { }
         setError(message)
+        window.scrollTo({ top: 0, behavior: "smooth" })
       }
     } catch (error) {
       console.error("Error adding product:", error)
@@ -188,13 +239,10 @@ export default function AddProductPage() {
 
   if (authState.isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-32 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading...</p>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     )
@@ -206,9 +254,7 @@ export default function AddProductPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
-
-      <section className="pt-32 pb-16">
+      <section className="py-16 sm:py-24">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -232,7 +278,7 @@ export default function AddProductPage() {
               <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                 <Alert className="border-green-200 bg-green-50">
                   <AlertDescription className="text-green-600">
-                    Product added successfully! Redirecting to dashboard...
+                    Product added successfully! You can now add another one.
                   </AlertDescription>
                 </Alert>
               </motion.div>
@@ -240,8 +286,34 @@ export default function AddProductPage() {
 
             {error && (
               <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-                <Alert className="border-red-200 bg-green-50">
-                  <AlertDescription className="text-red-600">{error}</AlertDescription>
+                <Alert className="border-red-200 bg-red-50">
+                  <div className="flex flex-col gap-4 w-full">
+                    <AlertDescription className="text-red-600">{error}</AlertDescription>
+                    {duplicateProduct && (
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          type="button"
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={(e) => handleSubmit(e, true)}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Yes, Replace
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setDuplicateProduct(null)
+                            setError("")
+                          }}
+                        >
+                          No, Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </Alert>
               </motion.div>
             )}

@@ -222,6 +222,20 @@ export async function POST(request: NextRequest) {
     const productData = await request.json()
     const productId = productData.id || `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
+    // Check for existing product with the same name if replace option is provided
+    if (productData.checkDuplicate) {
+      const existingProduct = await prisma.product.findFirst({
+        where: { name: productData.name }
+      })
+      if (existingProduct) {
+        return NextResponse.json({ 
+          error: "DUPLICATE_NAME", 
+          message: "A product with this name already exists.",
+          existingId: existingProduct.productId 
+        }, { status: 409 })
+      }
+    }
+
     let data: any
 
     if (productData.isGiftPackage) {
@@ -249,7 +263,22 @@ export async function POST(request: NextRequest) {
       const sizes = (productData.sizes || []).map((size: any) => {
         const stockCount = size.stockCount !== undefined && size.stockCount !== null && size.stockCount !== ""
           ? (Number(size.stockCount) >= 0 ? Number(size.stockCount) : undefined) : undefined
-        return { size: size.size, volume: size.volume, originalPrice: size.originalPrice ? Number(size.originalPrice) : undefined, discountedPrice: size.discountedPrice ? Number(size.discountedPrice) : undefined, stockCount }
+        
+        // Convert prices to Number without extra rounding to preserve decimals provided by user
+        const originalPrice = size.originalPrice !== undefined && size.originalPrice !== null && size.originalPrice !== "" 
+          ? Number(size.originalPrice) 
+          : undefined
+        const discountedPrice = size.discountedPrice !== undefined && size.discountedPrice !== null && size.discountedPrice !== "" 
+          ? Number(size.discountedPrice) 
+          : undefined
+
+        return { 
+          size: size.size, 
+          volume: size.volume, 
+          originalPrice,
+          discountedPrice,
+          stockCount 
+        }
       })
       const isOutOfStock = calculateIsOutOfStock(sizes)
       data = {
@@ -258,6 +287,7 @@ export async function POST(request: NextRequest) {
         description: productData.description,
         longDescription: productData.longDescription || "",
         sizes,
+        giftPackageSizes: [],
         images: productData.images || ["/placeholder.svg"],
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
@@ -267,8 +297,8 @@ export async function POST(request: NextRequest) {
         isOutOfStock,
         isActive: productData.isActive ?? true,
         isGiftPackage: false,
-        price: productData.sizes?.length > 0
-          ? Math.min(...productData.sizes.map((s: any) => s.discountedPrice ? Number(s.discountedPrice) : Number(s.originalPrice)))
+        price: sizes.length > 0
+          ? Math.min(...sizes.map((s: any) => s.discountedPrice !== undefined ? Number(s.discountedPrice) : Number(s.originalPrice)))
           : 0,
         beforeSalePrice: productData.beforeSalePrice !== undefined && productData.beforeSalePrice !== "" ? Number(productData.beforeSalePrice) : null,
         afterSalePrice: productData.afterSalePrice !== undefined && productData.afterSalePrice !== "" ? Number(productData.afterSalePrice) : null,

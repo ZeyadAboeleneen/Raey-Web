@@ -764,7 +764,7 @@ export default function CategoryPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-8">
+              <div id="products-grid" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-8">
 
                 {filteredProducts
                   .slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
@@ -925,29 +925,62 @@ export default function CategoryPage() {
               </div>
               {(() => {
                 const clientTotalPages = Math.max(Math.ceil(filteredProducts.length / CATEGORY_PAGE_SIZE), 1)
-                return filteredProducts.length > CATEGORY_PAGE_SIZE ? (
-                  <div className="flex items-center justify-between mt-8">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === 1}
-                      onClick={() => setPage(Math.max(page - 1, 1))}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm text-gray-600">
-                      Page {page} of {clientTotalPages} — Showing {filteredProducts.length} products
+                if (filteredProducts.length <= CATEGORY_PAGE_SIZE) return null
+
+                const handlePageChange = (newPage: number) => {
+                  setPage(newPage)
+                  // Scroll to the absolute top of the window for maximum reliability across all devices
+                  setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: "smooth" })
+                  }, 100)
+                }
+
+                return (
+                  <div className="flex flex-col items-center gap-4 mt-12 border-t border-gray-100 pt-8">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={page === 1}
+                        onClick={() => handlePageChange(page - 1)}
+                        className="rounded-full px-4 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30"
+                      >
+                        Previous
+                      </Button>
+
+                      <div className="flex flex-wrap items-center justify-center gap-1 max-w-[210px] sm:max-w-none">
+                        {Array.from({ length: clientTotalPages }, (_, i) => i + 1).map((p) => (
+                          <Button
+                            key={p}
+                            variant={page === p ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => handlePageChange(p)}
+                            className={`w-9 h-9 rounded-full p-0 transition-all duration-200 ${
+                              page === p 
+                                ? "bg-black text-white shadow-md scale-110" 
+                                : "hover:bg-rose-50 hover:text-rose-600 text-gray-500"
+                            }`}
+                          >
+                            {p}
+                          </Button>
+                        ))}
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={page >= clientTotalPages}
+                        onClick={() => handlePageChange(page + 1)}
+                        className="rounded-full px-4 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                    <span className="text-xs text-gray-400 uppercase tracking-widest">
+                      Page {page} of {clientTotalPages} — {filteredProducts.length} total products
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= clientTotalPages}
-                      onClick={() => setPage(Math.min(page + 1, clientTotalPages))}
-                    >
-                      Next
-                    </Button>
                   </div>
-                ) : null
+                )
               })()}
             </>
           )}

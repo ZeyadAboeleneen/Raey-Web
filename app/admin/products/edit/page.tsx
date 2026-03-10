@@ -265,13 +265,10 @@ export default function EditProductPage() {
 
   if (authState.isLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-32 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading product details...</p>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading product details...</p>
         </div>
       </div>
     )
@@ -283,16 +280,13 @@ export default function EditProductPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-32 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => router.push("/admin/dashboard")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => router.push("/admin/dashboard")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     )
@@ -300,9 +294,7 @@ export default function EditProductPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
-
-      <section className="pt-32 pb-16">
+      <section className="py-16 sm:py-24">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
