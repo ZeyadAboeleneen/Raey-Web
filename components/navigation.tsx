@@ -30,8 +30,8 @@ export function Navigation() {
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
   const t = useTranslation(settings.language)
 
-  // Check if we're on the home page
-  const isHomePage = pathname === "/"
+  // Check if we're on the home page or the new collection landing pages
+  const isHomePage = pathname === "/" || pathname === "/wedding" || pathname === "/soiree"
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -258,8 +258,8 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16 relative">
           {/* Left side */}
           <div className="flex justify-start items-center md:space-x-2">
-            {/* Mobile Menu Button - shown for all users, including admin */}
-            <div className="md:hidden">
+            {/* Mobile Menu Button - shown for all users, including admin, AND on desktop if on root home page */}
+            <div className={pathname === "/" ? "block" : "md:hidden"}>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -271,36 +271,38 @@ export function Navigation() {
               </button>
             </div>
 
-            {/* Desktop Navigation - Left */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/"))}`}>
-                {t("home")}
-                {isActiveLink("/") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-              </Link>
-              <Link href="/about" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/about"))}`}>
-                {t("about")}
-                {isActiveLink("/about") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-              </Link>
-              <div className="relative group">
-                <Link href="/products" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/products"))}`}>
-                  {t("collections")}
-                  {isActiveLink("/products") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
+            {/* Desktop Navigation - Left - Hidden on root home page */}
+            {pathname !== "/" && (
+              <div className="hidden md:flex items-center space-x-8">
+                <Link href="/" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/"))}`}>
+                  {t("home")}
+                  {isActiveLink("/") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
                 </Link>
-                <div className="absolute top-full left-0 mt-2 w-56 bg-white shadow-lg rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="py-2">
-                    <Link href="/products/mona-saleh" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("monaSalehCollection")}</Link>
-                    <Link href="/products/el-raey-1" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey1Collection")}</Link>
-                    <Link href="/products/el-raey-2" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey2Collection")}</Link>
-                    <Link href="/products/el-raey-the-yard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaeyTheYardCollection")}</Link>
-                    <Link href="/products/sell-dresses" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("sellDressesCollection")}</Link>
+                <Link href="/about" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/about"))}`}>
+                  {t("about")}
+                  {isActiveLink("/about") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
+                </Link>
+                <div className="relative group">
+                  <Link href="/products" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/products"))}`}>
+                    {t("collections")}
+                    {isActiveLink("/products") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
+                  </Link>
+                  <div className="absolute top-full left-0 mt-2 w-56 bg-white shadow-lg rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="py-2">
+                      <Link href="/products/mona-saleh" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("monaSalehCollection")}</Link>
+                      <Link href="/products/el-raey-1" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey1Collection")}</Link>
+                      <Link href="/products/el-raey-2" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey2Collection")}</Link>
+                      <Link href="/products/el-raey-the-yard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaeyTheYardCollection")}</Link>
+                      <Link href="/products/sell-dresses" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("sellDressesCollection")}</Link>
+                    </div>
                   </div>
                 </div>
+                <Link href="/contact" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/contact"))}`}>
+                  {t("contact")}
+                  {isActiveLink("/contact") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
+                </Link>
               </div>
-              <Link href="/contact" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/contact"))}`}>
-                {t("contact")}
-                {isActiveLink("/contact") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-              </Link>
-            </div>
+            )}
           </div>
 
           {/* Centered Logo - Always show in header */}
@@ -361,26 +363,23 @@ export function Navigation() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-md md:hidden"
+                className={`fixed inset-0 bg-black/60 backdrop-blur-md ${pathname === "/" ? "" : "md:hidden"}`}
                 onClick={() => setIsOpen(false)}
                 style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
               />
 
-              {/* Mobile Menu - Full Screen from Top */}
+              {/* Mobile Menu - Side Panel on Desktop, Full on Mobile */}
               <motion.div
                 ref={mobileMenuRef}
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="md:hidden mobile-navigation fixed left-0 top-0 bottom-0 bg-white overflow-y-auto"
+                className={`mobile-navigation fixed left-0 top-0 bottom-0 bg-white overflow-y-auto w-full ${pathname === "/" ? "md:w-1/2 md:max-w-[50vw] md:shadow-2xl" : "md:hidden"}`}
                 style={{
                   position: 'fixed',
                   top: 0,
                   left: 0,
-                  right: 0,
-                  width: '100%',
-                  maxWidth: '100%',
                   height: '100vh',
                   zIndex: 9999
                 }}
@@ -426,6 +425,41 @@ export function Navigation() {
 
                 {/* Menu Content */}
                 <div className="px-6 py-6 pb-24 space-y-0">
+                  {/* Quick Switches */}
+                  <Link
+                    href="/wedding"
+                    className="flex items-center justify-between py-4 border-b border-gray-100 bg-rose-50/50 hover:bg-rose-50 transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
+                      WEDDING COLLECTION
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-rose-500" />
+                  </Link>
+                  <Link
+                    href="/soiree"
+                    className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
+                      SOIREE COLLECTION
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-rose-500" />
+                  </Link>
+
+                  {/* Main Navigation */}
+                  {pathname !== "/" && (
+                    <Link
+                      href="/"
+                      className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors mt-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <span className="text-sm font-light tracking-wide text-black uppercase" style={{ letterSpacing: '0.1em' }}>
+                        {t("home").toUpperCase()}
+                      </span>
+                    </Link>
+                  )}
+
                   {/* Collection Items with Arrows */}
                   <Link
                     href="/products/mona-saleh"

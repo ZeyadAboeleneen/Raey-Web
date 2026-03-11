@@ -28,6 +28,7 @@ import {
   Upload,
   FileSpreadsheet,
   LogOut,
+  X,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { Navigation } from "@/components/navigation"
@@ -114,6 +115,7 @@ export default function AdminDashboard() {
   const [productPage, setProductPage] = useState(1)
   const [productTotalPages, setProductTotalPages] = useState(1)
   const [productTotalCount, setProductTotalCount] = useState(0)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   const handleSignOut = () => {
     logout()
@@ -159,7 +161,7 @@ export default function AdminDashboard() {
   // DASHBOARD USES EGP ONLY - NO CURRENCY CONVERSION NEEDED
   // All prices in database are stored in EGP
 
-  const fetchProductsPage = useCallback(async (page: number) => {
+  const fetchProductsPage = useCallback(async () => {
     try {
       const token = getAuthToken()
       const fetchOptions = {
@@ -167,36 +169,24 @@ export default function AdminDashboard() {
         cache: 'no-store' as RequestCache,
       }
 
-      const response = await fetch(`/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`, fetchOptions)
+      const response = await fetch(`/api/products?includeInactive=true`, fetchOptions)
 
       if (response.ok) {
         const products = await response.json()
-        const totalCountHeader = response.headers.get("x-total-count")
-        const totalPagesHeader = response.headers.get("x-total-pages")
 
-        const totalCount = totalCountHeader ? parseInt(totalCountHeader, 10) : products.length
-        const totalPages = totalPagesHeader ? parseInt(totalPagesHeader, 10) : 1
+        setProductTotalCount(products.length)
+        setProductTotalPages(Math.ceil(products.length / PRODUCTS_PER_PAGE))
 
-        const safeTotalCount = Number.isNaN(totalCount) ? products.length : totalCount
-        const safeTotalPages = Number.isNaN(totalPages) ? 1 : totalPages
-
-        setProductTotalCount(safeTotalCount)
-        setProductTotalPages(safeTotalPages)
-
-        console.log("📊 [Dashboard] Fetched products page:", {
-          page,
-          totalPages: safeTotalPages,
-          total: safeTotalCount,
-          pageSize: products.length,
-          activeOnPage: products.filter((p: Product) => p.isActive).length,
+        console.log("📊 [Dashboard] Fetched all products:", {
+          total: products.length,
         })
 
         setProducts(products)
       } else {
-        console.error("❌ [Dashboard] Failed to fetch products page:", response.status, response.statusText)
+        console.error("❌ [Dashboard] Failed to fetch products:", response.status, response.statusText)
       }
     } catch (error) {
-      console.error("Error fetching products page:", error)
+      console.error("Error fetching products:", error)
     }
   }, [authState.token])
 
@@ -214,7 +204,7 @@ export default function AdminDashboard() {
       }
 
       // First load core data needed for initial dashboard render
-      await fetchProductsPage(1)
+      await fetchProductsPage()
 
       // Core data is ready, hide main loading spinner
       setLoading(false)
@@ -823,11 +813,6 @@ export default function AdminDashboard() {
             transition={{ duration: 0.8 }}
             className="mb-6 sm:mb-8"
           >
-            <Link href="/" prefetch={true} className="inline-flex items-center text-gray-600 hover:text-black transition-colors mb-4 sm:mb-6">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Link>
-
             {/* Mobile-optimized header */}
             <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
               <div className="text-center sm:text-left">
@@ -977,104 +962,170 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {products.map((product) => (
-                          <motion.div
-                            key={product._id}
-                            className="p-4 sm:p-5 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-200 relative overflow-hidden"
-                            whileHover={{ y: -5 }}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6 }}
-                            viewport={{ once: true }}
-                          >
-                            {/* Enhanced Gift Package Background Effects */}
-                            {product.isGiftPackage && (
-                              <>
-                                <motion.div
-                                  className="absolute -inset-4 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-lg -z-10"
-                                  animate={{
-                                    rotate: [0, 0.5, 0, -0.5, 0],
-                                  }}
-                                  transition={{
-                                    duration: 8,
-                                    repeat: Infinity,
-                                    ease: "easeInOut"
-                                  }}
-                                />
-                                <motion.div
-                                  className="absolute -inset-2 bg-gradient-to-r from-purple-300/15 to-pink-300/15 rounded-lg -z-10"
-                                  animate={{
-                                    rotate: [0, -0.3, 0, 0.3, 0],
-                                  }}
-                                  transition={{
-                                    duration: 6,
-                                    repeat: Infinity,
-                                    ease: "easeInOut"
-                                  }}
-                                />
-                              </>
-                            )}
-                            {/* Enhanced Mobile Layout */}
-                            <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-start sm:justify-between">
-                              {/* Product Image and Info - Mobile Optimized */}
-                              <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4 flex-1">
-                                {/* Product Image with Enhanced Mobile Sizing */}
-                                <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 mx-auto sm:mx-0">
-                                  <Image
-                                    src={product.images[0] || "/placeholder.svg"}
-                                    alt={product.name}
-                                    fill
-                                    className="object-cover rounded-xl shadow-sm"
-                                    loading="lazy"
-                                    sizes="(max-width: 768px) 80px, 96px"
+                        {products
+                          .slice((productPage - 1) * PRODUCTS_PER_PAGE, productPage * PRODUCTS_PER_PAGE)
+                          .map((product) => (
+                            <motion.div
+                              key={product._id}
+                              className="p-4 sm:p-5 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-200 relative overflow-hidden"
+                              whileHover={{ y: -5 }}
+                              initial={{ opacity: 0, y: 20 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.6 }}
+                              viewport={{ once: true }}
+                            >
+                              {/* Enhanced Gift Package Background Effects */}
+                              {product.isGiftPackage && (
+                                <>
+                                  <motion.div
+                                    className="absolute -inset-4 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-lg -z-10"
+                                    animate={{
+                                      rotate: [0, 0.5, 0, -0.5, 0],
+                                    }}
+                                    transition={{
+                                      duration: 8,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
                                   />
-                                  {/* Enhanced Gift Package Indicator */}
-                                  {product.isGiftPackage && (
-                                    <motion.div
-                                      className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg border-2 border-white"
-                                      initial={{ scale: 0, rotate: -180 }}
-                                      whileInView={{ scale: 1, rotate: 0 }}
-                                      transition={{ duration: 0.6, type: "spring" }}
-                                      viewport={{ once: true }}
-                                      whileHover={{ scale: 1.1, rotate: 5 }}
-                                    >
-                                      <Gift className="h-3.5 w-3.5" />
-                                    </motion.div>
-                                  )}
-                                </div>
-
-                                {/* Product Details - Mobile First Layout */}
-                                <div className="flex-1 min-w-0 space-y-3 text-center sm:text-left">
-                                  {/* Product Name and Category */}
-                                  <div className="space-y-2">
-                                    <p className="font-bold text-lg sm:text-xl text-gray-900 leading-tight">{product.name}</p>
-                                    <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                                      <p className="text-sm text-gray-600 capitalize font-medium">{product.category}</p>
-                                      {product.isGiftPackage && (
-                                        <motion.div
-                                          initial={{ scale: 0, x: -20 }}
-                                          whileInView={{ scale: 1, x: 0 }}
-                                          transition={{ duration: 0.5, delay: 0.2 }}
-                                          viewport={{ once: true }}
-                                          whileHover={{ scale: 1.05 }}
-                                        >
-                                          <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200 font-semibold px-3 py-1">
-                                            🎁 Gift Package
-                                          </Badge>
-                                        </motion.div>
-                                      )}
+                                  <motion.div
+                                    className="absolute -inset-2 bg-gradient-to-r from-purple-300/15 to-pink-300/15 rounded-lg -z-10"
+                                    animate={{
+                                      rotate: [0, -0.3, 0, 0.3, 0],
+                                    }}
+                                    transition={{
+                                      duration: 6,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
+                                  />
+                                </>
+                              )}
+                              {/* Enhanced Mobile Layout */}
+                              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-start sm:justify-between">
+                                {/* Product Image and Info - Mobile Optimized */}
+                                <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4 flex-1">
+                                  {/* Product Image with Enhanced Mobile Sizing */}
+                                  <div
+                                    className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 mx-auto sm:mx-0 cursor-pointer group"
+                                    onClick={() => setSelectedImage(product.images[0] || "/placeholder.svg")}
+                                  >
+                                    <Image
+                                      src={product.images[0] || "/placeholder.svg"}
+                                      alt={product.name}
+                                      fill
+                                      className="object-cover rounded-xl shadow-sm"
+                                      loading="lazy"
+                                      sizes="(max-width: 768px) 80px, 96px"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
+                                      <Eye className="text-white h-6 w-6 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300" />
                                     </div>
+                                    {/* Enhanced Gift Package Indicator */}
+                                    {product.isGiftPackage && (
+                                      <motion.div
+                                        className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg border-2 border-white"
+                                        initial={{ scale: 0, rotate: -180 }}
+                                        whileInView={{ scale: 1, rotate: 0 }}
+                                        transition={{ duration: 0.6, type: "spring" }}
+                                        viewport={{ once: true }}
+                                        whileHover={{ scale: 1.1, rotate: 5 }}
+                                      >
+                                        <Gift className="h-3.5 w-3.5" />
+                                      </motion.div>
+                                    )}
                                   </div>
 
-                                  {/* Enhanced Price Display - Mobile Optimized */}
-                                  <div className="text-lg sm:text-xl">
-                                    {(() => {
-                                      // Handle gift packages
-                                      if (product.isGiftPackage) {
-                                        const packagePrice = product.packagePrice || 0;
-                                        const packageOriginalPrice = product.packageOriginalPrice || 0;
+                                  {/* Product Details - Mobile First Layout */}
+                                  <div className="flex-1 min-w-0 space-y-3 text-center sm:text-left">
+                                    {/* Product Name and Category */}
+                                    <div className="space-y-2">
+                                      <p className="font-bold text-lg sm:text-xl text-gray-900 leading-tight">{product.name}</p>
+                                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
+                                        <p className="text-sm text-gray-600 capitalize font-medium">{product.category}</p>
+                                        {product.isGiftPackage && (
+                                          <motion.div
+                                            initial={{ scale: 0, x: -20 }}
+                                            whileInView={{ scale: 1, x: 0 }}
+                                            transition={{ duration: 0.5, delay: 0.2 }}
+                                            viewport={{ once: true }}
+                                            whileHover={{ scale: 1.05 }}
+                                          >
+                                            <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200 font-semibold px-3 py-1">
+                                              🎁 Gift Package
+                                            </Badge>
+                                          </motion.div>
+                                        )}
+                                      </div>
+                                    </div>
 
-                                        if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
+                                    {/* Enhanced Price Display - Mobile Optimized */}
+                                    <div className="text-lg sm:text-xl">
+                                      {(() => {
+                                        // Handle gift packages
+                                        if (product.isGiftPackage) {
+                                          const packagePrice = product.packagePrice || 0;
+                                          const packageOriginalPrice = product.packageOriginalPrice || 0;
+
+                                          if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
+                                            return (
+                                              <motion.div
+                                                className="flex flex-col items-center sm:items-start space-y-1"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                whileInView={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.5, delay: 0.3 }}
+                                                viewport={{ once: true }}
+                                              >
+                                                <motion.span
+                                                  className="text-base text-gray-400 line-through font-medium"
+                                                  initial={{ opacity: 0, x: -10 }}
+                                                  whileInView={{ opacity: 1, x: 0 }}
+                                                  transition={{ duration: 0.4, delay: 0.4 }}
+                                                  viewport={{ once: true }}
+                                                >
+                                                  EGP {packageOriginalPrice.toFixed(0)}
+                                                </motion.span>
+                                                <motion.span
+                                                  className="text-red-600 font-bold text-xl"
+                                                  initial={{ opacity: 0, x: -10 }}
+                                                  whileInView={{ opacity: 1, x: 0 }}
+                                                  transition={{ duration: 0.4, delay: 0.5 }}
+                                                  viewport={{ once: true }}
+                                                >
+                                                  EGP {packagePrice.toFixed(0)}
+                                                </motion.span>
+                                                <motion.span
+                                                  className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full"
+                                                  initial={{ opacity: 0, scale: 0.8 }}
+                                                  whileInView={{ opacity: 1, scale: 1 }}
+                                                  transition={{ duration: 0.4, delay: 0.6 }}
+                                                  viewport={{ once: true }}
+                                                  whileHover={{ scale: 1.05 }}
+                                                >
+                                                  Save EGP {(packageOriginalPrice - packagePrice).toFixed(0)}
+                                                </motion.span>
+                                              </motion.div>
+                                            );
+                                          } else {
+                                            return (
+                                              <motion.span
+                                                className="text-gray-900 font-bold text-xl"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                whileInView={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.5, delay: 0.3 }}
+                                                viewport={{ once: true }}
+                                              >
+                                                EGP {packagePrice.toFixed(0)}
+                                              </motion.span>
+                                            );
+                                          }
+                                        }
+
+                                        // Handle regular products
+                                        const smallestPrice = getSmallestPrice(product.sizes);
+                                        const smallestOriginalPrice = getSmallestOriginalPrice(product.sizes);
+
+                                        if (smallestOriginalPrice > 0 && smallestPrice < smallestOriginalPrice) {
                                           return (
                                             <motion.div
                                               className="flex flex-col items-center sm:items-start space-y-1"
@@ -1090,7 +1141,7 @@ export default function AdminDashboard() {
                                                 transition={{ duration: 0.4, delay: 0.4 }}
                                                 viewport={{ once: true }}
                                               >
-                                                EGP {packageOriginalPrice.toFixed(0)}
+                                                EGP {smallestOriginalPrice.toFixed(0)}
                                               </motion.span>
                                               <motion.span
                                                 className="text-red-600 font-bold text-xl"
@@ -1099,7 +1150,7 @@ export default function AdminDashboard() {
                                                 transition={{ duration: 0.4, delay: 0.5 }}
                                                 viewport={{ once: true }}
                                               >
-                                                EGP {packagePrice.toFixed(0)}
+                                                EGP {smallestPrice.toFixed(0)}
                                               </motion.span>
                                               <motion.span
                                                 className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full"
@@ -1109,7 +1160,7 @@ export default function AdminDashboard() {
                                                 viewport={{ once: true }}
                                                 whileHover={{ scale: 1.05 }}
                                               >
-                                                Save EGP {(packageOriginalPrice - packagePrice).toFixed(0)}
+                                                Save EGP {(smallestOriginalPrice - smallestPrice).toFixed(0)}
                                               </motion.span>
                                             </motion.div>
                                           );
@@ -1122,162 +1173,104 @@ export default function AdminDashboard() {
                                               transition={{ duration: 0.5, delay: 0.3 }}
                                               viewport={{ once: true }}
                                             >
-                                              EGP {packagePrice.toFixed(0)}
+                                              EGP {smallestPrice.toFixed(0)}
                                             </motion.span>
                                           );
                                         }
-                                      }
+                                      })()}
+                                    </div>
 
-                                      // Handle regular products
-                                      const smallestPrice = getSmallestPrice(product.sizes);
-                                      const smallestOriginalPrice = getSmallestOriginalPrice(product.sizes);
-
-                                      if (smallestOriginalPrice > 0 && smallestPrice < smallestOriginalPrice) {
-                                        return (
-                                          <motion.div
-                                            className="flex flex-col items-center sm:items-start space-y-1"
-                                            initial={{ opacity: 0, y: 10 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.5, delay: 0.3 }}
-                                            viewport={{ once: true }}
-                                          >
-                                            <motion.span
-                                              className="text-base text-gray-400 line-through font-medium"
-                                              initial={{ opacity: 0, x: -10 }}
-                                              whileInView={{ opacity: 1, x: 0 }}
-                                              transition={{ duration: 0.4, delay: 0.4 }}
-                                              viewport={{ once: true }}
-                                            >
-                                              EGP {smallestOriginalPrice.toFixed(0)}
-                                            </motion.span>
-                                            <motion.span
-                                              className="text-red-600 font-bold text-xl"
-                                              initial={{ opacity: 0, x: -10 }}
-                                              whileInView={{ opacity: 1, x: 0 }}
-                                              transition={{ duration: 0.4, delay: 0.5 }}
-                                              viewport={{ once: true }}
-                                            >
-                                              EGP {smallestPrice.toFixed(0)}
-                                            </motion.span>
-                                            <motion.span
-                                              className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full"
-                                              initial={{ opacity: 0, scale: 0.8 }}
-                                              whileInView={{ opacity: 1, scale: 1 }}
-                                              transition={{ duration: 0.4, delay: 0.6 }}
-                                              viewport={{ once: true }}
-                                              whileHover={{ scale: 1.05 }}
-                                            >
-                                              Save EGP {(smallestOriginalPrice - smallestPrice).toFixed(0)}
-                                            </motion.span>
-                                          </motion.div>
-                                        );
-                                      } else {
-                                        return (
-                                          <motion.span
-                                            className="text-gray-900 font-bold text-xl"
-                                            initial={{ opacity: 0, y: 10 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.5, delay: 0.3 }}
-                                            viewport={{ once: true }}
-                                          >
-                                            EGP {smallestPrice.toFixed(0)}
-                                          </motion.span>
-                                        );
-                                      }
-                                    })()}
+                                    {/* Enhanced Mobile Badges - Better Spacing */}
+                                    <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:hidden">
+                                      {product.isOutOfStock && (
+                                        <Badge className="bg-gradient-to-r from-red-100 to-red-200 text-red-700 border-red-300 text-xs font-semibold px-3 py-1.5">
+                                          🚫 Out of Stock
+                                        </Badge>
+                                      )}
+                                      {product.isNew && (
+                                        <Badge variant="secondary" className="text-xs bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200 font-semibold px-3 py-1.5">
+                                          ✨ New
+                                        </Badge>
+                                      )}
+                                      {product.isBestseller && (
+                                        <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-yellow-200 text-xs font-semibold px-3 py-1.5">
+                                          🏆 Bestseller
+                                        </Badge>
+                                      )}
+                                      <Badge
+                                        variant={product.isActive ? "default" : "secondary"}
+                                        className={`text-xs font-semibold px-3 py-1.5 ${product.isActive
+                                          ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200"
+                                          : "bg-gradient-to-r from-gray-100 to-slate-100 text-gray-600 border-gray-200"
+                                          }`}
+                                      >
+                                        {product.isActive ? "✅ Active" : "❌ Inactive"}
+                                      </Badge>
+                                    </div>
                                   </div>
+                                </div>
 
-                                  {/* Enhanced Mobile Badges - Better Spacing */}
-                                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:hidden">
-                                    {product.isOutOfStock && (
-                                      <Badge className="bg-gradient-to-r from-red-100 to-red-200 text-red-700 border-red-300 text-xs font-semibold px-3 py-1.5">
-                                        🚫 Out of Stock
-                                      </Badge>
-                                    )}
-                                    {product.isNew && (
-                                      <Badge variant="secondary" className="text-xs bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200 font-semibold px-3 py-1.5">
-                                        ✨ New
-                                      </Badge>
-                                    )}
-                                    {product.isBestseller && (
-                                      <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-yellow-200 text-xs font-semibold px-3 py-1.5">
-                                        🏆 Bestseller
-                                      </Badge>
-                                    )}
-                                    <Badge
-                                      variant={product.isActive ? "default" : "secondary"}
-                                      className={`text-xs font-semibold px-3 py-1.5 ${product.isActive
-                                        ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200"
-                                        : "bg-gradient-to-r from-gray-100 to-slate-100 text-gray-600 border-gray-200"
-                                        }`}
-                                    >
-                                      {product.isActive ? "✅ Active" : "❌ Inactive"}
+                                {/* Desktop Badges and Actions - Enhanced */}
+                                <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
+                                  {/* Desktop Badges - Hidden on Mobile */}
+                                  <div className="hidden sm:flex items-center space-x-2">
+                                    {product.isOutOfStock && <Badge className="bg-red-100 text-red-700 border-red-300">Out of Stock</Badge>}
+                                    {product.isNew && <Badge variant="secondary">New</Badge>}
+                                    {product.isBestseller && <Badge className="bg-black text-white">Bestseller</Badge>}
+                                    <Badge variant={product.isActive ? "default" : "secondary"}>
+                                      {product.isActive ? "Active" : "Inactive"}
                                     </Badge>
                                   </div>
-                                </div>
-                              </div>
 
-                              {/* Desktop Badges and Actions - Enhanced */}
-                              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
-                                {/* Desktop Badges - Hidden on Mobile */}
-                                <div className="hidden sm:flex items-center space-x-2">
-                                  {product.isOutOfStock && <Badge className="bg-red-100 text-red-700 border-red-300">Out of Stock</Badge>}
-                                  {product.isNew && <Badge variant="secondary">New</Badge>}
-                                  {product.isBestseller && <Badge className="bg-black text-white">Bestseller</Badge>}
-                                  <Badge variant={product.isActive ? "default" : "secondary"}>
-                                    {product.isActive ? "Active" : "Inactive"}
-                                  </Badge>
-                                </div>
-
-                                {/* Enhanced Action Buttons - Mobile Optimized */}
-                                <div className="flex justify-center sm:justify-end space-x-3">
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    transition={{ duration: 0.4, delay: 0.7 }}
-                                    viewport={{ once: true }}
-                                    whileHover={{ scale: 1.05 }}
-                                  >
-                                    <Link href={`/products/${product.category}/${product.id}`} prefetch={true}>
-                                      <Button size="sm" variant="outline" className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 hover:border-blue-300 hover:bg-blue-50 transition-all">
-                                        <Eye className="h-5 w-5 sm:h-4 sm:w-4 text-blue-600" />
-                                      </Button>
-                                    </Link>
-                                  </motion.div>
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    transition={{ duration: 0.4, delay: 0.8 }}
-                                    viewport={{ once: true }}
-                                    whileHover={{ scale: 1.05 }}
-                                  >
-                                    <Link href={`/admin/products/edit?id=${product.id}`} prefetch={true}>
-                                      <Button size="sm" variant="outline" className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 hover:border-green-300 hover:bg-green-50 transition-all">
-                                        <Edit className="h-5 w-5 sm:h-4 sm:w-4 text-green-600" />
-                                      </Button>
-                                    </Link>
-                                  </motion.div>
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    transition={{ duration: 0.4, delay: 0.9 }}
-                                    viewport={{ once: true }}
-                                    whileHover={{ scale: 1.05 }}
-                                  >
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 border-red-200 hover:border-red-400 hover:bg-red-50 transition-all"
-                                      onClick={() => handleDeleteProduct(product.id)}
+                                  {/* Enhanced Action Buttons - Mobile Optimized */}
+                                  <div className="flex justify-center sm:justify-end space-x-3">
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      whileInView={{ opacity: 1, scale: 1 }}
+                                      transition={{ duration: 0.4, delay: 0.7 }}
+                                      viewport={{ once: true }}
+                                      whileHover={{ scale: 1.05 }}
                                     >
-                                      <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 text-red-600" />
-                                    </Button>
-                                  </motion.div>
+                                      <Link href={`/products/${product.category}/${product.id}`} prefetch={true}>
+                                        <Button size="sm" variant="outline" className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 hover:border-blue-300 hover:bg-blue-50 transition-all">
+                                          <Eye className="h-5 w-5 sm:h-4 sm:w-4 text-blue-600" />
+                                        </Button>
+                                      </Link>
+                                    </motion.div>
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      whileInView={{ opacity: 1, scale: 1 }}
+                                      transition={{ duration: 0.4, delay: 0.8 }}
+                                      viewport={{ once: true }}
+                                      whileHover={{ scale: 1.05 }}
+                                    >
+                                      <Link href={`/admin/products/edit?id=${product.id}`} prefetch={true}>
+                                        <Button size="sm" variant="outline" className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 hover:border-green-300 hover:bg-green-50 transition-all">
+                                          <Edit className="h-5 w-5 sm:h-4 sm:w-4 text-green-600" />
+                                        </Button>
+                                      </Link>
+                                    </motion.div>
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      whileInView={{ opacity: 1, scale: 1 }}
+                                      transition={{ duration: 0.4, delay: 0.9 }}
+                                      viewport={{ once: true }}
+                                      whileHover={{ scale: 1.05 }}
+                                    >
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 border-red-200 hover:border-red-400 hover:bg-red-50 transition-all"
+                                        onClick={() => handleDeleteProduct(product.id)}
+                                      >
+                                        <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 text-red-600" />
+                                      </Button>
+                                    </motion.div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </motion.div>
-                        ))}
+                            </motion.div>
+                          ))}
                         <div className="flex items-center justify-between mt-4">
                           <Button
                             variant="outline"
@@ -1287,7 +1280,6 @@ export default function AdminDashboard() {
                               const targetPage = Math.max(productPage - 1, 1)
                               if (targetPage !== productPage) {
                                 setProductPage(targetPage)
-                                fetchProductsPage(targetPage)
                               }
                             }}
                           >
@@ -1304,7 +1296,6 @@ export default function AdminDashboard() {
                               const targetPage = Math.min(productPage + 1, totalProductPages)
                               if (targetPage !== productPage) {
                                 setProductPage(targetPage)
-                                fetchProductsPage(targetPage)
                               }
                             }}
                           >
@@ -1768,6 +1759,39 @@ export default function AdminDashboard() {
               {/* Analytics tab removed */}
             </Tabs>
           </motion.div>
+
+          {/* Lightbox Modal */}
+          {selectedImage && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+              onClick={() => setSelectedImage(null)}
+            >
+              <div
+                className="relative max-w-4xl w-full h-[80vh] flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="absolute top-0 right-0 z-10 p-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 rounded-full bg-black/50 backdrop-blur-md"
+                    onClick={() => setSelectedImage(null)}
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
+                </div>
+                <div className="relative w-full h-full">
+                  <Image
+                    src={selectedImage}
+                    alt="Product preview"
+                    fill
+                    className="object-contain"
+                    quality={100}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>

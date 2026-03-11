@@ -38,7 +38,7 @@ export default function UserDashboard() {
               Authorization: `Bearer ${authState.token}`,
             },
           })
-          
+
           if (response.ok) {
             const orders = await response.json()
             console.log("Fetched orders:", orders)
@@ -54,7 +54,7 @@ export default function UserDashboard() {
           setLoading(false)
         }
       }
-      
+
       fetchOrders()
     }
   }, [authState.isLoading, authState.isAuthenticated, authState.user?.id, authState.token, router])
@@ -94,10 +94,6 @@ export default function UserDashboard() {
             transition={{ duration: 0.8 }}
             className="mb-8"
           >
-            <Link href="/" className="inline-flex items-center text-gray-600 hover:text-black transition-colors mb-6">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Link>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-light tracking-wider mb-2">My Dashboard</h1>
@@ -274,7 +270,7 @@ export default function UserDashboard() {
                                   <p className="text-xs text-gray-600">
                                     {item.size} ({item.volume}) × {item.quantity}
                                   </p>
-                                  
+
                                   {/* Gift Package Details */}
                                   {item.isGiftPackage && item.packageDetails && (
                                     <div className="mt-1 text-xs text-gray-500">
