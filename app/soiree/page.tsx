@@ -42,6 +42,7 @@ interface Product {
   rating: number
   reviews: number
   category: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isOutOfStock?: boolean
@@ -72,9 +73,9 @@ const COLLECTIONS_FILTER = [
 ]
 
 export default function SoireePage() {
-  const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
-  const allProducts = useMemo(() => cachedProducts.filter(p => p.isActive !== false && p.collection === "soiree"), [cachedProducts])
-  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection === "soiree"), [getBestsellers])
+  const { products: cachedProducts, loading: cacheLoading, getBestsellers, getByCollection } = useProductsCache()
+  const allProducts = useMemo(() => getByCollection("soiree"), [getByCollection])
+  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection?.toLowerCase() === "soiree"), [getBestsellers])
   const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
   const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
 

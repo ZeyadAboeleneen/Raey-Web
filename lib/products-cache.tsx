@@ -109,7 +109,8 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
       if (!quiet) setLoading(true)
-      const response = await fetch("/api/products?limit=1000")
+      // Add a timestamp to bypass browser cache
+      const response = await fetch(`/api/products?limit=1000&t=${Date.now()}`)
       if (response.ok) {
         const data: CachedProduct[] = await response.json()
         setProducts(data)
@@ -156,8 +157,9 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
   const getByCollection = useCallback(
     (collection: string) => {
+      const target = collection.toLowerCase().trim()
       return products.filter(
-        (p) => p.collection === collection && p.isActive !== false
+        (p) => p.collection?.toLowerCase().trim() === target && p.isActive !== false
       )
     },
     [products]

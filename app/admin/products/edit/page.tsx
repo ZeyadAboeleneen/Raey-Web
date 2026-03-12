@@ -15,8 +15,11 @@ import { ArrowLeft, Plus, Trash2, Upload, X, Save } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { uploadImage } from "@/lib/supabase-storage"
+import { useProductsCache } from "@/lib/products-cache"
 
 interface ProductSize {
+  size: string
+  volume: string
   originalPrice?: string
   discountedPrice?: string
   stockCount?: string
@@ -31,6 +34,7 @@ interface Product {
   rating: number
   reviews: number
   category: string
+  collection?: string
   sizes: ProductSize[]
   isActive: boolean
   isNew: boolean
@@ -40,6 +44,7 @@ interface Product {
 
 export default function EditProductPage() {
   const { state: authState } = useAuth()
+  const { refresh } = useProductsCache()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -97,12 +102,16 @@ export default function EditProductPage() {
           description: product.description || "",
           longDescription: product.longDescription || "",
           collection: product.collection || "wedding",
-          category: product.category || "winter",
+          category: product.category || "mona-saleh",
           sizes: product.sizes?.map((size: any) => ({
+            size: size.size || "M",
+            volume: size.volume || "Standard",
             originalPrice: size.originalPrice?.toString() || "",
             discountedPrice: size.discountedPrice?.toString() || "",
             stockCount: size.stockCount?.toString() || "",
           })) || [{
+            size: "M",
+            volume: "Standard",
             originalPrice: "",
             discountedPrice: "",
             stockCount: "",
@@ -185,6 +194,8 @@ export default function EditProductPage() {
         category: formData.category,
         collection: formData.collection,
         sizes: formData.sizes.map(size => ({
+          size: size.size || "M",
+          volume: size.volume || "Standard",
           originalPrice: size.originalPrice ? parseFloat(size.originalPrice) : undefined,
           discountedPrice: size.discountedPrice ? parseFloat(size.discountedPrice) : undefined,
           stockCount: size.stockCount && size.stockCount.trim() !== "" ? parseInt(size.stockCount, 10) : undefined,
@@ -228,6 +239,13 @@ export default function EditProductPage() {
         throw new Error(message)
       }
 
+      // Refresh products cache so the updated product shows up immediately in the store
+      try {
+        await refresh()
+      } catch (refreshError) {
+        console.error("Failed to refresh products cache:", refreshError)
+      }
+
       setSuccess(true)
       setTimeout(() => router.push("/admin/dashboard"), 2000)
     } catch (error) {
@@ -252,6 +270,8 @@ export default function EditProductPage() {
     setFormData(prev => ({
       ...prev,
       sizes: [...prev.sizes, {
+        size: "M",
+        volume: "Standard",
         originalPrice: "",
         discountedPrice: "",
         stockCount: ""
@@ -479,6 +499,26 @@ export default function EditProductPage() {
                       <div className="space-y-4">
                         {formData.sizes.map((size, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <div className="grid md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <Label>Size (e.g., S, M, L) *</Label>
+                                <Input
+                                  value={size.size}
+                                  onChange={(e) => handleSizeChange(index, "size", e.target.value)}
+                                  placeholder="M"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label>Volume/Description *</Label>
+                                <Input
+                                  value={size.volume}
+                                  onChange={(e) => handleSizeChange(index, "volume", e.target.value)}
+                                  placeholder="Standard"
+                                  required
+                                />
+                              </div>
+                            </div>
                             <div className="grid md:grid-cols-2 gap-3 items-end">
                               <div>
                                 <Label>Original Price (EGP)</Label>

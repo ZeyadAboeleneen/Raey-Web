@@ -69,10 +69,10 @@ export default function SoireeCategoryPage() {
   const category = params.category as string
   const categoryLabel = CATEGORY_LABELS[category] || category
 
-  const { products: cachedProducts, loading: cacheLoading } = useProductsCache()
+  const { products: cachedProducts, loading: cacheLoading, getByCollection } = useProductsCache()
   const allProducts = useMemo(
-    () => cachedProducts.filter(p => p.isActive !== false && p.collection === "soiree" && p.category === category),
-    [cachedProducts, category]
+    () => getByCollection("soiree").filter(p => p.category === category),
+    [getByCollection, category]
   )
 
   const allProductsRef = useRef<HTMLElement>(null)

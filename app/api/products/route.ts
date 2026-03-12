@@ -48,7 +48,14 @@ const setCachedResponse = (url: URL, status: number, body: string, headers: Reco
   productsCache.set(buildCacheKey(url), { status, body, headers, expiresAt: Date.now() + Math.max(ttl, 1_000) })
 }
 
-const clearProductsCache = () => { if (productsCache.size > 0) productsCache.clear() }
+const clearProductsCache = () => { 
+  if (productsCache.size > 0) productsCache.clear() 
+  // Also clear SSR cache if it exists
+  const g = globalThis as any
+  if (g._ssrProductsCache) {
+    g._ssrProductsCache = undefined
+  }
+}
 
 export const maxDuration = 60
 export const dynamic = "force-dynamic"
@@ -255,7 +262,7 @@ export async function POST(request: NextRequest) {
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
-        collection: productData.collection || null,
+        collection: productData.collection ? productData.collection.trim() : null,
         isNew: productData.isNew ?? false,
         isBestseller: productData.isBestseller ?? false,
         isOutOfStock: productData.isOutOfStock ?? false,
@@ -296,7 +303,7 @@ export async function POST(request: NextRequest) {
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
-        collection: productData.collection || null,
+        collection: productData.collection ? productData.collection.trim() : null,
         isNew: productData.isNew ?? false,
         isBestseller: productData.isBestseller ?? false,
         isOutOfStock,
@@ -341,7 +348,7 @@ export async function PUT(request: NextRequest) {
     if (productData.isGiftPackage) {
       updateData = {
         name: productData.name, description: productData.description, longDescription: productData.longDescription || "",
-        category: productData.category, collection: productData.collection || null, sizes: [], giftPackageSizes: productData.giftPackageSizes || [],
+        category: productData.category, collection: productData.collection ? productData.collection.trim() : null, sizes: [], giftPackageSizes: productData.giftPackageSizes || [],
         packagePrice: productData.packagePrice ? Number(productData.packagePrice) : 0,
         packageOriginalPrice: productData.packageOriginalPrice ? Number(productData.packageOriginalPrice) : null,
         images: productData.images, notes: productData.notes,
@@ -358,7 +365,7 @@ export async function PUT(request: NextRequest) {
       })
       updateData = {
         name: productData.name, description: productData.description, longDescription: productData.longDescription || "",
-        category: productData.category, collection: productData.collection || null, sizes, images: productData.images, notes: productData.notes,
+        category: productData.category, collection: productData.collection ? productData.collection.trim() : null, sizes, images: productData.images, notes: productData.notes,
         isActive: productData.isActive, isNew: productData.isNew, isBestseller: productData.isBestseller,
         isOutOfStock: calculateIsOutOfStock(sizes), isGiftPackage: false,
         price: productData.sizes?.length > 0

@@ -4,12 +4,8 @@ import { prisma } from "./prisma"
  * Server-side product fetcher with an in-memory cache.
  * Called from the root layout (server component).
  *
- * CRITICAL: This function NEVER blocks the page render.
- * - If the cache is warm → returns cached data instantly.
- * - If the cache is cold → returns empty array instantly and
- *   kicks off a background warm-up for the NEXT request.
- * - The client-side ProductsCacheProvider will fetch via the
- *   /api/products endpoint in the background either way.
+ * This version waits for the first fetch if the cache is cold,
+ * ensuring that the first request after an update gets the latest data.
  */
 
 interface CacheEntry {
@@ -17,11 +13,11 @@ interface CacheEntry {
     expiresAt: number
 }
 
-const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes — the catalog rarely changes
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes is enough for SSR cache
 
 const g = globalThis as typeof globalThis & {
     _ssrProductsCache?: CacheEntry
-    _ssrProductsWarmingUp?: boolean
+    _ssrProductsPromise?: Promise<any[]>
 }
 
 const calculateIsOutOfStock = (sizes: any[]): boolean => {
@@ -66,47 +62,41 @@ function transformProduct(product: any) {
     }
 }
 
-/** Fire-and-forget: fetch products from DB and populate the cache. */
-function warmCacheInBackground() {
-    if (g._ssrProductsWarmingUp) return // already warming
-    g._ssrProductsWarmingUp = true
-
-    prisma.product
-        .findMany({
+async function fetchProductsFromDB(): Promise<any[]> {
+    try {
+        const products = await prisma.product.findMany({
             where: { isActive: true },
             orderBy: { createdAt: "desc" },
             take: 1000,
         })
-        .then((products) => {
-            const transformed = products.map(transformProduct)
-            g._ssrProductsCache = {
-                data: transformed,
-                expiresAt: Date.now() + CACHE_TTL_MS,
-            }
-            console.log(`✅ [SSR] Cache warmed with ${transformed.length} products`)
-        })
-        .catch((err) => {
-            console.error("❌ [SSR] Background cache warm-up failed:", err?.message || err)
-        })
-        .finally(() => {
-            g._ssrProductsWarmingUp = false
-        })
+        const transformed = products.map(transformProduct)
+        g._ssrProductsCache = {
+            data: transformed,
+            expiresAt: Date.now() + CACHE_TTL_MS,
+        }
+        console.log(`✅ [SSR] Cache warmed with ${transformed.length} products`)
+        return transformed
+    } catch (err: any) {
+        console.error("❌ [SSR] Fetch from DB failed:", err?.message || err)
+        return []
+    } finally {
+        g._ssrProductsPromise = undefined
+    }
 }
 
 export async function getProductsServer(): Promise<any[]> {
-    // 1. Cache is warm → return instantly
+    // 1. Cache is warm and not expired → return instantly
     if (g._ssrProductsCache && Date.now() < g._ssrProductsCache.expiresAt) {
         return g._ssrProductsCache.data
     }
 
-    // 2. Cache is stale but still has data → return stale data + refresh in background
-    if (g._ssrProductsCache?.data?.length) {
-        warmCacheInBackground()
-        return g._ssrProductsCache.data
+    // 2. Already fetching? Return the existing promise
+    if (g._ssrProductsPromise) {
+        return g._ssrProductsPromise
     }
 
-    // 3. Cache is completely cold → return empty, warm in background.
-    //    The client-side ProductsCacheProvider will fetch via /api/products.
-    warmCacheInBackground()
-    return []
+    // 3. Cache is cold or expired → fetch and wait
+    console.log("🔍 [SSR] Cache cold, fetching from DB...")
+    g._ssrProductsPromise = fetchProductsFromDB()
+    return g._ssrProductsPromise
 }
