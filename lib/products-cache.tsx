@@ -158,9 +158,13 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const getByCollection = useCallback(
     (collection: string) => {
       const target = collection.toLowerCase().trim()
-      return products.filter(
-        (p) => p.collection?.toLowerCase().trim() === target && p.isActive !== false
-      )
+      return products.filter((p) => {
+        const pCollection = (p.collection || "").toLowerCase().trim()
+        const isActive = p.isActive !== false
+        // Lenient match: check if target is contained in collection name
+        // or vice versa, to handle cases like "soiree collection" vs "soiree"
+        return (pCollection.includes(target) || target.includes(pCollection)) && isActive
+      })
     },
     [products]
   )

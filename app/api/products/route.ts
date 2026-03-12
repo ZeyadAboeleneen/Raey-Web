@@ -50,10 +50,13 @@ const setCachedResponse = (url: URL, status: number, body: string, headers: Reco
 
 const clearProductsCache = () => { 
   if (productsCache.size > 0) productsCache.clear() 
-  // Also clear SSR cache if it exists
+  // Also clear SSR cache and promise if they exist
   const g = globalThis as any
   if (g._ssrProductsCache) {
     g._ssrProductsCache = undefined
+  }
+  if (g._ssrProductsPromise) {
+    g._ssrProductsPromise = undefined
   }
 }
 

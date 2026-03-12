@@ -73,9 +73,21 @@ const COLLECTIONS_FILTER = [
 ]
 
 export default function SoireePage() {
-  const { products: cachedProducts, loading: cacheLoading, getBestsellers, getByCollection } = useProductsCache()
-  const allProducts = useMemo(() => getByCollection("soiree"), [getByCollection])
-  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection?.toLowerCase() === "soiree"), [getBestsellers])
+  const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
+  const allProducts = useMemo(() => {
+    const target = "soiree"
+    return cachedProducts.filter(p => {
+      const pColl = (p.collection || "").toLowerCase().trim()
+      return (pColl.includes(target) || target.includes(pColl))
+    })
+  }, [cachedProducts])
+  const bestSellers = useMemo(() => {
+    const target = "soiree"
+    return getBestsellers().filter(p => {
+      const pColl = (p.collection || "").toLowerCase().trim()
+      return pColl.includes(target) || target.includes(pColl)
+    })
+  }, [getBestsellers])
   const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
   const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
 

@@ -73,9 +73,21 @@ const COLLECTIONS_FILTER = [
 ]
 
 export default function WeddingPage() {
-  const { products: cachedProducts, loading: cacheLoading, getBestsellers, getByCollection } = useProductsCache()
-  const allProducts = useMemo(() => getByCollection("wedding"), [getByCollection])
-  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection?.toLowerCase() === "wedding"), [getBestsellers])
+  const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
+  const allProducts = useMemo(() => {
+    const target = "wedding"
+    return cachedProducts.filter(p => {
+      const pColl = (p.collection || "").toLowerCase().trim()
+      return (pColl.includes(target) || target.includes(pColl))
+    })
+  }, [cachedProducts])
+  const bestSellers = useMemo(() => {
+    const target = "wedding"
+    return getBestsellers().filter(p => {
+      const pColl = (p.collection || "").toLowerCase().trim()
+      return pColl.includes(target) || target.includes(pColl)
+    })
+  }, [getBestsellers])
   const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
   const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
 
@@ -490,7 +502,7 @@ export default function WeddingPage() {
           isFavorite={isFavorite} />
       )}
 
-      {/* ─── Hero Section ─── */}
+      {/* ─── Hero ─── */}
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
           <Image src="/wedding.jpg" alt="Wedding background" fill priority className="object-cover" />
