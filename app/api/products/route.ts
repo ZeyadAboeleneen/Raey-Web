@@ -93,6 +93,7 @@ const transformProduct = (product: any): ApiProduct => {
     reviews: product.reviewCount || 0,
     notes: product.notes || { top: [], middle: [], base: [] },
     category: product.category,
+    collection: product.collection || null,
     isNew: product.isNew === true,
     isBestseller: product.isBestseller === true,
     isActive: product.isActive !== false,
@@ -132,6 +133,7 @@ export async function GET(request: NextRequest) {
 
     const id = searchParams.get("id")
     const category = searchParams.get("category")
+    const collection = searchParams.get("collection")
     const isBestsellerParam = searchParams.get("isBestseller")
     const isNewParam = searchParams.get("isNew")
     const isGiftPackageParam = searchParams.get("isGiftPackage")
@@ -145,6 +147,7 @@ export async function GET(request: NextRequest) {
     const where: any = {}
     if (!includeInactive || !isAdmin) where.isActive = true
     if (category) where.category = category
+    if (collection) where.collection = collection
     if (isBestsellerParam !== null) where.isBestseller = isBestsellerParam === "true"
     if (isNewParam !== null) where.isNew = isNewParam === "true"
     if (isGiftPackageParam !== null) where.isGiftPackage = isGiftPackageParam === "true"
@@ -252,6 +255,7 @@ export async function POST(request: NextRequest) {
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
+        collection: productData.collection || null,
         isNew: productData.isNew ?? false,
         isBestseller: productData.isBestseller ?? false,
         isOutOfStock: productData.isOutOfStock ?? false,
@@ -292,6 +296,7 @@ export async function POST(request: NextRequest) {
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
+        collection: productData.collection || null,
         isNew: productData.isNew ?? false,
         isBestseller: productData.isBestseller ?? false,
         isOutOfStock,
@@ -336,7 +341,7 @@ export async function PUT(request: NextRequest) {
     if (productData.isGiftPackage) {
       updateData = {
         name: productData.name, description: productData.description, longDescription: productData.longDescription || "",
-        category: productData.category, sizes: [], giftPackageSizes: productData.giftPackageSizes || [],
+        category: productData.category, collection: productData.collection || null, sizes: [], giftPackageSizes: productData.giftPackageSizes || [],
         packagePrice: productData.packagePrice ? Number(productData.packagePrice) : 0,
         packageOriginalPrice: productData.packageOriginalPrice ? Number(productData.packageOriginalPrice) : null,
         images: productData.images, notes: productData.notes,
@@ -353,7 +358,7 @@ export async function PUT(request: NextRequest) {
       })
       updateData = {
         name: productData.name, description: productData.description, longDescription: productData.longDescription || "",
-        category: productData.category, sizes, images: productData.images, notes: productData.notes,
+        category: productData.category, collection: productData.collection || null, sizes, images: productData.images, notes: productData.notes,
         isActive: productData.isActive, isNew: productData.isNew, isBestseller: productData.isBestseller,
         isOutOfStock: calculateIsOutOfStock(sizes), isGiftPackage: false,
         price: productData.sizes?.length > 0

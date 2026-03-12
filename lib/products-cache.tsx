@@ -19,6 +19,7 @@ interface CachedProduct {
   rating: number
   reviews: number
   category: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isOutOfStock?: boolean
@@ -47,6 +48,8 @@ interface ProductsCacheContextType {
   getById: (id: string) => CachedProduct | undefined
   /** Get products filtered by category */
   getByCategory: (category: string) => CachedProduct[]
+  /** Get products filtered by collection */
+  getByCollection: (collection: string) => CachedProduct[]
   /** Get bestseller products */
   getBestsellers: () => CachedProduct[]
 }
@@ -151,6 +154,15 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     [products]
   )
 
+  const getByCollection = useCallback(
+    (collection: string) => {
+      return products.filter(
+        (p) => p.collection === collection && p.isActive !== false
+      )
+    },
+    [products]
+  )
+
   const getBestsellers = useCallback(() => {
     return products.filter(
       (p) => p.isBestseller && p.isActive !== false
@@ -166,7 +178,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
   return (
     <ProductsCacheContext.Provider
-      value={{ products, loading, refresh, getById, getByCategory, getBestsellers }}
+      value={{ products, loading, refresh, getById, getByCategory, getByCollection, getBestsellers }}
     >
       {children}
     </ProductsCacheContext.Provider>

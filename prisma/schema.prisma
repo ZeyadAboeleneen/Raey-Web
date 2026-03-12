@@ -39,6 +39,7 @@ model Product {
   reviewCount          Int      @default(0) @map("reviews")
   notes                Json     @default("{\"top\":[],\"middle\":[],\"base\":[]}")
   category             String?
+  collection           String?
   isNew                Boolean  @default(false) @map("is_new")
   isBestseller         Boolean  @default(false) @map("is_bestseller")
   isActive             Boolean  @default(true) @map("is_active")

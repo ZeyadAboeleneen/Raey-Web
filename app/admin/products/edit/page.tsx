@@ -51,6 +51,7 @@ export default function EditProductPage() {
     name: "",
     description: "",
     longDescription: "",
+    collection: "wedding",
     category: "mona-saleh",
     sizes: [{
       originalPrice: "",
@@ -95,6 +96,7 @@ export default function EditProductPage() {
           name: product.name || "",
           description: product.description || "",
           longDescription: product.longDescription || "",
+          collection: product.collection || "wedding",
           category: product.category || "winter",
           sizes: product.sizes?.map((size: any) => ({
             originalPrice: size.originalPrice?.toString() || "",
@@ -181,6 +183,7 @@ export default function EditProductPage() {
         description: formData.description,
         longDescription: formData.longDescription,
         category: formData.category,
+        collection: formData.collection,
         sizes: formData.sizes.map(size => ({
           originalPrice: size.originalPrice ? parseFloat(size.originalPrice) : undefined,
           discountedPrice: size.discountedPrice ? parseFloat(size.discountedPrice) : undefined,
@@ -402,24 +405,41 @@ export default function EditProductPage() {
                       </div>
 
                       <div>
-                        <Label htmlFor="category">Category *</Label>
+                        <Label htmlFor="collection">Collection *</Label>
                         <Select
-                          value={formData.category}
-                          onValueChange={(value) => handleChange("category", value)}
+                          value={formData.collection}
+                          onValueChange={(value) => handleChange("collection", value)}
                           required
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder="Select collection" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                            <SelectItem value="el-raey-1">Raey 1</SelectItem>
-                            <SelectItem value="el-raey-2">Raey 2</SelectItem>
-                            <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
-                            <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
+                            <SelectItem value="wedding">Wedding Collection</SelectItem>
+                            <SelectItem value="soiree">Soiree Collection</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="category">Category *</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => handleChange("category", value)}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
+                          <SelectItem value="el-raey-1">Raey 1</SelectItem>
+                          <SelectItem value="el-raey-2">Raey 2</SelectItem>
+                          <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
+                          <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>

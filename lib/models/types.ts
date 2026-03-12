@@ -24,6 +24,7 @@ export interface Product {
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
   category: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isActive: boolean

@@ -35,6 +35,7 @@ export default function AddProductPage() {
     name: "",
     description: "",
     longDescription: "",
+    collection: "wedding",
     category: "mona-saleh",
     sizes: [{
       originalPrice: "",
@@ -103,6 +104,7 @@ export default function AddProductPage() {
         description: formData.description,
         longDescription: formData.longDescription,
         category: formData.category,
+        collection: formData.collection,
         images: uploadedImages.length > 0 ? uploadedImages : ["/placeholder.svg"],
         // Keep notes structure for backend compatibility but no longer editable in UI
         notes: {
@@ -152,6 +154,7 @@ export default function AddProductPage() {
           name: "",
           description: "",
           longDescription: "",
+          collection: "wedding",
           category: "mona-saleh",
           sizes: [{
             originalPrice: "",
@@ -388,24 +391,41 @@ export default function AddProductPage() {
                       </div>
 
                       <div>
-                        <Label htmlFor="category">Category *</Label>
+                        <Label htmlFor="collection">Collection *</Label>
                         <Select
-                          value={formData.category}
-                          onValueChange={(value) => handleChange("category", value)}
+                          value={formData.collection}
+                          onValueChange={(value) => handleChange("collection", value)}
                           required
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select collection" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                            <SelectItem value="el-raey-1">Raey 1</SelectItem>
-                            <SelectItem value="el-raey-2">Raey 2</SelectItem>
-                            <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
-                            <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
+                            <SelectItem value="wedding">Wedding Collection</SelectItem>
+                            <SelectItem value="soiree">Soiree Collection</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="category">Category *</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => handleChange("category", value)}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
+                          <SelectItem value="el-raey-1">Raey 1</SelectItem>
+                          <SelectItem value="el-raey-2">Raey 2</SelectItem>
+                          <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
+                          <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>

@@ -73,8 +73,8 @@ const COLLECTIONS_FILTER = [
 
 export default function WeddingPage() {
   const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
-  const allProducts = useMemo(() => cachedProducts.filter(p => p.isActive !== false), [cachedProducts])
-  const bestSellers = useMemo(() => getBestsellers(), [getBestsellers])
+  const allProducts = useMemo(() => cachedProducts.filter(p => p.isActive !== false && p.collection === "wedding"), [cachedProducts])
+  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection === "wedding"), [getBestsellers])
   const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
   const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
 

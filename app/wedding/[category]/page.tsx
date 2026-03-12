@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useParams } from "next/navigation"
+import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles } from "lucide-react"
+import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ArrowLeft } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
@@ -22,7 +23,6 @@ import { useLocale } from "@/lib/locale-context"
 import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache } from "@/lib/products-cache"
-import { StarRating } from "@/lib/star-rating"
 import { useToast } from "@/hooks/use-toast"
 
 interface ProductSize {
@@ -42,6 +42,7 @@ interface Product {
   rating: number
   reviews: number
   category: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isOutOfStock?: boolean
@@ -55,46 +56,29 @@ interface Product {
 const PAGE_SIZE = 12
 const WHATSAPP_NUMBER = "201094448044"
 
-const PRICE_RANGES = [
-  { label: "4,000 – 6,000", min: 4000, max: 6000 },
-  { label: "6,000 – 8,000", min: 6000, max: 8000 },
-  { label: "8,000 – 10,000", min: 8000, max: 10000 },
-  { label: "10,000 – 12,000", min: 10000, max: 12000 },
-  { label: "12,000+", min: 12000, max: Infinity },
-]
+const CATEGORY_LABELS: Record<string, string> = {
+  "mona-saleh": "Mona Saleh",
+  "el-raey-1": "El Raey 1",
+  "el-raey-2": "El Raey 2",
+  "el-raey-the-yard": "El Raey The Yard",
+  "sell-dresses": "Sell Dresses",
+}
 
-const COLLECTIONS_FILTER = [
-  { slug: "mona-saleh", label: "Mona Saleh" },
-  { slug: "el-raey-1", label: "El Raey 1" },
-  { slug: "el-raey-2", label: "El Raey 2" },
-  { slug: "el-raey-the-yard", label: "El Raey The Yard" },
-  { slug: "sell-dresses", label: "Sell Dresses" },
-]
+export default function WeddingCategoryPage() {
+  const params = useParams()
+  const category = params.category as string
+  const categoryLabel = CATEGORY_LABELS[category] || category
 
-export default function SoireePage() {
-  const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
-  const allProducts = useMemo(() => cachedProducts.filter(p => p.isActive !== false && p.collection === "soiree"), [cachedProducts])
-  const bestSellers = useMemo(() => getBestsellers().filter(p => p.collection === "soiree"), [getBestsellers])
-  const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
-  const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
+  const { products: cachedProducts, loading: cacheLoading } = useProductsCache()
+  const allProducts = useMemo(
+    () => cachedProducts.filter(p => p.isActive !== false && p.collection === "wedding" && p.category === category),
+    [cachedProducts, category]
+  )
 
-  const collectionsRef = useRef<HTMLElement>(null)
-  const bestSellersRef = useRef<HTMLElement>(null)
   const allProductsRef = useRef<HTMLElement>(null)
-
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
-  const [selectedCollection, setSelectedCollection] = useState("")
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState<number[]>([])
   const [page, setPage] = useState(1)
-
-  const moodWords = ["GLAM", "ROMANTIC", "ICONIC"]
-  const [moodIndex, setMoodIndex] = useState(0)
-  const currentMood = moodWords[moodIndex]
-
-  const [newsletterEmail, setNewsletterEmail] = useState("")
-  const [isSubscribing, setIsSubscribing] = useState(false)
-  const { toast } = useToast()
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
@@ -117,6 +101,7 @@ export default function SoireePage() {
   const { formatPrice } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+  const { toast } = useToast()
 
   const sizeChart: SizeChartRow[] = [
     { label: "XL", shoulderIn: "16", waistIn: "32", bustIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", bustCm: "101", hipsCm: "106", sleeveCm: "58" },
@@ -126,34 +111,22 @@ export default function SoireePage() {
     { label: "XS", shoulderIn: "14", waistIn: "25", bustIn: "34", hipsIn: "35", sleeveIn: "21", shoulderCm: "34", waistCm: "63", bustCm: "86", hipsCm: "88", sleeveCm: "53" },
   ]
 
-  const collections = [
-    { slug: "mona-saleh", title: t("monaSalehCollection"), description: t("monaSalehDesc"), image: "/monasaleh.jpg" },
-    { slug: "el-raey-1", title: t("elRaey1Collection"), description: t("elRaey1Desc"), image: "/raey1.jpg" },
-    { slug: "el-raey-2", title: t("elRaey2Collection"), description: t("elRaey2Desc"), image: "/raey2.jpg" },
-    { slug: "el-raey-the-yard", title: t("elRaeyTheYardCollection"), description: t("elRaeyTheYardDesc"), image: "/yard.jpg" },
-    { slug: "sell-dresses", title: t("sellDressesCollection"), description: t("sellDressesDesc"), image: "/sell.jpg" },
-  ]
-
+  // Helpers
   const getSmallestPrice = (sizes: ProductSize[]) => {
     if (!sizes || sizes.length === 0) return 0
     const prices = sizes.map(s => s.discountedPrice || s.originalPrice || 0)
     return Math.min(...prices.filter(p => p > 0))
   }
-
   const getSmallestOriginalPrice = (sizes: ProductSize[]) => {
     if (!sizes || sizes.length === 0) return 0
     const prices = sizes.map(s => s.originalPrice || 0)
     return Math.min(...prices.filter(p => p > 0))
   }
-
-  const getProductPrice = (product: Product) =>
-    product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
-
   const isRentCategory = (cat: string) => cat !== "sell-dresses"
 
-  useEffect(() => { const id = window.setInterval(() => { setMoodIndex((prev) => (prev + 1) % moodWords.length) }, 1500); return () => window.clearInterval(id) }, [])
-  useEffect(() => { const handle = setTimeout(() => setDebouncedQuery(searchQuery), 250); return () => clearTimeout(handle) }, [searchQuery])
-  useEffect(() => { setPage(1) }, [debouncedQuery, selectedCollection, selectedPriceRanges])
+  // Debounce search
+  useEffect(() => { const h = setTimeout(() => setDebouncedQuery(searchQuery), 250); return () => clearTimeout(h) }, [searchQuery])
+  useEffect(() => { setPage(1) }, [debouncedQuery])
   useEffect(() => {
     if (showSizeSelector || showGiftPackageSelector || showCustomSizeConfirmation) { document.body.style.overflow = 'hidden' } else { document.body.style.overflow = '' }
     return () => { document.body.style.overflow = '' }
@@ -163,44 +136,22 @@ export default function SoireePage() {
     if (isCustomSizeMode) { setSelectedSize(null) } else if (!selectedSize && selectedProduct.sizes.length > 0) { setSelectedSize(selectedProduct.sizes[0]) }
   }, [isCustomSizeMode, selectedProduct, selectedSize])
 
-  const togglePriceRange = (index: number) => { setSelectedPriceRanges(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]) }
-
-  const handleNewsletterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const email = newsletterEmail.trim()
-    if (!email) { toast({ title: t("stayUpdated"), description: "Please enter a valid email address." }); return }
-    try {
-      setIsSubscribing(true)
-      const response = await fetch("/api/newsletter/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) })
-      const data = await response.json().catch(() => null)
-      if (!response.ok || (data && data.error)) { toast({ title: t("stayUpdated"), description: (data && data.error) || "Failed to subscribe." }); return }
-      setNewsletterEmail("")
-      toast({ title: t("stayUpdated"), description: data && data.alreadySubscribed ? "You are already subscribed." : "You have been subscribed." })
-    } catch (error) { console.error("Newsletter error:", error); toast({ title: t("stayUpdated"), description: "Failed to subscribe." }) } finally { setIsSubscribing(false) }
-  }
-
+  // Filtered products
   const filteredProducts = useMemo(() => {
     let result = allProducts
-    if (selectedCollection) result = result.filter(p => p.category === selectedCollection)
-    if (selectedPriceRanges.length > 0) {
-      result = result.filter(p => { const price = getProductPrice(p); return selectedPriceRanges.some(i => { const r = PRICE_RANGES[i]; return price >= r.min && price < r.max }) })
-    }
     if (debouncedQuery.trim()) {
       const normalize = (v: string) => (v || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       const q = normalize(debouncedQuery.trim()); const terms = q.split(/\s+/).filter(Boolean)
-      const score = (p: Product) => { const n = normalize(p.name); const d = normalize(p.description); let s = 0; if (n === q) s += 8; if (n.startsWith(q)) s += 5; if (n.includes(q)) s += 3; if (d.includes(q)) s += 2; for (const t of terms) { if (n.includes(t)) s += 2; if (d.includes(t)) s += 1 }; if (p.isBestseller) s += 0.5; if (p.isNew) s += 0.25; return s }
+      const score = (p: Product) => { const n = normalize(p.name); const d = normalize(p.description); let s = 0; if (n === q) s += 8; if (n.startsWith(q)) s += 5; if (n.includes(q)) s += 3; if (d.includes(q)) s += 2; for (const t of terms) { if (n.includes(t)) s += 2; if (d.includes(t)) s += 1 }; return s }
       const scored = result.map(p => ({ p, s: score(p) })); result = scored.filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p)
     }
     return result
-  }, [allProducts, selectedCollection, selectedPriceRanges, debouncedQuery])
+  }, [allProducts, debouncedQuery])
 
   const totalPages = Math.max(Math.ceil(filteredProducts.length / PAGE_SIZE), 1)
   const paginatedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const scrollToCollections = () => collectionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  const scrollToBestSellers = () => bestSellersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  const scrollToAllProducts = () => allProductsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
+  // Size selector handlers
   const openSizeSelector = (product: Product) => {
     if (product.isGiftPackage) { setSelectedProduct(product); setShowGiftPackageSelector(true) } else { setSelectedProduct(product); setSelectedSize(null); setQuantity(1); setShowSizeSelector(true); setIsCustomSizeMode(true); resetMeasurements() }
   }
@@ -328,78 +279,37 @@ export default function SoireePage() {
       )}
 
       {/* ─── Hero ─── */}
-      <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
+      <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[40vh] md:h-[50vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
-          <Image src="/elraey-bg.PNG" alt="Soiree background" fill priority className="object-cover" />
-          <div className="absolute inset-0 bg-black/45" />
+          <Image src="/wedding.jpg" alt="Wedding background" fill priority className="object-cover" />
+          <div className="absolute inset-0 bg-black/50" />
         </motion.div>
         <motion.div className="relative z-10 max-w-3xl mx-auto px-4 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-rose-200 to-white mb-8 leading-[1.2] pb-4">Soiree Dresses</h1>
-          <p className="text-sm sm:text-base text-gray-200 max-w-2xl mx-auto">Explore our stunning collection of evening and soiree dresses for every special occasion.</p>
+          <Link href="/wedding" className="inline-flex items-center text-white/80 hover:text-white mb-4 text-sm transition-colors">
+            <ArrowLeft className="mr-2 h-4 w-4" />Back to Wedding Collection
+          </Link>
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-rose-200 to-white mb-4 leading-[1.2] pb-2">{categoryLabel}</h1>
+          <p className="text-sm sm:text-base text-gray-200 max-w-2xl mx-auto">Wedding Collection — {categoryLabel}</p>
         </motion.div>
       </motion.section>
 
-      {/* ─── Best Rental ─── */}
-      <motion.section ref={bestSellersRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-white overflow-hidden">
-        <div className="container mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Discover the most-loved gowns available to rent across all Raey collections.</p>
-          </motion.div>
-          {cacheLoading ? (<div className="flex justify-center py-10 text-gray-500 text-sm">Loading...</div>) : bestSellersRent.length === 0 ? (<div className="flex justify-center py-10 text-gray-500 text-sm">No best sellers yet.</div>) : (
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">{bestSellersRent.slice(0, 8).map((product, index) => renderProductCard(product as Product, index))}</div>
-          )}
-        </div>
-      </motion.section>
-
-
-
-      {/* ─── All Products ─── */}
+      {/* ─── Products Grid ─── */}
       <section ref={allProductsRef} className="pt-8 pb-16 bg-white">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">All Products</h2>
-          </motion.div>
           <div className="mb-8 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 max-w-4xl mx-auto">
-              <div className="relative flex-1"><div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search products..." className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" /></div>
-              <div className="relative sm:w-56"><select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full appearance-none rounded-full border border-gray-200 bg-white/90 py-3 pl-5 pr-10 text-sm tracking-wide focus:outline-none focus:border-black transition-colors cursor-pointer"><option value="">All Collections</option>{COLLECTIONS_FILTER.map(c => (<option key={c.slug} value={c.slug}>{c.label}</option>))}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /></div>
-            </div>
-            <div className="max-w-4xl mx-auto">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                <motion.button
-                  type="button"
-                  onClick={() => setSelectedPriceRanges([])}
-                  whileTap={{ scale: 0.97 }}
-                  className={`inline-flex items-center justify-center h-[38px] sm:h-[40px] px-4 sm:px-5 rounded-full text-[11px] sm:text-xs tracking-wide uppercase font-medium border transition-all duration-300 cursor-pointer select-none ${
-                    selectedPriceRanges.length === 0
-                      ? "bg-rose-400 text-white border-rose-400 shadow-sm"
-                      : "bg-white text-gray-600 border-gray-200 hover:bg-rose-50 hover:border-rose-200"
-                  }`}
-                >
-                  All Prices
-                </motion.button>
-                {PRICE_RANGES.map((range, idx) => (
-                  <motion.button
-                    key={idx}
-                    type="button"
-                    onClick={() => togglePriceRange(idx)}
-                    whileTap={{ scale: 0.97 }}
-                    className={`inline-flex items-center justify-center h-[38px] sm:h-[40px] px-4 sm:px-5 rounded-full text-[11px] sm:text-xs tracking-wide uppercase font-medium border transition-all duration-300 cursor-pointer select-none ${
-                      selectedPriceRanges.includes(idx)
-                        ? "bg-rose-400 text-white border-rose-400 shadow-sm"
-                        : "bg-white text-gray-600 border-gray-200 hover:bg-rose-50 hover:border-rose-200"
-                    }`}
-                  >
-                    {range.label}
-                  </motion.button>
-                ))}
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div>
+                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search products..." className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" />
               </div>
             </div>
-            <div className="text-center text-sm text-gray-500">{debouncedQuery || selectedCollection || selectedPriceRanges.length > 0 ? `Showing ${filteredProducts.length} of ${allProducts.length} products` : `Showing all ${allProducts.length} products`}</div>
+            <div className="text-center text-sm text-gray-500">
+              {debouncedQuery ? `Showing ${filteredProducts.length} of ${allProducts.length} products` : `Showing all ${allProducts.length} products`}
+            </div>
           </div>
+
           {cacheLoading ? (<div className="flex justify-center py-16 text-gray-500 text-sm">Loading products...</div>) : filteredProducts.length === 0 ? (
-            <div className="text-center py-16"><p className="text-gray-600 text-lg">No products match your filters.</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">Clear Filters</Button></div>
+            <div className="text-center py-16"><p className="text-gray-600 text-lg">No products found in this category.</p><Link href="/wedding"><Button className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">Back to Wedding</Button></Link></div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">{paginatedProducts.map((product, index) => renderProductCard(product as Product, index))}</div>
@@ -417,44 +327,6 @@ export default function SoireePage() {
           )}
         </div>
       </section>
-
-
-
-      {/* ─── Newsletter ─── */}
-      <section className="py-10 md:py-16 bg-white">
-        <div className="container mx-auto px-4 sm:px-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} viewport={{ once: true }} className="max-w-md mx-auto text-center px-2">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-900 mb-2 sm:mb-3">{t("stayUpdated")}</h2>
-            <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto">{t("subscribeForOffers")}</p>
-            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full max-w-xs sm:max-w-md mx-auto">
-              <input type="email" placeholder={t("yourEmail")} className="flex-1 px-4 py-2 sm:py-3 text-sm sm:text-base rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent" value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} disabled={isSubscribing} required />
-              <button type="submit" className="bg-rose-400 text-white text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3 rounded-full hover:bg-rose-500 transition-colors whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed" disabled={isSubscribing}>{isSubscribing ? t("saving") : t("subscribe")}</button>
-            </form>
-            <p className="text-xs text-gray-500 mt-2 sm:mt-3 px-2">{t("subscribeDisclaimer")}</p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── About Preview ─── */}
-      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-20 bg-rose-50 overflow-hidden">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-1 md:order-2">
-              <h2 className="text-3xl md:text-4xl font-light tracking-wider mb-6">Why choose Raey</h2>
-              <p className="text-gray-600 mb-6 leading-relaxed">Discover a carefully curated selection of evening dresses designed to make every occasion feel unforgettable.</p>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-                <div className="flex items-start space-x-3"><div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Sparkles className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold tracking-wide uppercase">Signature designs</h3><p className="text-sm text-gray-600">Exclusive pieces tailored to your personal style.</p></div></div>
-                <div className="flex items-start space-x-3"><div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Star className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold tracking-wide uppercase">Premium quality</h3><p className="text-sm text-gray-600">Fine fabrics and precise tailoring for comfort and elegance.</p></div></div>
-                <div className="flex items-start space-x-3"><div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Package className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold tracking-wide uppercase">Flexible choices</h3><p className="text-sm text-gray-600">Rent, buy, or customize to match your preferences.</p></div></div>
-              </div>
-              <Link href="/about"><Button variant="outline" className="border-black text-black hover:bg-black hover:text-white bg-transparent rounded-full px-6 py-5 group relative overflow-hidden"><span className="relative z-10">Learn More About Us</span><ArrowRight className="ml-2 h-4 w-4 relative z-10 text-rose-400" /></Button></Link>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-2 md:order-1">
-              <div className="w-full h-64 md:h-96 relative"><Image src="/elraey-bg.PNG" alt="Raey Background" fill className="object-cover rounded-lg" priority /></div>
-            </motion.div>
-          </div>
-        </div>
-      </motion.section>
 
       <Footer />
     </div>
