@@ -49,6 +49,7 @@ function transformProduct(product: any) {
         rating: product.rating || 0,
         reviews: product.reviewCount || 0,
         category: product.category,
+        collection: product.collection || null,
         isNew: product.isNew === true,
         isBestseller: product.isBestseller === true,
         isActive: product.isActive !== false,

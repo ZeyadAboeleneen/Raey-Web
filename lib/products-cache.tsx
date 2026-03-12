@@ -56,8 +56,8 @@ interface ProductsCacheContextType {
 
 const ProductsCacheContext = createContext<ProductsCacheContextType | null>(null)
 
-const STORAGE_KEY = "raey_products_cache"
-const STORAGE_TS_KEY = "raey_products_cache_ts"
+const STORAGE_KEY = "raey_products_cache_v2"
+const STORAGE_TS_KEY = "raey_products_cache_ts_v2"
 /** How long the sessionStorage cache is considered fresh (5 minutes) */
 const STORAGE_MAX_AGE_MS = 5 * 60 * 1000
 
