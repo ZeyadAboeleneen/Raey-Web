@@ -397,17 +397,6 @@ export function Navigation() {
                   </Link>
 
                   {/* Main Navigation */}
-                  {pathname !== "/" && (
-                    <Link
-                      href="/"
-                      className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors mt-2"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <span className="text-sm font-light tracking-wide text-black uppercase" style={{ letterSpacing: '0.1em' }}>
-                        {t("home").toUpperCase()}
-                      </span>
-                    </Link>
-                  )}
 
                   {/* Collection Items with Arrows */}
                   <Link
