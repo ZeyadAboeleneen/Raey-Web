@@ -586,7 +586,7 @@ export default function AddProductPage() {
                           className="h-4 w-4 text-black rounded"
                         />
                         <Label htmlFor="bestseller" className="ml-2">
-                          Bestseller
+                          Best Rental
                         </Label>
                       </div>
                     </div>

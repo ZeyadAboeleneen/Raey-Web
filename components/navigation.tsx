@@ -30,8 +30,8 @@ export function Navigation() {
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
   const t = useTranslation(settings.language)
 
-  // Check if we're on the home page or the new collection landing pages
-  const isHomePage = pathname === "/" || pathname === "/wedding" || pathname === "/soiree"
+  // Check if we're on a page that should have a transparent-to-white header
+  const isTransparentPage = pathname === "/" || pathname === "/wedding" || pathname === "/soiree"
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -114,33 +114,31 @@ export function Navigation() {
 
   // Determine header styling based on page and scroll position
   const getHeaderStyling = () => {
-    if (!isHomePage) {
-      // On non-home pages, always have background
+    // Solid white on other pages
+    if (!isTransparentPage) {
       return 'bg-white/95 backdrop-blur-sm border-b border-gray-200'
     }
-
-    // On home page, transparent when not scrolled, background when scrolled
+    // Transparent when not scrolled, background when scrolled - Now for selected pages
     return isScrolled ? 'bg-white/95 backdrop-blur-sm border-b border-gray-200' : 'bg-transparent'
   }
 
   // Determine logo based on page and scroll position
   const getLogo = () => {
-    // On home page, use white logo when not scrolled, black when scrolled
-    if (isHomePage) {
-      return isScrolled ? "/raey-logo-black.png" : "/raey-logo-white.PNG"
+    // Black logo on other pages
+    if (!isTransparentPage) {
+      return "/raey-logo-black.png"
     }
-    // On other pages, always use black logo
-    return "/raey-logo-black.png"
+    // White logo when not scrolled, black when scrolled - Now for selected pages
+    return isScrolled ? "/raey-logo-black.png" : "/raey-logo-white.PNG"
   }
 
   // Determine text colors based on page and scroll position
   const getTextColors = (isActive: boolean = false) => {
-    if (!isHomePage) {
-      // On non-home pages, use dark colors
+    // Dark colors on other pages
+    if (!isTransparentPage) {
       return isActive ? 'text-rose-600' : 'text-gray-700 hover:text-black'
     }
-
-    // On home page, use white when not scrolled, dark when scrolled
+    // White text when not scrolled, dark text when scrolled - Now for selected pages
     if (isScrolled) {
       return isActive ? 'text-rose-600' : 'text-gray-700 hover:text-black'
     } else {
@@ -150,14 +148,7 @@ export function Navigation() {
 
   // Determine logo text colors
   const getLogoTextColors = () => {
-    if (!isHomePage) {
-      return {
-        main: 'text-gray-900 group-hover:text-black',
-        sub: 'text-gray-600'
-      }
-    }
-
-    if (isScrolled) {
+    if (!isTransparentPage || isScrolled) {
       return {
         main: 'text-gray-900 group-hover:text-black',
         sub: 'text-gray-600'
@@ -170,21 +161,17 @@ export function Navigation() {
     }
   }
 
-  // Determine active link indicator color
+  // Determine active indicator color
   const getActiveIndicatorColor = () => {
-    if (!isHomePage) {
+    if (!isTransparentPage || isScrolled) {
       return 'bg-gradient-to-r from-rose-400 to-pink-400'
     }
-    return isScrolled ? 'bg-gradient-to-r from-rose-400 to-pink-400' : 'bg-white'
+    return 'bg-white'
   }
 
   // Determine icon colors
   const getIconColors = (isActive: boolean = false) => {
-    if (!isHomePage) {
-      return isActive ? 'text-rose-600' : 'text-gray-700 hover:text-black'
-    }
-
-    if (isScrolled) {
+    if (!isTransparentPage || isScrolled) {
       return isActive ? 'text-rose-600' : 'text-gray-700 hover:text-black'
     } else {
       return isActive ? 'text-white' : 'text-white/90 hover:text-white'
@@ -193,14 +180,7 @@ export function Navigation() {
 
   // Determine button styling
   const getButtonStyling = () => {
-    if (!isHomePage) {
-      return {
-        signIn: 'text-gray-700 hover:text-black hover:bg-gray-100',
-        signUp: 'bg-black text-white hover:bg-gray-800'
-      }
-    }
-
-    if (isScrolled) {
+    if (!isTransparentPage || isScrolled) {
       return {
         signIn: 'text-gray-700 hover:text-black hover:bg-gray-100',
         signUp: 'bg-black text-white hover:bg-gray-800'
@@ -230,12 +210,12 @@ export function Navigation() {
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between h-16">
             {/* Simplified loading navigation */}
-            <div className={`h-8 w-8 rounded animate-pulse ${!isHomePage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
+            <div className={`h-8 w-8 rounded animate-pulse ${!isTransparentPage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
               }`}></div>
             <div className="flex items-center space-x-4">
-              <div className={`h-5 w-5 rounded animate-pulse ${!isHomePage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
+              <div className={`h-5 w-5 rounded animate-pulse ${!isTransparentPage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
                 }`}></div>
-              <div className={`h-5 w-5 rounded animate-pulse ${!isHomePage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
+              <div className={`h-5 w-5 rounded animate-pulse ${!isTransparentPage || isScrolled ? 'bg-gray-200' : 'bg-white/20'
                 }`}></div>
             </div>
           </div>
@@ -258,8 +238,8 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16 relative">
           {/* Left side */}
           <div className="flex justify-start items-center md:space-x-2">
-            {/* Mobile Menu Button - shown for all users, including admin, AND on desktop if on root home page */}
-            <div className={pathname === "/" ? "block" : "md:hidden"}>
+            {/* Mobile Menu Button - Now shown for all pages on all screen sizes to match home page */}
+            <div className="block">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -271,38 +251,7 @@ export function Navigation() {
               </button>
             </div>
 
-            {/* Desktop Navigation - Left - Hidden on root home page */}
-            {pathname !== "/" && (
-              <div className="hidden md:flex items-center space-x-8">
-                <Link href="/" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/"))}`}>
-                  {t("home")}
-                  {isActiveLink("/") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-                </Link>
-                <Link href="/about" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/about"))}`}>
-                  {t("about")}
-                  {isActiveLink("/about") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-                </Link>
-                <div className="relative group">
-                  <Link href="/products" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/products"))}`}>
-                    {t("collections")}
-                    {isActiveLink("/products") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-                  </Link>
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white shadow-lg rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="py-2">
-                      <Link href="/products/mona-saleh" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("monaSalehCollection")}</Link>
-                      <Link href="/products/el-raey-1" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey1Collection")}</Link>
-                      <Link href="/products/el-raey-2" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaey2Collection")}</Link>
-                      <Link href="/products/el-raey-the-yard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("elRaeyTheYardCollection")}</Link>
-                      <Link href="/products/sell-dresses" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">{t("sellDressesCollection")}</Link>
-                    </div>
-                  </div>
-                </div>
-                <Link href="/contact" className={`relative px-3 py-2 transition-colors ${getTextColors(isActiveLink("/contact"))}`}>
-                  {t("contact")}
-                  {isActiveLink("/contact") && <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${getActiveIndicatorColor()}`} />}
-                </Link>
-              </div>
-            )}
+            {/* Desktop Navigation - Left - Now hidden on all pages to match home page header */}
           </div>
 
           {/* Centered Logo - Always show in header */}
@@ -345,7 +294,7 @@ export function Navigation() {
                 </Badge>
               )}
               {isActiveLink("/favorites") && (
-                <div className={`absolute inset-0 rounded-xl ${!isHomePage || isScrolled ? 'bg-black/3' : 'bg-white/20'
+                <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/3' : 'bg-white/20'
                   }`} />
               )}
             </Link>
@@ -363,7 +312,7 @@ export function Navigation() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className={`fixed inset-0 bg-black/60 backdrop-blur-md ${pathname === "/" ? "" : "md:hidden"}`}
+                className="fixed inset-0 bg-black/60 backdrop-blur-md"
                 onClick={() => setIsOpen(false)}
                 style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
               />
@@ -375,7 +324,7 @@ export function Navigation() {
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className={`mobile-navigation fixed left-0 top-0 bottom-0 bg-white overflow-y-auto w-full ${pathname === "/" ? "md:w-1/2 md:max-w-[50vw] md:shadow-2xl" : "md:hidden"}`}
+                className="mobile-navigation fixed left-0 top-0 bottom-0 bg-white overflow-y-auto w-full md:w-1/2 md:max-w-[50vw] md:shadow-2xl"
                 style={{
                   position: 'fixed',
                   top: 0,

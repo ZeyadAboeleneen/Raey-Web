@@ -593,7 +593,7 @@ export function HomePageContent() {
                         </Button>
                         <div className="mt-4 flex justify-center">
                             <Button variant="outline" onClick={scrollToBestSellers} className="border-black text-black hover:bg-black hover:text-white bg-white rounded-full px-6 py-3 sm:py-4 text-xs sm:text-sm group relative overflow-hidden inline-flex items-center justify-center">
-                                <span className="relative z-10">View Best Sellers</span>
+                                <span className="relative z-10">View Best Rental</span>
                                 <ArrowRight className="ml-2 h-4 w-4 relative z-10 text-rose-400" />
                                 <motion.span className="absolute inset-0 bg-black opacity-0 group-hover:opacity-100" initial={{ x: "-100%" }} whileHover={{ x: 0 }} transition={{ duration: 0.2 }} />
                             </Button>
@@ -648,9 +648,9 @@ export function HomePageContent() {
                         <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Discover the most-loved gowns available to rent across all Raey collections.</p>
                     </motion.div>
                     {bestSellersLoading ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best sellers...</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best rentals...</div>
                     ) : bestSellersRent.length === 0 ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best sellers to show yet.</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best rentals to show yet.</div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
                             {bestSellersRent.slice(0, 8).map((product, index) => {
@@ -669,8 +669,8 @@ export function HomePageContent() {
                                                             <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                                                         </button>
                                                         <div className="absolute top-2 left-2 z-20 space-y-1">
-                                                            {product.isNew && <Badge className="bg-white/90 text-gray-900 text-[10px] px-2 py-0.5 rounded-full">New</Badge>}
-                                                            {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full">Best Seller</Badge>}
+                                                            {product.isNew && <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">New</Badge>}
+                                                            {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">Best Rental</Badge>}
                                                             {product.isOutOfStock && <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">Out of Stock</Badge>}
                                                         </div>
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -697,17 +697,17 @@ export function HomePageContent() {
                 </div>
             </motion.section>
 
-            {/* Best Sellers (Sell) */}
+            {/* Best Rental (Sell) */}
             <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-rose-50 overflow-hidden">
                 <div className="container mx-auto px-6">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Sellers</h2>
+                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
                         <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Customer favorites you can make part of your wardrobe from the Sell Dresses collection.</p>
                     </motion.div>
                     {bestSellersLoading ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best sellers...</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best rentals...</div>
                     ) : bestSellersSell.length === 0 ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best sellers to show yet.</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best rentals to show yet.</div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
                             {bestSellersSell.slice(0, 8).map((product, index) => {
@@ -726,8 +726,8 @@ export function HomePageContent() {
                                                             <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                                                         </button>
                                                         <div className="absolute top-2 left-2 z-20 space-y-1">
-                                                            {product.isNew && <Badge className="bg-white/90 text-gray-900 text-[10px] px-2 py-0.5 rounded-full">New</Badge>}
-                                                            {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full">Best Seller</Badge>}
+                                                            {product.isNew && <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">New</Badge>}
+                                                            {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">Best Rental</Badge>}
                                                             {product.isOutOfStock && <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">Out of Stock</Badge>}
                                                         </div>
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />

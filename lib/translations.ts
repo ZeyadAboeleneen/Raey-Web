@@ -103,6 +103,10 @@ export const translations = {
     // Collections/Products Page
     collectionsTitle: "Collections",
     collectionsDesc: "Discover our curated gowns, jumpsuits, and accessories—each designed to spotlight your individuality at every celebration.",
+    soireeCollectionsTitle: "Soiree Collections",
+    soireeCollectionsDesc: "Discover our stunning collection of evening and soiree dresses for every special occasion.",
+    weddingCollectionsTitle: "Wedding Collections",
+    weddingCollectionsDesc: "Discover your dream wedding gown from our curated collections.",
     refreshAllProducts: "Refresh All Products",
     refresh: "Refresh",
     viewAll: "View All",
@@ -325,6 +329,10 @@ export const translations = {
     // Collections/Products Page
     collectionsTitle: "المجموعات",
     collectionsDesc: "اكتشفي فساتيننا المنتقاة وبدلات القفز والإكسسوارات—كل واحدة مصممة لإبراز فرديتك في كل احتفال.",
+    soireeCollectionsTitle: "مجموعات السواريه",
+    soireeCollectionsDesc: "اكتشفي مجموعتنا المذهلة من فساتين السهرة والسواريه لكل مناسبة خاصة.",
+    weddingCollectionsTitle: "مجموعات الزفاف",
+    weddingCollectionsDesc: "اكتشفي فستان زفاف أحلامك من مجموعاتنا المختارة.",
     refreshAllProducts: "تحديث جميع المنتجات",
     refresh: "تحديث",
     viewAll: "عرض الكل",

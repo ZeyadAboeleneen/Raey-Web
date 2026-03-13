@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles } from "lucide-react"
+import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
+import useEmblaCarousel from 'embla-carousel-react'
 import { GiftPackageSelector } from "@/components/gift-package-selector"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
@@ -90,11 +91,56 @@ export default function WeddingPage() {
   }, [getBestsellers])
   const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
   const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
+  const newProducts = useMemo(() => allProducts.filter((p) => p.isNew), [allProducts])
+
+  // Pagination for carousel sections
+  const [visibleNewCount, setVisibleNewCount] = useState(10)
+  const [visibleBestCount, setVisibleBestCount] = useState(10)
+
+  const displayedNewProducts = useMemo(() => newProducts.slice(0, visibleNewCount), [newProducts, visibleNewCount])
+  const displayedBestProducts = useMemo(() => bestSellersRent.slice(0, visibleBestCount), [bestSellersRent, visibleBestCount])
 
   // Refs for scrolling
   const collectionsRef = useRef<HTMLElement>(null)
   const bestSellersRef = useRef<HTMLElement>(null)
+  const newProductsRef = useRef<HTMLElement>(null)
   const allProductsRef = useRef<HTMLElement>(null)
+
+  // Carousel refs
+  const [emblaRefNew, emblaApiNew] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps", dragFree: true })
+  const [emblaRefBest, emblaApiBest] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps", dragFree: true })
+
+  // Carousel button states
+  const [canScrollPrevNew, setCanScrollPrevNew] = useState(false)
+  const [canScrollNextNew, setCanScrollNextNew] = useState(false)
+  const [canScrollPrevBest, setCanScrollPrevBest] = useState(false)
+  const [canScrollNextBest, setCanScrollNextBest] = useState(false)
+
+  const updateNewScrollButtons = useCallback(() => {
+    if (!emblaApiNew) return
+    setCanScrollPrevNew(emblaApiNew.canScrollPrev())
+    setCanScrollNextNew(emblaApiNew.canScrollNext())
+  }, [emblaApiNew])
+
+  const updateBestScrollButtons = useCallback(() => {
+    if (!emblaApiBest) return
+    setCanScrollPrevBest(emblaApiBest.canScrollPrev())
+    setCanScrollNextBest(emblaApiBest.canScrollNext())
+  }, [emblaApiBest])
+
+  useEffect(() => {
+    if (!emblaApiNew) return
+    updateNewScrollButtons()
+    emblaApiNew.on('select', updateNewScrollButtons)
+    emblaApiNew.on('reInit', updateNewScrollButtons)
+  }, [emblaApiNew, updateNewScrollButtons])
+
+  useEffect(() => {
+    if (!emblaApiBest) return
+    updateBestScrollButtons()
+    emblaApiBest.on('select', updateBestScrollButtons)
+    emblaApiBest.on('reInit', updateBestScrollButtons)
+  }, [emblaApiBest, updateBestScrollButtons])
 
   // Filter & pagination state
   const [searchQuery, setSearchQuery] = useState("")
@@ -379,8 +425,8 @@ export default function WeddingPage() {
                   <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                 </button>
                 <div className="absolute top-2 left-2 z-20 space-y-1">
-                  {product.isNew && <Badge className="bg-white/90 text-gray-900 text-[10px] px-2 py-0.5 rounded-full">New</Badge>}
-                  {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full">Best Seller</Badge>}
+                  {product.isNew && <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">New</Badge>}
+                  {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">Best Rental</Badge>}
                   {product.isOutOfStock && <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">Out of Stock</Badge>}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -514,16 +560,139 @@ export default function WeddingPage() {
         </motion.div>
       </motion.section>
 
+      {/* ─── New Collection ─── */}
+      {newProducts.length > 0 && (
+        <motion.section ref={newProductsRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-gray-50 overflow-hidden">
+          <div className="container mx-auto px-6">
+            <div className="flex items-end justify-between mb-10">
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">New Collection</h2>
+                <p className="text-gray-600 max-w-2xl text-sm md:text-base">Discover the newest bridal gowns and latest arrivals in our Wedding collection.</p>
+              </div>
+            </div>
+            
+            {/* Horizontal Scroll Carousel */}
+            <div className="relative group/carousel">
+              {/* Scroll Buttons */}
+              <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className={`rounded-full h-10 w-10 border-rose-200 bg-white text-rose-500 shadow-md transition-all ${!canScrollPrevNew ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-500 hover:text-white hover:border-rose-500 group-hover/carousel:opacity-100'}`}
+                  onClick={() => emblaApiNew?.scrollPrev()}
+                  disabled={!canScrollPrevNew}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+              </div>
+              <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className={`rounded-full h-10 w-10 border-rose-200 bg-white text-rose-500 shadow-md transition-all ${!canScrollNextNew ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-500 hover:text-white hover:border-rose-500 group-hover/carousel:opacity-100'}`}
+                  onClick={() => emblaApiNew?.scrollNext()}
+                  disabled={!canScrollNextNew}
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+              </div>
+
+              <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefNew}>
+                <div className="flex -ml-4">
+                  {displayedNewProducts.map((product, index) => (
+                    <div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">
+                      {renderProductCard(product as Product, index)}
+                    </div>
+                  ))}
+
+                  {/* Load More Card */}
+                  {newProducts.length > visibleNewCount && (
+                    <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setVisibleNewCount(prev => prev + 10)}
+                        className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"
+                      >
+                        <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                          <Plus className="h-6 w-6" />
+                        </div>
+                        <span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span>
+                        <span className="text-xs text-gray-500 mt-1">{newProducts.length - visibleNewCount} more available</span>
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+      )}
+
       {/* ─── Best Rental ─── */}
       <motion.section ref={bestSellersRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-white overflow-hidden">
         <div className="container mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Discover the most-loved gowns available to rent across all Raey collections.</p>
-          </motion.div>
-          {cacheLoading ? (<div className="flex justify-center py-10 text-gray-500 text-sm">Loading...</div>) : bestSellersRent.length === 0 ? (<div className="flex justify-center py-10 text-gray-500 text-sm">No best sellers to show yet.</div>) : (
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
-              {bestSellersRent.slice(0, 8).map((product, index) => renderProductCard(product as Product, index))}
+          <div className="flex items-end justify-between mb-10">
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
+                <p className="text-gray-600 max-w-2xl text-sm md:text-base">Discover the most-loved gowns available to rent across all Raey collections.</p>
+              </div>
+            </div>
+
+            {cacheLoading ? (<div className="flex justify-center py-10 text-gray-500 text-sm">Loading...</div>) : bestSellersRent.length === 0 ? (<div className="flex justify-center py-10 text-gray-500 text-sm">No best rentals yet.</div>) : (
+              /* Horizontal Scroll Carousel */
+              <div className="relative group/carousel">
+                {/* Scroll Buttons */}
+                <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className={`rounded-full h-10 w-10 border-rose-200 bg-white text-rose-500 shadow-md transition-all ${!canScrollPrevBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-500 hover:text-white hover:border-rose-500 group-hover/carousel:opacity-100'}`}
+                    onClick={() => emblaApiBest?.scrollPrev()}
+                    disabled={!canScrollPrevBest}
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </Button>
+                </div>
+                <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className={`rounded-full h-10 w-10 border-rose-200 bg-white text-rose-500 shadow-md transition-all ${!canScrollNextBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-500 hover:text-white hover:border-rose-500 group-hover/carousel:opacity-100'}`}
+                    onClick={() => emblaApiBest?.scrollNext()}
+                    disabled={!canScrollNextBest}
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                </div>
+
+                <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefBest}>
+                <div className="flex -ml-4">
+                  {displayedBestProducts.map((product, index) => (
+                    <div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">
+                      {renderProductCard(product as Product, index)}
+                    </div>
+                  ))}
+
+                  {/* Load More Card */}
+                  {bestSellersRent.length > visibleBestCount && (
+                    <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setVisibleBestCount(prev => prev + 10)}
+                        className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"
+                      >
+                        <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                          <Plus className="h-6 w-6" />
+                        </div>
+                        <span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span>
+                        <span className="text-xs text-gray-500 mt-1">{bestSellersRent.length - visibleBestCount} more available</span>
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -829,13 +829,13 @@ export default function CategoryPage() {
                           {/* Badges - Best Sellers style */}
                           <div className="absolute top-2 left-2 z-20 space-y-1">
                             {product.isNew && (
-                              <Badge className="bg-white/90 text-gray-900 text-[10px] px-2 py-0.5 rounded-full">
+                              <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
                                 New
                               </Badge>
                             )}
                             {product.isBestseller && (
-                              <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                                Best Seller
+                              <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
+                                Best Rental
                               </Badge>
                             )}
                             {product.isOutOfStock && (

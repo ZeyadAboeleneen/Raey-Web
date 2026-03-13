@@ -50,6 +50,7 @@ interface Product {
   rating: number
   reviews: number
   category: string
+  collection?: string
   sizes: ProductSize[]
   isActive?: boolean
   isNew?: boolean
@@ -69,9 +70,18 @@ interface Product {
 
 const WHATSAPP_NUMBER = "201094448044"
 
-export default function ProductsPage() {
+export default function WeddingProductsPage() {
   const { products: cachedProducts, loading, refresh } = useProductsCache()
-  const products = useMemo(() => cachedProducts.filter(p => p.isActive !== false), [cachedProducts])
+  
+  // Filter for Wedding collection only
+  const products = useMemo(() => {
+    const target = "wedding"
+    return cachedProducts.filter(p => {
+      const pColl = (p.collection || "").toLowerCase().trim()
+      return (pColl.includes(target) || target.includes(pColl)) && p.isActive !== false
+    })
+  }, [cachedProducts])
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
   const [quantity, setQuantity] = useState(1)
@@ -259,8 +269,6 @@ export default function ProductsPage() {
 
   type ProductCardLayout = "mobile" | "desktop"
   type ProductSection = string
-
-
 
   useEffect(() => {
     if (!selectedProduct) return
@@ -517,13 +525,9 @@ export default function ProductsPage() {
     )
 
     const isWinter = section === "winter"
-
     const priceRowClassName = "mt-0.5 flex items-center justify-between gap-2"
-
     const priceTextWrapperClassName = "text-[11px] sm:text-xs"
-
     const cartIconClassName = "h-4 w-4"
-
     const addToCartAriaLabel =
       layout === "desktop" && product.isGiftPackage
         ? "Customize Package"
@@ -592,7 +596,7 @@ export default function ProductsPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                 {/* Bottom overlay with name, price and cart button - mirror Best Sellers */}
-                <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
+                <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
                   <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                     {product.name}
                   </h3>
@@ -786,7 +790,6 @@ export default function ProductsPage() {
                       }}
                       formatPrice={formatPrice}
                     />
-
                   </div>
 
                   <div className="flex justify-between items-center py-4 border-t border-gray-100">
@@ -921,10 +924,10 @@ export default function ProductsPage() {
               className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900"
               style={{ fontFamily: 'var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)' }}
             >
-              {t("collectionsTitle")}
+              {t("weddingCollectionsTitle")}
             </h1>
             <p className="mt-3 text-sm md:text-base text-gray-500 max-w-2xl mx-auto">
-              {t("collectionsDesc")}
+              {t("weddingCollectionsDesc")}
             </p>
             <div className="mt-6 flex items-center justify-center">
               <Button
@@ -942,7 +945,7 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Collection Section */}
+      {/* Collection Section - Mona Saleh */}
       <section className={`py-16 ${collectionDetails["mona-saleh"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
@@ -966,7 +969,7 @@ export default function ProductsPage() {
                   {collectionDetails["mona-saleh"].description}
                 </p>
               </div>
-              <Link href="/products/mona-saleh" className="mt-4 md:mt-0">
+              <Link href="/wedding/mona-saleh" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
                   className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["mona-saleh"].buttonStyle} transition-colors duration-300`}
@@ -1022,7 +1025,7 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Collection Section */}
+      {/* Collection Section - Raey 1 */}
       <section className={`py-16 ${collectionDetails["el-raey-1"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
@@ -1046,7 +1049,7 @@ export default function ProductsPage() {
                   {collectionDetails["el-raey-1"].description}
                 </p>
               </div>
-              <Link href="/products/el-raey-1" className="mt-4 md:mt-0">
+              <Link href="/wedding/el-raey-1" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
                   className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["el-raey-1"].buttonStyle} transition-colors duration-300`}
@@ -1102,7 +1105,7 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Collection Section */}
+      {/* Collection Section - Raey 2 */}
       <section className={`py-16 ${collectionDetails["el-raey-2"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
@@ -1126,7 +1129,7 @@ export default function ProductsPage() {
                   {collectionDetails["el-raey-2"].description}
                 </p>
               </div>
-              <Link href="/products/el-raey-2" className="mt-4 md:mt-0">
+              <Link href="/wedding/el-raey-2" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
                   className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["el-raey-2"].buttonStyle} transition-colors duration-300`}
@@ -1182,7 +1185,7 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Collection Section */}
+      {/* Collection Section - Raey The Yard */}
       <section className={`py-16 ${collectionDetails["el-raey-the-yard"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
@@ -1206,7 +1209,7 @@ export default function ProductsPage() {
                   {collectionDetails["el-raey-the-yard"].description}
                 </p>
               </div>
-              <Link href="/products/el-raey-the-yard" className="mt-4 md:mt-0">
+              <Link href="/wedding/el-raey-the-yard" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
                   className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["el-raey-the-yard"].buttonStyle} transition-colors duration-300`}
@@ -1262,7 +1265,7 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Collection Section */}
+      {/* Collection Section - Sell Dresses */}
       <section className={`py-16 ${collectionDetails["sell-dresses"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
@@ -1286,7 +1289,7 @@ export default function ProductsPage() {
                   {collectionDetails["sell-dresses"].description}
                 </p>
               </div>
-              <Link href="/products/sell-dresses" className="mt-4 md:mt-0">
+              <Link href="/wedding/sell-dresses" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
                   className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["sell-dresses"].buttonStyle} transition-colors duration-300`}
@@ -1330,7 +1333,6 @@ export default function ProductsPage() {
           </motion.div>
         </div>
       </section>
-
 
       {/* Gift Package Selector Modal */}
       {showGiftPackageSelector && selectedProduct && (

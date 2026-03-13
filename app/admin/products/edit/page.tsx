@@ -593,7 +593,7 @@ export default function EditProductPage() {
                           onChange={(e) => setFormData({ ...formData, isBestseller: e.target.checked })}
                           className="h-4 w-4 text-black rounded"
                         />
-                        <Label htmlFor="bestseller" className="ml-2">Bestseller</Label>
+                        <Label htmlFor="bestseller" className="ml-2">Best Rental</Label>
                       </div>
 
 

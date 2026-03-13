@@ -1194,7 +1194,7 @@ export default function AdminDashboard() {
                                       )}
                                       {product.isBestseller && (
                                         <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-yellow-200 text-xs font-semibold px-3 py-1.5">
-                                          🏆 Bestseller
+                                          🏆 Best Rental
                                         </Badge>
                                       )}
                                       <Badge
@@ -1216,7 +1216,7 @@ export default function AdminDashboard() {
                                   <div className="hidden sm:flex items-center space-x-2">
                                     {product.isOutOfStock && <Badge className="bg-red-100 text-red-700 border-red-300">Out of Stock</Badge>}
                                     {product.isNew && <Badge variant="secondary">New</Badge>}
-                                    {product.isBestseller && <Badge className="bg-black text-white">Bestseller</Badge>}
+                                    {product.isBestseller && <Badge className="bg-black text-white">Best Rental</Badge>}
                                     <Badge variant={product.isActive ? "default" : "secondary"}>
                                       {product.isActive ? "Active" : "Inactive"}
                                     </Badge>
