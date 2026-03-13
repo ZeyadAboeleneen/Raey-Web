@@ -194,8 +194,8 @@ export default function EditProductPage() {
         category: formData.category,
         collection: formData.collection,
         sizes: formData.sizes.map(size => ({
-          size: size.size || "M",
-          volume: size.volume || "Standard",
+          size: "M",
+          volume: "Standard",
           originalPrice: size.originalPrice ? parseFloat(size.originalPrice) : undefined,
           discountedPrice: size.discountedPrice ? parseFloat(size.discountedPrice) : undefined,
           stockCount: size.stockCount && size.stockCount.trim() !== "" ? parseInt(size.stockCount, 10) : undefined,
@@ -503,7 +503,7 @@ export default function EditProductPage() {
                               <div>
                                 <Label>Size (e.g., S, M, L) *</Label>
                                 <Input
-                                  value={size.size}
+                                  value={(size as any).size}
                                   onChange={(e) => handleSizeChange(index, "size", e.target.value)}
                                   placeholder="M"
                                   required
@@ -512,7 +512,7 @@ export default function EditProductPage() {
                               <div>
                                 <Label>Volume/Description *</Label>
                                 <Input
-                                  value={size.volume}
+                                  value={(size as any).volume}
                                   onChange={(e) => handleSizeChange(index, "volume", e.target.value)}
                                   placeholder="Standard"
                                   required

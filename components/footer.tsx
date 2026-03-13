@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation";
 import { Instagram, Mail, Phone, Facebook } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
@@ -10,6 +11,27 @@ import { useTranslation } from "@/lib/translations"
 export function Footer() {
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+  const pathname = usePathname();
+
+  const getCollectionsLink = () => {
+    if (pathname.startsWith('/soiree')) {
+      return '/soiree/products';
+    }
+    if (pathname.startsWith('/wedding')) {
+      return '/wedding';
+    }
+    return '/products';
+  };
+
+  const getCollectionLink = (collectionSlug: string) => {
+    if (pathname.startsWith('/soiree')) {
+      return `/soiree/${collectionSlug}`;
+    }
+    if (pathname.startsWith('/wedding')) {
+      return `/wedding/${collectionSlug}`;
+    }
+    return `/products/${collectionSlug}`;
+  };
 
   return (
     <motion.footer
@@ -48,13 +70,11 @@ export function Footer() {
           >
             <h3 className="font-bold mb-4">{t("navigation")}</h3>
             <div className="space-y-2 text-sm">
-              <Link href="/" className="block text-rose-700 hover:text-rose-900 transition-colors">
-                {t("home")}
-              </Link>
+
               <Link href="/about" className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("about")}
               </Link>
-              <Link href="/products" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionsLink()} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("collections")}
               </Link>
               <Link href="/contact" className="block text-rose-700 hover:text-rose-900 transition-colors">
@@ -71,19 +91,19 @@ export function Footer() {
           >
             <h3 className="font-bold mb-4">{t("collectionsFooter")}</h3>
             <div className="space-y-2 text-sm">
-              <Link href="/products/mona-saleh" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("mona-saleh")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("monaSalehCollection")}
               </Link>
-              <Link href="/products/el-raey-1" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("el-raey-1")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("elRaey1Collection")}
               </Link>
-              <Link href="/products/el-raey-2" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("el-raey-2")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("elRaey2Collection")}
               </Link>
-              <Link href="/products/el-raey-the-yard" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("el-raey-the-yard")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("elRaeyTheYardCollection")}
               </Link>
-              <Link href="/products/sell-dresses" className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("sell-dresses")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("sellDressesCollection")}
               </Link>
             </div>

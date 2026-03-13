@@ -680,6 +680,7 @@ export default function ProductDetailPage() {
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight mb-2">
                       {product.name}
                     </h1>
+                    <p className="text-sm uppercase tracking-widest text-gray-600 mb-2">{collectionDetails[category]?.titleKey ? t(collectionDetails[category].titleKey) : category}</p>
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (

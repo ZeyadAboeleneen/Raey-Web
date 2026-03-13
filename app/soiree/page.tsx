@@ -605,7 +605,7 @@ export default function SoireePage() {
 
 
       {/* ─── Newsletter ─── */}
-      <section className="py-10 md:py-16 bg-white">
+      <section className="py-10 md:py-16 bg-rose-50">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} viewport={{ once: true }} className="max-w-md mx-auto text-center px-2">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-900 mb-2 sm:mb-3">{t("stayUpdated")}</h2>
@@ -620,7 +620,7 @@ export default function SoireePage() {
       </section>
 
       {/* ─── About Preview ─── */}
-      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-20 bg-rose-50 overflow-hidden">
+      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-20 bg-white overflow-hidden">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-1 md:order-2">

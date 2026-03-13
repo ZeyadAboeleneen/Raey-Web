@@ -203,6 +203,26 @@ export function Navigation() {
     return isActive ? 'text-rose-600 font-medium' : 'text-gray-700 hover:text-black'
   }
 
+  const getCollectionsLink = () => {
+    if (pathname.startsWith('/soiree')) {
+      return '/soiree/products';
+    }
+    if (pathname.startsWith('/wedding')) {
+      return '/wedding/products';
+    }
+    return '/products';
+  };
+
+  const getCollectionLink = (collectionSlug: string) => {
+    if (pathname.startsWith('/soiree')) {
+      return `/soiree/${collectionSlug}`;
+    }
+    if (pathname.startsWith('/wedding')) {
+      return `/wedding/${collectionSlug}`;
+    }
+    return `/products/${collectionSlug}`;
+  };
+
   // Show loading state while auth is initializing
   if (authState.isLoading) {
     return (
@@ -386,7 +406,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-rose-500" />
                   </Link>
                   <Link
-                    href="/soiree"
+                    href="/soiree/products"
                     className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -400,7 +420,7 @@ export function Navigation() {
 
                   {/* Collection Items with Arrows */}
                   <Link
-                    href="/products/mona-saleh"
+                    href={getCollectionLink("mona-saleh")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -410,7 +430,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </Link>
                   <Link
-                    href="/products/el-raey-1"
+                    href={getCollectionLink("el-raey-1")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -420,7 +440,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </Link>
                   <Link
-                    href="/products/el-raey-2"
+                    href={getCollectionLink("el-raey-2")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -430,7 +450,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </Link>
                   <Link
-                    href="/products/el-raey-the-yard"
+                    href={getCollectionLink("el-raey-the-yard")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -440,7 +460,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </Link>
                   <Link
-                    href="/products/sell-dresses"
+                    href={getCollectionLink("sell-dresses")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -451,7 +471,7 @@ export function Navigation() {
                   </Link>
 
                   <Link
-                    href="/products"
+                    href={getCollectionsLink()}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
