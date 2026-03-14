@@ -42,6 +42,7 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@supabase/supabase-js": "^2.99.1",
     "@types/gsap": "^3.0.0",
     "@types/ioredis": "^4.28.10",
     "autoprefixer": "^10.4.20",

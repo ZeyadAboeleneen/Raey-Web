@@ -1,19 +1,33 @@
--- Add registration and favorites update policies to users table
--- Run this in your Supabase SQL Editor
+-- MySQL equivalent for registration and favorites management
+-- This replaces Supabase RLS policies with MySQL approaches
 
--- Drop the policies if they already exist (to avoid errors)
-DROP POLICY IF EXISTS "Anyone can register" ON users;
-DROP POLICY IF EXISTS "Users can update own favorites" ON users;
+-- Note: MySQL doesn't have Row Level Security like Supabase
+-- Instead, implement these controls at the application level:
 
--- Create the policy to allow user registration
-CREATE POLICY "Anyone can register"
-  ON users FOR INSERT
-  WITH CHECK (true);
+-- 1. For user registration: Handle in your API route (app/api/auth/register/route.ts)
+-- Example validation:
+-- - Check if email already exists
+-- - Hash password before insertion
+-- - Insert new user record
 
--- Policy: Allow users to update their own favorites
--- Note: The API routes use the admin client which bypasses RLS, but this provides a backup
-CREATE POLICY "Users can update own favorites"
-  ON users FOR UPDATE
-  USING (auth.uid()::text = id::text)
-  WITH CHECK (auth.uid()::text = id::text);
+-- 2. For users updating own favorites: Use WHERE clause in queries
+-- Example query pattern:
+-- UPDATE users SET favorites = ? WHERE id = ? AND id = current_user_id
+
+-- 3. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_id ON users(id);
+
+-- 4. Example stored procedure for updating favorites (optional)
+DELIMITER //
+CREATE PROCEDURE UpdateUserFavorites(
+    IN user_id VARCHAR(255),
+    IN favorites_data JSON
+)
+BEGIN
+    UPDATE users 
+    SET favorites = favorites_data 
+    WHERE id = user_id;
+END //
+DELIMITER ;
 
