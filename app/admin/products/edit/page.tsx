@@ -18,8 +18,6 @@ import { uploadImage } from "@/lib/supabase-storage"
 import { useProductsCache } from "@/lib/products-cache"
 
 interface ProductSize {
-  size: string
-  volume: string
   originalPrice?: string
   discountedPrice?: string
   stockCount?: string
@@ -104,14 +102,10 @@ export default function EditProductPage() {
           collection: product.collection || "wedding",
           category: product.category || "mona-saleh",
           sizes: product.sizes?.map((size: any) => ({
-            size: size.size || "M",
-            volume: size.volume || "Standard",
             originalPrice: size.originalPrice?.toString() || "",
             discountedPrice: size.discountedPrice?.toString() || "",
             stockCount: size.stockCount?.toString() || "",
           })) || [{
-            size: "M",
-            volume: "Standard",
             originalPrice: "",
             discountedPrice: "",
             stockCount: "",
@@ -270,8 +264,6 @@ export default function EditProductPage() {
     setFormData(prev => ({
       ...prev,
       sizes: [...prev.sizes, {
-        size: "M",
-        volume: "Standard",
         originalPrice: "",
         discountedPrice: "",
         stockCount: ""
@@ -490,35 +482,15 @@ export default function EditProductPage() {
                     {/* Product Sizes */}
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <Label>Available Sizes *</Label>
+                        <Label>Available Options *</Label>
                         <Button type="button" onClick={addSize} size="sm" variant="outline">
                           <Plus className="h-4 w-4 mr-1" />
-                          Add Size
+                          Add Option
                         </Button>
                       </div>
                       <div className="space-y-4">
                         {formData.sizes.map((size, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <div className="grid md:grid-cols-2 gap-4 mb-4">
-                              <div>
-                                <Label>Size (e.g., S, M, L) *</Label>
-                                <Input
-                                  value={(size as any).size}
-                                  onChange={(e) => handleSizeChange(index, "size", e.target.value)}
-                                  placeholder="M"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <Label>Volume/Description *</Label>
-                                <Input
-                                  value={(size as any).volume}
-                                  onChange={(e) => handleSizeChange(index, "volume", e.target.value)}
-                                  placeholder="Standard"
-                                  required
-                                />
-                              </div>
-                            </div>
                             <div className="grid md:grid-cols-2 gap-3 items-end">
                               <div>
                                 <Label>Original Price (EGP)</Label>

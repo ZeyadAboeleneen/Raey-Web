@@ -32,7 +32,7 @@ export default function HomePage() {
 
         {/* Right Panel - Soiree Collection */}
         <Link
-          href="/soiree/products"
+          href="/soiree"
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           {/* Background Image with CSS zoom via group-hover */}
