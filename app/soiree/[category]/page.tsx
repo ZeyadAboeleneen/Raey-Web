@@ -428,7 +428,7 @@ export default function SoireeCategoryPage() {
         <div className="pt-28 md:pt-24 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-medium mb-4">Category not found</h1>
-            <Link href="/soiree/products">
+            <Link href="/soiree">
               <Button className="bg-black text-white hover:bg-gray-800">
                 Back to Soiree Collection
               </Button>
@@ -701,7 +701,7 @@ export default function SoireeCategoryPage() {
             className="max-w-4xl mx-auto text-center"
           >
             <Link
-              href="/soiree/products"
+              href="/soiree"
               className="inline-flex items-center justify-center text-xs md:text-sm font-medium text-gray-500 hover:text-gray-800 mb-4 transition-colors"
             >
               <ArrowLeft className="mr-2 h-3.5 w-3.5" />
@@ -762,7 +762,7 @@ export default function SoireeCategoryPage() {
           ) : products.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-600 text-lg">No products found in this category.</p>
-              <Link href="/soiree/products">
+              <Link href="/soiree">
                 <Button className="mt-4 bg-black text-white hover:bg-gray-800">Browse Soiree Collection</Button>
               </Link>
             </div>

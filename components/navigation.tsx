@@ -205,10 +205,10 @@ export function Navigation() {
 
   const getCollectionsLink = () => {
     if (pathname.startsWith('/soiree')) {
-      return '/soiree/products';
+      return '/soiree';
     }
     if (pathname.startsWith('/wedding')) {
-      return '/wedding/products';
+      return '/wedding';
     }
     return '/products';
   };
@@ -406,7 +406,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-rose-500" />
                   </Link>
                   <Link
-                    href="/soiree/products"
+                    href="/soiree"
                     className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >

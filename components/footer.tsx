@@ -15,7 +15,7 @@ export function Footer() {
 
   const getCollectionsLink = () => {
     if (pathname.startsWith('/soiree')) {
-      return '/soiree/products';
+      return '/soiree';
     }
     if (pathname.startsWith('/wedding')) {
       return '/wedding';
