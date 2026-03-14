@@ -481,26 +481,32 @@ export default function ProductDetailPage() {
     }
   }
 
-  // Try to load from cache first, fall back to API
+  // Try to load from cache first, then fetch from API for full details (enrichment)
   useEffect(() => {
     if (!category || !productId) return
 
-    // Try cache
-    const cached = getById(productId) as unknown as ProductDetail | undefined
-    if (cached) {
-      setProduct(cached)
-      setLoading(false)
-      void fetchReviewsForProduct(cached.id)
-      fetchRelatedProducts()
-      return
+    const loadProduct = async () => {
+      // 1. Check cache first for instant initial display
+      const cached = getById(productId) as unknown as ProductDetail | undefined
+      if (cached) {
+        setProduct(cached)
+        setLoading(false)
+        void fetchReviewsForProduct(cached.id)
+        fetchRelatedProducts()
+
+        // 2. If cached product is missing details, enrich it from the API
+        if (!cached.longDescription || !cached.notes) {
+          console.log("Product in cache but missing details, fetching enrichment...")
+          await fetchProduct()
+        }
+      } else if (!cacheLoading) {
+        // 3. Not in cache and cache finished loading -> full fetch from API
+        await fetchProduct()
+        fetchRelatedProducts()
+      }
     }
 
-    // Cache not ready yet or product not found — fall back to API
-    if (!cacheLoading) {
-      // Cache has finished loading but product wasn't found, fetch from API
-      fetchProduct()
-      fetchRelatedProducts()
-    }
+    void loadProduct()
   }, [category, productId, cacheLoading, getById])
 
   // Set custom size mode as default when product loads

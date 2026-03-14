@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Playfair_Display, Crimson_Text } from 'next/font/google'
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
-import { ProductProvider } from "@/lib/product-context"
 import { ProductsCacheProvider } from "@/lib/products-cache"
 import { OrderProvider } from "@/lib/order-context"
 import { FavoritesProvider } from "@/lib/favorites-context"
@@ -41,9 +40,9 @@ export const metadata: Metadata = {
   },
 }
 
-// The layout fetches products from the DB at request time,
-// so it must not be statically rendered during `next build`.
-export const dynamic = "force-dynamic"
+// The layout fetches products from the DB to hydrate the client cache.
+// Using revalidate to allow static optimization while keeping the cache fresh.
+export const revalidate = 300 // Revalidate every 5 minutes (same as the in-memory cache)
 
 export default async function RootLayout({
   children,
@@ -63,21 +62,19 @@ export default async function RootLayout({
         <LocaleProvider>
           <HtmlLangWrapper>
             <AuthProvider>
-              <ProductProvider>
-                <ProductsCacheProvider initialProducts={initialProducts}>
-                  <OrderProvider>
-                    <FavoritesProvider>
-                      <CartProvider>
-                        <ScrollProvider>
-                          {children}
-                          <CartSuccessNotification />
-                          <Toaster />
-                        </ScrollProvider>
-                      </CartProvider>
-                    </FavoritesProvider>
-                  </OrderProvider>
-                </ProductsCacheProvider>
-              </ProductProvider>
+              <ProductsCacheProvider initialProducts={initialProducts}>
+                <OrderProvider>
+                  <FavoritesProvider>
+                    <CartProvider>
+                      <ScrollProvider>
+                        {children}
+                        <CartSuccessNotification />
+                        <Toaster />
+                      </ScrollProvider>
+                    </CartProvider>
+                  </FavoritesProvider>
+                </OrderProvider>
+              </ProductsCacheProvider>
             </AuthProvider>
           </HtmlLangWrapper>
         </LocaleProvider>

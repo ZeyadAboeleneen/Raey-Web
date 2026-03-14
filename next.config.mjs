@@ -18,7 +18,8 @@ const nextConfig = {
   },
 
   images: {
-    unoptimized: true,
+    // Enabling image optimization for better performance (requires sharp, which is installed)
+    unoptimized: false,
     dangerouslyAllowSVG: true,
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },

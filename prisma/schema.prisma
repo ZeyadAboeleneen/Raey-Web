@@ -52,6 +52,12 @@ model Product {
   updatedAt            DateTime @updatedAt @map("updated_at")
   reviewsList          Review[]
 
+  @@index([category])
+  @@index([collection])
+  @@index([isActive])
+  @@index([isNew])
+  @@index([isBestseller])
+  @@index([createdAt])
   @@map("products")
 }
 
@@ -71,6 +77,9 @@ model Order {
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -88,6 +97,10 @@ model Review {
   product           Product  @relation(fields: [productId], references: [productId])
   user              User     @relation(fields: [userId], references: [id])
 
+  @@index([productId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([createdAt])
   @@map("reviews")
 }
 

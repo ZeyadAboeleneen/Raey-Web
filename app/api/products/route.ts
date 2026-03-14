@@ -177,15 +177,44 @@ export async function GET(request: NextRequest) {
     }
 
     // Paginated list
-    if (hasPageParam) {
+    if (hasPageParam || hasLimitParam || category || collection || isBestsellerParam || isNewParam || isGiftPackageParam) {
       const [products, total] = await prisma.$transaction([
-        prisma.product.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
+        prisma.product.findMany({ 
+          where, 
+          orderBy: { createdAt: "desc" }, 
+          skip, 
+          take: limit,
+          select: {
+            productId: true,
+            name: true,
+            description: true,
+            images: true,
+            rating: true,
+            reviewCount: true,
+            category: true,
+            collection: true,
+            isNew: true,
+            isBestseller: true,
+            isActive: true,
+            isOutOfStock: true,
+            sizes: true,
+            isGiftPackage: true,
+            packagePrice: true,
+            packageOriginalPrice: true,
+            giftPackageSizes: true,
+            // longDescription and notes are intentionally omitted for lists
+          }
+        }),
         prisma.product.count({ where }),
       ])
 
       const totalPages = Math.max(Math.ceil(total / limit), 1)
-      const productsForList = products.map(transformProduct).map((p: ApiProduct) => ({
-        ...p, images: p.images.slice(0, 1), longDescription: undefined, notes: undefined,
+      const productsForList = products.map((p: any) => transformProduct({
+        ...p,
+        // Ensure we don't send huge image arrays in the list
+        images: Array.isArray(p.images) ? p.images.slice(0, 2) : [],
+        longDescription: undefined,
+        notes: undefined,
       }))
 
       const headers = {

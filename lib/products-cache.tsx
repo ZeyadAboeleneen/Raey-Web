@@ -11,7 +11,6 @@ interface ProductSize {
 }
 
 interface CachedProduct {
-  _id: string
   id: string
   name: string
   description: string
@@ -29,12 +28,8 @@ interface CachedProduct {
   packagePrice?: number
   packageOriginalPrice?: number
   giftPackageSizes?: any[]
-  longDescription?: string
-  notes?: {
-    top: string[]
-    middle: string[]
-    base: string[]
-  }
+  // longDescription and notes are intentionally omitted for the global cache to reduce payload size
+  // ProductDetailPage will fetch them from the API if needed
 }
 
 interface ProductsCacheContextType {
