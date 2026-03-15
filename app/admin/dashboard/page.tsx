@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useMemo, useCallback, memo } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -117,6 +117,8 @@ export default function AdminDashboard() {
   const [productTotalCount, setProductTotalCount] = useState(0)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
+  const productsPageCacheRef = useRef(new Map<number, Product[]>())
+
   const handleSignOut = () => {
     logout()
     router.push("/auth/login")
@@ -161,7 +163,7 @@ export default function AdminDashboard() {
   // DASHBOARD USES EGP ONLY - NO CURRENCY CONVERSION NEEDED
   // All prices in database are stored in EGP
 
-  const fetchProductsPage = useCallback(async () => {
+  const fetchProductsPage = useCallback(async (page: number) => {
     try {
       const token = getAuthToken()
       const fetchOptions = {
@@ -169,18 +171,26 @@ export default function AdminDashboard() {
         cache: 'no-store' as RequestCache,
       }
 
-      const response = await fetch(`/api/products?includeInactive=true`, fetchOptions)
+      const cached = productsPageCacheRef.current.get(page)
+      if (cached) {
+        setProducts(cached)
+        return
+      }
+
+      const response = await fetch(
+        `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`,
+        fetchOptions
+      )
 
       if (response.ok) {
         const products = await response.json()
+        const totalPagesHeader = response.headers.get("X-Total-Pages")
+        const totalCountHeader = response.headers.get("X-Total-Count")
 
-        setProductTotalCount(products.length)
-        setProductTotalPages(Math.ceil(products.length / PRODUCTS_PER_PAGE))
+        if (totalCountHeader) setProductTotalCount(Number(totalCountHeader))
+        if (totalPagesHeader) setProductTotalPages(Number(totalPagesHeader))
 
-        console.log("📊 [Dashboard] Fetched all products:", {
-          total: products.length,
-        })
-
+        productsPageCacheRef.current.set(page, products)
         setProducts(products)
       } else {
         console.error("❌ [Dashboard] Failed to fetch products:", response.status, response.statusText)
@@ -195,6 +205,8 @@ export default function AdminDashboard() {
       // Always reset to first products page on full dashboard refresh
       setProductPage(1)
 
+      productsPageCacheRef.current.clear()
+
       const token = getAuthToken()
 
       // Use cache: no-store for fresh data but optimize with parallel requests
@@ -204,7 +216,7 @@ export default function AdminDashboard() {
       }
 
       // First load core data needed for initial dashboard render
-      await fetchProductsPage()
+      await fetchProductsPage(1)
 
       // Core data is ready, hide main loading spinner
       setLoading(false)
@@ -232,6 +244,12 @@ export default function AdminDashboard() {
       setRefreshing(false)
     }
   }, [authState.token, fetchProductsPage])
+
+  useEffect(() => {
+    if (!authState.isLoading && authState.isAuthenticated && authState.user?.role === "admin") {
+      fetchProductsPage(productPage)
+    }
+  }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, fetchProductsPage, productPage])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -962,9 +980,7 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {products
-                          .slice((productPage - 1) * PRODUCTS_PER_PAGE, productPage * PRODUCTS_PER_PAGE)
-                          .map((product) => (
+                        {products.map((product) => (
                             <motion.div
                               key={product._id}
                               className="p-4 sm:p-5 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-200 relative overflow-hidden"
