@@ -10,8 +10,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { ArrowRight, Sparkles, Star, ShoppingCart, Heart, X, Instagram, Facebook, Package, AlertCircle } from "lucide-react"
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
+import dynamic from "next/dynamic"
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
+  ssr: true,
+})
+
+const Footer = dynamic(() => import("@/components/footer").then(mod => ({ default: mod.Footer })), {
+  ssr: true,
+})
 import { Badge } from "@/components/ui/badge"
 import { useFavorites } from "@/lib/favorites-context"
 import { useCart } from "@/lib/cart-context"

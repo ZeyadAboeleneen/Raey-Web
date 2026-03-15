@@ -4,9 +4,14 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
-import { Navigation } from "@/components/navigation"
+import dynamic from "next/dynamic"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
+
+// Lazy load Navigation to improve initial page load
+const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
+  ssr: true,
+})
 
 export default function HomePage() {
   const router = useRouter()
@@ -17,9 +22,16 @@ export default function HomePage() {
   const [soireeLoaded, setSoireeLoaded] = useState(false)
   const imagesReady = useMemo(() => weddingLoaded && soireeLoaded, [soireeLoaded, weddingLoaded])
 
-  // Pre-navigation handler to make it feel instant
+  // Pre-navigation handler with prefetching
   const handleNavigation = (href: string) => {
+    // Prefetch the route immediately
+    router.prefetch(href)
     router.push(href)
+  }
+  
+  // Prefetch on hover for instant navigation
+  const handleMouseEnter = (href: string) => {
+    router.prefetch(href)
   }
 
   return (
@@ -35,6 +47,7 @@ export default function HomePage() {
         {/* Left Panel - Wedding Collection */}
         <div
           onClick={() => handleNavigation("/wedding")}
+          onMouseEnter={() => handleMouseEnter("/wedding")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           <Image
@@ -43,6 +56,7 @@ export default function HomePage() {
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
+            quality={85}
             className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
             onLoadingComplete={() => setWeddingLoaded(true)}
           />
@@ -59,6 +73,7 @@ export default function HomePage() {
         {/* Right Panel - Soiree Collection */}
         <div
           onClick={() => handleNavigation("/soiree")}
+          onMouseEnter={() => handleMouseEnter("/soiree")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           <Image
@@ -67,6 +82,7 @@ export default function HomePage() {
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
+            quality={85}
             className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
             onLoadingComplete={() => setSoireeLoaded(true)}
           />

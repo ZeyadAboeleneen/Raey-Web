@@ -11,8 +11,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus } from "lucide-react"
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
+import dynamic from "next/dynamic"
+
+// Lazy load heavy components for faster initial render
+const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
+  ssr: true,
+})
+
+const Footer = dynamic(() => import("@/components/footer").then(mod => ({ default: mod.Footer })), {
+  ssr: true,
+})
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
 import useEmblaCarousel from 'embla-carousel-react'
@@ -82,6 +90,9 @@ export default function WeddingPage() {
       return (pColl.includes(target) || target.includes(pColl))
     })
   }, [cachedProducts])
+  
+  // Show loading state only if we have NO products at all
+  const isLoading = cacheLoading && cachedProducts.length === 0
   const bestSellers = useMemo(() => {
     const target = "wedding"
     return getBestsellers().filter(p => {
@@ -484,6 +495,24 @@ export default function WeddingPage() {
     )
   }
 
+  // Show skeleton loader only on initial load with no data
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 h-16 animate-pulse" />
+        <div className="h-[60vh] md:h-[70vh] bg-gray-200 animate-pulse" />
+        <div className="container mx-auto px-6 py-16">
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-[4/7] bg-gray-200 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
@@ -678,9 +707,7 @@ export default function WeddingPage() {
               <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
             </motion.div>
             
-            {cacheLoading ? (
-              <div className="flex justify-center py-10 text-gray-500 text-sm">{t("loadingProducts")}</div>
-            ) : bestSellersRent.length === 0 ? (
+            {bestSellersRent.length === 0 && !cacheLoading ? (
               <div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>
             ) : (
               <div className="relative group/carousel">
@@ -729,7 +756,7 @@ export default function WeddingPage() {
                 : t("showingAllProducts", { total: allProducts.length })}
             </div>
           </div>
-          {cacheLoading ? (<div className="flex justify-center py-16 text-gray-500 text-sm">{t("loadingProducts")}</div>) : filteredProducts.length === 0 ? (<div className="text-center py-16"><p className="text-gray-600 text-lg">{t("noProductsFound")}</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">{t("clearFilters")}</Button></div>) : (
+          {filteredProducts.length === 0 && !cacheLoading ? (<div className="text-center py-16"><p className="text-gray-600 text-lg">{t("noProductsFound")}</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">{t("clearFilters")}</Button></div>) : (
             <>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">{paginatedProducts.map((product, index) => renderProductCard(product as Product, index))}</div>
               {filteredProducts.length > PAGE_SIZE && (

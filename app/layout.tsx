@@ -14,12 +14,14 @@ import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 import { warmProductsServerCache } from "@/lib/get-products-server"
 
-// Configure fonts
+// Configure fonts with optimized loading
 const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-playfair-display',
   display: 'swap',
+  preload: true,
+  fallback: ['serif'],
 })
 
 const crimsonText = Crimson_Text({
@@ -27,6 +29,8 @@ const crimsonText = Crimson_Text({
   weight: ['400', '600', '700'],
   variable: '--font-crimson-text',
   display: 'swap',
+  preload: true,
+  fallback: ['serif'],
 })
 
 export const metadata: Metadata = {
@@ -46,7 +50,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  warmProductsServerCache()
+  // Warm cache asynchronously without blocking render
+  if (typeof window === 'undefined') {
+    warmProductsServerCache()
+  }
 
   return (
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
