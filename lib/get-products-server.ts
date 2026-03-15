@@ -84,9 +84,29 @@ async function fetchProductsFromDB(): Promise<any[]> {
     }
 }
 
+export function warmProductsServerCache(): void {
+    if (g._ssrProductsCache && Date.now() < g._ssrProductsCache.expiresAt) {
+        return
+    }
+
+    if (g._ssrProductsPromise) {
+        return
+    }
+
+    g._ssrProductsPromise = fetchProductsFromDB()
+}
+
 export async function getProductsServer(): Promise<any[]> {
     // 1. Cache is warm and not expired → return instantly
     if (g._ssrProductsCache && Date.now() < g._ssrProductsCache.expiresAt) {
+        return g._ssrProductsCache.data
+    }
+
+    // 1b. Cache exists but is expired → serve stale instantly and refresh in background
+    if (g._ssrProductsCache) {
+        if (!g._ssrProductsPromise) {
+            g._ssrProductsPromise = fetchProductsFromDB()
+        }
         return g._ssrProductsCache.data
     }
 

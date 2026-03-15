@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 import type { Product as BaseProduct } from "@/lib/models/types"
+import { getProductsServer } from "@/lib/get-products-server"
 
 type CachedProductsEntry = {
   status: number
@@ -61,7 +62,6 @@ const clearProductsCache = () => {
 }
 
 export const maxDuration = 60
-export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 const errorResponse = (status: number, message: string, details?: any) =>
@@ -152,6 +152,37 @@ export async function GET(request: NextRequest) {
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1)
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 1000)
     const skip = (page - 1) * limit
+
+    const isSimpleAllProductsRequest =
+      !includeInactive &&
+      !id &&
+      !category &&
+      !collection &&
+      isBestsellerParam === null &&
+      isNewParam === null &&
+      isGiftPackageParam === null &&
+      !hasPageParam
+
+    if (isSimpleAllProductsRequest) {
+      const products = await getProductsServer()
+      const productsForList = products
+        .slice(0, hasLimitParam ? limit : products.length)
+        .map((p: any) => ({
+          ...p,
+          images: Array.isArray(p.images) ? p.images.slice(0, 1) : [],
+          longDescription: undefined,
+          notes: undefined,
+        }))
+
+      const headers = {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      }
+      const body = JSON.stringify(productsForList)
+      setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+      console.log(`⚡ [API] Served from SSR cache in ${Date.now() - startTime}ms (all=${productsForList.length})`)
+      return new NextResponse(body, { status: 200, headers })
+    }
 
     // Build shared where clause
     const where: any = {}

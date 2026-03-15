@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
@@ -10,6 +12,10 @@ export default function HomePage() {
   const router = useRouter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+
+  const [weddingLoaded, setWeddingLoaded] = useState(false)
+  const [soireeLoaded, setSoireeLoaded] = useState(false)
+  const imagesReady = useMemo(() => weddingLoaded && soireeLoaded, [soireeLoaded, weddingLoaded])
 
   // Pre-navigation handler to make it feel instant
   const handleNavigation = (href: string) => {
@@ -20,6 +26,10 @@ export default function HomePage() {
     <div className="fixed inset-0 h-[100dvh] w-full overflow-hidden bg-black z-0">
       <Navigation />
 
+      {!imagesReady && (
+        <div className="absolute inset-0 z-[100] bg-black" />
+      )}
+
       {/* Hero Section - 50/50 Vertical Split Screen */}
       <section className="absolute inset-0 h-[100dvh] flex flex-col md:flex-row w-full overflow-hidden">
         {/* Left Panel - Wedding Collection */}
@@ -27,10 +37,14 @@ export default function HomePage() {
           onClick={() => handleNavigation("/wedding")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
-          {/* Background Image with CSS zoom via group-hover */}
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
-            style={{ backgroundImage: "url('/wedding.jpg')" }}
+          <Image
+            src="/wedding.jpg"
+            alt="Wedding collection"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+            onLoadingComplete={() => setWeddingLoaded(true)}
           />
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/75 z-10" />
@@ -47,10 +61,14 @@ export default function HomePage() {
           onClick={() => handleNavigation("/soiree")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
-          {/* Background Image with CSS zoom via group-hover */}
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
-            style={{ backgroundImage: "url('/elraey-bg.PNG')" }}
+          <Image
+            src="/elraey-bg.PNG"
+            alt="Soiree collection"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+            onLoadingComplete={() => setSoireeLoaded(true)}
           />
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/75 z-10" />

@@ -106,11 +106,20 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
   const fetched = useRef(false)
 
+  const mergeById = useCallback((prev: CachedProduct[], next: CachedProduct[]) => {
+    if (!next || next.length === 0) return prev
+    if (!prev || prev.length === 0) return next
+
+    const map = new Map<string, CachedProduct>()
+    for (const p of prev) map.set(p.id, p)
+    for (const p of next) map.set(p.id, p)
+    return Array.from(map.values())
+  }, [])
+
   const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
       if (!quiet) setLoading(true)
-      // Add a timestamp to bypass browser cache
-      const response = await fetch(`/api/products?limit=1000&t=${Date.now()}`)
+      const response = await fetch(`/api/products?limit=1000`)
       if (response.ok) {
         const data: CachedProduct[] = await response.json()
         setProducts(data)
@@ -123,6 +132,12 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     }
   }, [])
 
+  const fetchStage = useCallback(async (url: string) => {
+    const response = await fetch(url)
+    if (!response.ok) return [] as CachedProduct[]
+    return (await response.json()) as CachedProduct[]
+  }, [])
+
   // On mount: if we already have server-provided data we still do a quiet
   // background revalidation so the client picks up any recent changes.
   // If we have NO data, we do a loud fetch that sets loading=true.
@@ -130,9 +145,43 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     if (!fetched.current) {
       fetched.current = true
       const hasData = products.length > 0
-      fetchAll(/* quiet */ hasData)
+
+      if (hasData) {
+        fetchAll(true)
+        return
+      }
+
+      ;(async () => {
+        try {
+          setLoading(true)
+
+          const newArrivals = await fetchStage(`/api/products?isNew=true&limit=20`)
+          setProducts((prev) => mergeById(prev, newArrivals))
+
+          const bestRentals = await fetchStage(`/api/products?isBestseller=true&limit=20`)
+          setProducts((prev) => mergeById(prev, bestRentals))
+
+          const [weddingFirstPage, soireeFirstPage] = await Promise.all([
+            fetchStage(`/api/products?collection=wedding&limit=60`),
+            fetchStage(`/api/products?collection=soiree&limit=60`),
+          ])
+          setProducts((prev) => mergeById(prev, mergeById(weddingFirstPage, soireeFirstPage)))
+
+          setLoading(false)
+
+          const fullList = await fetchStage(`/api/products?limit=1000`)
+          setProducts((prev) => {
+            const merged = mergeById(prev, fullList)
+            writeToStorage(merged)
+            return merged
+          })
+        } catch (error) {
+          console.error("Error preloading products:", error)
+          setLoading(false)
+        }
+      })()
     }
-  }, [fetchAll, products.length])
+  }, [fetchAll, fetchStage, mergeById, products.length])
 
   // Persist server-provided initialProducts to sessionStorage on first mount
   // so subsequent client-side navigations are also instant.

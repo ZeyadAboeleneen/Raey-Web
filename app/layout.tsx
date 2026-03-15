@@ -12,7 +12,7 @@ import { ScrollProvider } from "@/lib/scroll-context"
 import { CartSuccessNotification } from "@/components/cart-success-notification"
 import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
-import { getProductsServer } from "@/lib/get-products-server"
+import { warmProductsServerCache } from "@/lib/get-products-server"
 
 // Configure fonts
 const playfairDisplay = Playfair_Display({
@@ -41,18 +41,12 @@ export const metadata: Metadata = {
   },
 }
 
-// The layout fetches products from the DB at request time,
-// so it must not be statically rendered during `next build`.
-export const dynamic = "force-dynamic"
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Fetch products on the server — they will be embedded in the HTML
-  // so the client renders them instantly without any loading spinner.
-  const initialProducts = await getProductsServer()
+  warmProductsServerCache()
 
   return (
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
@@ -64,7 +58,7 @@ export default async function RootLayout({
           <HtmlLangWrapper>
             <AuthProvider>
               <ProductProvider>
-                <ProductsCacheProvider initialProducts={initialProducts}>
+                <ProductsCacheProvider>
                   <OrderProvider>
                     <FavoritesProvider>
                       <CartProvider>

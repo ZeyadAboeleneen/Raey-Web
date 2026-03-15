@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
+import imageCompression from "browser-image-compression"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -131,6 +132,15 @@ export default function EditProductPage() {
     fetchProduct()
   }, [searchParams])
 
+  const fileToBase64 = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -139,22 +149,16 @@ export default function EditProductPage() {
     setError('');
 
     try {
-      const imagePromises = Array.from(files).map(file => {
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            try {
-              const base64 = reader.result as string;
-              const imageUrl = await uploadImage(base64, 'products');
-              resolve(imageUrl);
-            } catch (uploadError) {
-              reject(uploadError);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      });
+      const imagePromises = Array.from(files).map(async (file) => {
+        const compressed = await imageCompression(file, {
+          maxSizeMB: 0.35,
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+          initialQuality: 0.7,
+        })
+        const base64 = await fileToBase64(compressed as File)
+        return uploadImage(base64, "products")
+      })
 
       const imageUrls = await Promise.all(imagePromises);
       setUploadedImages(imageUrls);
