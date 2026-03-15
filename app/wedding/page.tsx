@@ -91,6 +91,8 @@ export default function WeddingPage() {
     })
   }, [cachedProducts])
   
+  // Show loading state only if we have NO products at all
+  const isLoading = cacheLoading && cachedProducts.length === 0
   const bestSellers = useMemo(() => {
     const target = "wedding"
     return getBestsellers().filter(p => {
@@ -493,11 +495,8 @@ export default function WeddingPage() {
     )
   }
 
-  // Show skeleton loader only if we have absolutely no products and are loading
-  // Always show content if we have any products, even if still loading more
-  const showSkeleton = cacheLoading && allProducts.length === 0 && cachedProducts.length === 0
-
-  if (showSkeleton) {
+  // Show skeleton loader only on initial load with no data
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
         <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 h-16 animate-pulse" />
@@ -759,11 +758,6 @@ export default function WeddingPage() {
           </div>
           {filteredProducts.length === 0 && !cacheLoading ? (<div className="text-center py-16"><p className="text-gray-600 text-lg">{t("noProductsFound")}</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">{t("clearFilters")}</Button></div>) : (
             <>
-              {cacheLoading && filteredProducts.length > 0 && (
-                <div className="text-center py-4 text-sm text-gray-500 mb-4">
-                  {t("loadingProducts")}... ({filteredProducts.length} {t("totalProducts")})
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">{paginatedProducts.map((product, index) => renderProductCard(product as Product, index))}</div>
               {filteredProducts.length > PAGE_SIZE && (
                 <div className="flex flex-col items-center gap-4 mt-12 border-t border-gray-100 pt-8">

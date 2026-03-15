@@ -155,29 +155,26 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
         try {
           setLoading(true)
 
-          // Load full list FIRST for immediate display, then enhance with filtered queries
-          const fullListPromise = fetchStage(`/api/products?limit=1000`)
-          
-          // In parallel, also fetch filtered sets for faster initial display
-          const [fullList, newArrivals, bestRentals, weddingFirstPage, soireeFirstPage] = await Promise.all([
-            fullListPromise,
-            fetchStage(`/api/products?isNew=true&limit=20`),
-            fetchStage(`/api/products?isBestseller=true&limit=20`),
+          const newArrivals = await fetchStage(`/api/products?isNew=true&limit=20`)
+          setProducts((prev) => mergeById(prev, newArrivals))
+
+          const bestRentals = await fetchStage(`/api/products?isBestseller=true&limit=20`)
+          setProducts((prev) => mergeById(prev, bestRentals))
+
+          const [weddingFirstPage, soireeFirstPage] = await Promise.all([
             fetchStage(`/api/products?collection=wedding&limit=60`),
             fetchStage(`/api/products?collection=soiree&limit=60`),
           ])
-
-          // Merge everything together - full list is primary, others enhance it
-          setProducts((prev) => {
-            const merged = mergeById(prev, fullList)
-            const withNew = mergeById(merged, newArrivals)
-            const withBest = mergeById(withNew, bestRentals)
-            const withCollections = mergeById(withBest, mergeById(weddingFirstPage, soireeFirstPage))
-            writeToStorage(withCollections)
-            return withCollections
-          })
+          setProducts((prev) => mergeById(prev, mergeById(weddingFirstPage, soireeFirstPage)))
 
           setLoading(false)
+
+          const fullList = await fetchStage(`/api/products?limit=1000`)
+          setProducts((prev) => {
+            const merged = mergeById(prev, fullList)
+            writeToStorage(merged)
+            return merged
+          })
         } catch (error) {
           console.error("Error preloading products:", error)
           setLoading(false)
