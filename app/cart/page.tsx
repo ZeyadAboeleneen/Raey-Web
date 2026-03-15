@@ -22,7 +22,7 @@ export default function CartPage() {
   const router = useRouter()
   const { state, dispatch } = useCart()
   const { state: authState } = useAuth()
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -184,14 +184,14 @@ export default function CartPage() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-gray-600">
                       <span>{t("items")} ({state.items.length})</span>
-                      <span>{formatPrice(subtotal)}</span>
+                      {showPrices ? <span>{formatPrice(subtotal)}</span> : null}
                     </div>
 
                     <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
 
                     <div className="flex justify-between text-lg font-medium">
                       <span>{t("total")}</span>
-                      <span>{formatPrice(total)}</span>
+                      {showPrices ? <span>{formatPrice(total)}</span> : null}
                     </div>
 
                     <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />

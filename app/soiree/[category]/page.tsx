@@ -185,7 +185,7 @@ export default function SoireeCategoryPage() {
 
   const { dispatch: cartDispatch } = useCart()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -866,27 +866,37 @@ export default function SoireeCategoryPage() {
 
                                   {/* Bottom overlay with name, price and cart button */}
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                                    <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
-                                      {product.name}
-                                    </h3>
+                                    {showPrices ? (
+                                      <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
+                                        {product.name}
+                                      </h3>
+                                    ) : null}
 
                                     <div className="mt-0.5 flex items-center justify-between gap-2">
-                                      <div className="text-[11px] sm:text-xs">
-                                        {hasDiscount ? (
-                                          <>
-                                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
-                                              {formatPrice(originalPrice)}
-                                            </span>
+                                      {!showPrices ? (
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                            {product.name}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-[11px] sm:text-xs">
+                                          {hasDiscount ? (
+                                            <>
+                                              <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                                {formatPrice(originalPrice)}
+                                              </span>
+                                              <span className="text-xs sm:text-sm font-semibold">
+                                                {formatPrice(price)}
+                                              </span>
+                                            </>
+                                          ) : (
                                             <span className="text-xs sm:text-sm font-semibold">
                                               {formatPrice(price)}
                                             </span>
-                                          </>
-                                        ) : (
-                                          <span className="text-xs sm:text-sm font-semibold">
-                                            {formatPrice(price)}
-                                          </span>
-                                        )}
-                                      </div>
+                                          )}
+                                        </div>
+                                      )}
 
                                       <Button
                                         onClick={(e) => {

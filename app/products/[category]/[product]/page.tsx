@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
 
   const { dispatch } = useCart()
   const { state: favoritesState, addToFavorites, removeFromFavorites } = useFavorites()
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const {
@@ -696,55 +696,57 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-light text-left">
-                    {(() => {
-                      if (product.isGiftPackage && product.packagePrice) {
-                        const packagePrice = product.packagePrice
-                        const packageOriginalPrice = product.packageOriginalPrice || 0
-                        if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
-                          return (
-                            <div className="text-left space-y-2">
-                              <div className="flex flex-col items-start">
-                                <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
-                                <div className="flex items-center space-x-3">
-                                  <span className="line-through text-gray-400 text-lg">
-                                    {formatPrice(packageOriginalPrice)}
-                                  </span>
-                                  <span className="text-xl sm:text-2xl font-bold text-red-600">
-                                    {formatPrice(packagePrice)}
-                                  </span>
+                  {showPrices ? (
+                    <div className="text-2xl sm:text-3xl font-light text-left">
+                      {(() => {
+                        if (product.isGiftPackage && product.packagePrice) {
+                          const packagePrice = product.packagePrice
+                          const packageOriginalPrice = product.packageOriginalPrice || 0
+                          if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
+                            return (
+                              <div className="text-left space-y-2">
+                                <div className="flex flex-col items-start">
+                                  <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
+                                  <div className="flex items-center space-x-3">
+                                    <span className="line-through text-gray-400 text-lg">
+                                      {formatPrice(packageOriginalPrice)}
+                                    </span>
+                                    <span className="text-xl sm:text-2xl font-bold text-red-600">
+                                      {formatPrice(packagePrice)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                            )
+                          }
+                          return (
+                            <div className="text-left">
+                              <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
+                              <span className="text-xl sm:text-2xl font-bold ml-2 text-green-600">
+                                {formatPrice(packagePrice)}
+                              </span>
                             </div>
                           )
                         }
-                        return (
-                          <div className="text-left">
-                            <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
-                            <span className="text-xl sm:text-2xl font-bold ml-2 text-green-600">
-                              {formatPrice(packagePrice)}
-                            </span>
-                          </div>
-                        )
-                      }
-                      const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
-                      const selectedPrice = selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
-                      const originalPrice = selectedSizeObj?.originalPrice || 0
-                      if (originalPrice > 0 && selectedPrice < originalPrice) {
-                        return (
-                          <div className="flex items-center space-x-3">
-                            <span className="line-through text-gray-400 text-lg sm:text-2xl">
-                              {formatPrice(originalPrice || 0)}
-                            </span>
-                            <span className="text-red-600 font-bold text-xl sm:text-2xl">
-                              {formatPrice(selectedPrice)}
-                            </span>
-                          </div>
-                        )
-                      }
-                      return <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
-                    })()}
-                  </div>
+                        const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
+                        const selectedPrice = selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
+                        const originalPrice = selectedSizeObj?.originalPrice || 0
+                        if (originalPrice > 0 && selectedPrice < originalPrice) {
+                          return (
+                            <div className="flex items-center space-x-3">
+                              <span className="line-through text-gray-400 text-lg sm:text-2xl">
+                                {formatPrice(originalPrice || 0)}
+                              </span>
+                              <span className="text-red-600 font-bold text-xl sm:text-2xl">
+                                {formatPrice(selectedPrice)}
+                              </span>
+                            </div>
+                          )
+                        }
+                        return <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
+                      })()}
+                    </div>
+                  ) : null}
                 </div>
                 {/* Description */}
                 <div className="mb-6">

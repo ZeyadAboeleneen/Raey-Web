@@ -144,6 +144,8 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get("id")
     const category = searchParams.get("category")
     const collection = searchParams.get("collection")
+    const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
+    const searchWords = search.split(/\s+/).filter(Boolean)
     const isBestsellerParam = searchParams.get("isBestseller")
     const isNewParam = searchParams.get("isNew")
     const isGiftPackageParam = searchParams.get("isGiftPackage")
@@ -158,6 +160,7 @@ export async function GET(request: NextRequest) {
       !id &&
       !category &&
       !collection &&
+      !search &&
       isBestsellerParam === null &&
       isNewParam === null &&
       isGiftPackageParam === null &&
@@ -189,6 +192,11 @@ export async function GET(request: NextRequest) {
     if (!includeInactive || !isAdmin) where.isActive = true
     if (category) where.category = category
     if (collection) where.collection = collection
+    if (searchWords.length > 0) {
+      where.AND = searchWords.map(word => ({
+        name: { contains: word }
+      }))
+    }
     if (isBestsellerParam !== null) where.isBestseller = isBestsellerParam === "true"
     if (isNewParam !== null) where.isNew = isNewParam === "true"
     if (isGiftPackageParam !== null) where.isGiftPackage = isGiftPackageParam === "true"

@@ -115,9 +115,12 @@ export default function AdminDashboard() {
   const [productPage, setProductPage] = useState(1)
   const [productTotalPages, setProductTotalPages] = useState(1)
   const [productTotalCount, setProductTotalCount] = useState(0)
+  const [isSearching, setIsSearching] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  const productsPageCacheRef = useRef(new Map<number, Product[]>())
+  const productsPageCacheRef = useRef(new Map<string, Product[]>())
+  const [productSearchQuery, setProductSearchQuery] = useState("")
+  const [debouncedProductSearchQuery, setDebouncedProductSearchQuery] = useState("")
 
   const handleSignOut = () => {
     logout()
@@ -163,22 +166,41 @@ export default function AdminDashboard() {
   // DASHBOARD USES EGP ONLY - NO CURRENCY CONVERSION NEEDED
   // All prices in database are stored in EGP
 
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const trimmed = productSearchQuery.trim()
+      if (trimmed !== debouncedProductSearchQuery) {
+        setDebouncedProductSearchQuery(trimmed)
+      }
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [productSearchQuery, debouncedProductSearchQuery])
+
+  useEffect(() => {
+    setProductPage(1)
+    productsPageCacheRef.current.clear()
+  }, [debouncedProductSearchQuery])
+
   const fetchProductsPage = useCallback(async (page: number) => {
     try {
+      setIsSearching(true)
       const token = getAuthToken()
       const fetchOptions = {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store' as RequestCache,
       }
 
-      const cached = productsPageCacheRef.current.get(page)
+      const cacheKey = `${debouncedProductSearchQuery}::${page}`
+      const cached = productsPageCacheRef.current.get(cacheKey)
       if (cached) {
         setProducts(cached)
         return
       }
 
+      const searchParam = debouncedProductSearchQuery ? `&search=${encodeURIComponent(debouncedProductSearchQuery)}` : ""
+
       const response = await fetch(
-        `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`,
+        `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}${searchParam}`,
         fetchOptions
       )
 
@@ -190,15 +212,17 @@ export default function AdminDashboard() {
         if (totalCountHeader) setProductTotalCount(Number(totalCountHeader))
         if (totalPagesHeader) setProductTotalPages(Number(totalPagesHeader))
 
-        productsPageCacheRef.current.set(page, products)
+        productsPageCacheRef.current.set(cacheKey, products)
         setProducts(products)
       } else {
         console.error("❌ [Dashboard] Failed to fetch products:", response.status, response.statusText)
       }
     } catch (error) {
       console.error("Error fetching products:", error)
+    } finally {
+      setIsSearching(false)
     }
-  }, [authState.token])
+  }, [authState.token, debouncedProductSearchQuery])
 
   const fetchData = useCallback(async () => {
     try {
@@ -964,6 +988,32 @@ export default function AdminDashboard() {
                           Add Product
                         </Button>
                       </Link>
+                    </div>
+
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                      <div className="relative flex-1">
+                        <Input
+                          value={productSearchQuery}
+                          onChange={(e) => setProductSearchQuery(e.target.value)}
+                          placeholder="Search products by name..."
+                          className="pr-10"
+                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          {isSearching && (
+                            <RefreshCw className="h-4 w-4 animate-spin text-gray-400" />
+                          )}
+                          {productSearchQuery ? (
+                            <button
+                              type="button"
+                              onClick={() => setProductSearchQuery("")}
+                              className="text-gray-500 hover:text-gray-800"
+                              aria-label="Clear search"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 sm:p-6">

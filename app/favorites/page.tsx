@@ -47,7 +47,7 @@ const WHATSAPP_NUMBER = "201094448044"
 export default function FavoritesPage() {
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
   const { dispatch: cartDispatch } = useCart()
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -215,16 +215,18 @@ export default function FavoritesPage() {
               <div className="flex justify-between items-center py-4 border-t border-gray-100">
                 <div>
                   <span className="text-gray-600">{t("total")}:</span>
-                  <div className="text-xl font-medium ml-2">
-                    {(() => {
-                      if (selectedSize) {
-                        const uo = selectedSize.originalPrice || 0; const ud = selectedSize.discountedPrice || 0; const hd = uo > 0 && selectedSize.discountedPrice !== undefined && ud < uo; const tp = (hd ? ud : uo || ud) * quantity;
-                        if (hd) return (<><span className="line-through text-gray-400 mr-2 text-lg">{formatPrice(uo * quantity)}</span><span className="text-red-600 font-bold">{formatPrice(tp)}</span></>);
-                        return <>{formatPrice(tp)}</>
-                      }
-                      return <>{formatPrice(getSmallestPrice(selectedProduct.sizes || []) * quantity)}</>
-                    })()}
-                  </div>
+                  {showPrices ? (
+                    <div className="text-xl font-medium ml-2">
+                      {(() => {
+                        if (selectedSize) {
+                          const uo = selectedSize.originalPrice || 0; const ud = selectedSize.discountedPrice || 0; const hd = uo > 0 && selectedSize.discountedPrice !== undefined && ud < uo; const tp = (hd ? ud : uo || ud) * quantity;
+                          if (hd) return (<><span className="line-through text-gray-400 mr-2 text-lg">{formatPrice(uo * quantity)}</span><span className="text-red-600 font-bold">{formatPrice(tp)}</span></>);
+                          return <>{formatPrice(tp)}</>
+                        }
+                        return <>{formatPrice(getSmallestPrice(selectedProduct.sizes || []) * quantity)}</>
+                      })()}
+                    </div>
+                  ) : null}
                 </div>
                 <Button onClick={() => { if (selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCartWithSize(); return }; if (!isMeasurementsValid) { alert("Please complete your measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`rounded-full px-6 py-5 ${selectedProduct.isOutOfStock ? 'bg-gray-400 opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
                   <ShoppingCart className="h-4 w-4 mr-2" />{selectedProduct.isOutOfStock ? t("outOfStock") : selectedProduct.category !== "sell-dresses" ? t("rentNow") : t("buyNow")}
@@ -310,7 +312,7 @@ export default function FavoritesPage() {
                 <motion.div key={item.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: index * 0.1 }} className="relative h-full">
                   <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                     <CardContent className="p-0 h-full">
-                      <Link href={`/soiree/${item.category}/${item.id}`} className="block relative w-full h-full">
+                      <Link href={`/products/${item.category}/${item.id}`} className="block relative w-full h-full">
                         <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
                           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromFavorites(item.id) }} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200"><Heart className="h-4 w-4 text-red-500 fill-red-500" /></button>
@@ -321,11 +323,21 @@ export default function FavoritesPage() {
                           </div>
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                           <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                            <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{item.name}</h3>
+                            {showPrices ? (
+                              <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{item.name}</h3>
+                            ) : null}
                             <div className="mt-0.5 flex items-center justify-between gap-2">
-                              <div className="text-[11px] sm:text-xs">
-                                <span className="text-xs sm:text-sm font-semibold">{formatPrice(item.price)}</span>
-                              </div>
+                              {!showPrices ? (
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                    {item.name}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] sm:text-xs">
+                                  <span className="text-xs sm:text-sm font-semibold">{formatPrice(item.price)}</span>
+                                </div>
+                              )}
                               <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock}><ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
                             </div>
                           </div>

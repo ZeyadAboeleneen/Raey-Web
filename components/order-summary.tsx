@@ -70,7 +70,7 @@ export const OrderSummary = ({
   formError
 }: OrderSummaryProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
 
   return (
     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
@@ -166,20 +166,22 @@ export const OrderSummary = ({
                       </div>
                     )}
                   </div>
-                  <div className="text-sm font-medium text-right">
-                    {item.originalPrice && item.originalPrice > item.price ? (
-                      <>
-                        <div className="line-through text-gray-400 text-xs">
-                          {formatPrice(item.originalPrice * item.quantity)}
-                        </div>
-                        <div className="text-red-600 font-bold">
-                          {formatPrice(item.price * item.quantity)}
-                        </div>
-                      </>
-                    ) : (
-                      <div>{formatPrice(item.price * item.quantity)}</div>
-                    )}
-                  </div>
+                  {showPrices ? (
+                    <div className="text-sm font-medium text-right">
+                      {item.originalPrice && item.originalPrice > item.price ? (
+                        <>
+                          <div className="line-through text-gray-400 text-xs">
+                            {formatPrice(item.originalPrice * item.quantity)}
+                          </div>
+                          <div className="text-red-600 font-bold">
+                            {formatPrice(item.price * item.quantity)}
+                          </div>
+                        </>
+                      ) : (
+                        <div>{formatPrice(item.price * item.quantity)}</div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </motion.div>
@@ -245,20 +247,22 @@ export const OrderSummary = ({
                   </div>
                 )}
               </div>
-              <div className="text-sm font-medium text-right">
-                {item.originalPrice && item.originalPrice > item.price ? (
-                  <>
-                    <div className="line-through text-gray-400 text-xs">
-                      {formatPrice(item.originalPrice * item.quantity)}
-                    </div>
-                    <div className="text-red-600 font-bold">
-                      {formatPrice(item.price * item.quantity)}
-                    </div>
-                  </>
-                ) : (
-                  <div>{formatPrice(item.price * item.quantity)}</div>
-                )}
-              </div>
+              {showPrices ? (
+                <div className="text-sm font-medium text-right">
+                  {item.originalPrice && item.originalPrice > item.price ? (
+                    <>
+                      <div className="line-through text-gray-400 text-xs">
+                        {formatPrice(item.originalPrice * item.quantity)}
+                      </div>
+                      <div className="text-red-600 font-bold">
+                        {formatPrice(item.price * item.quantity)}
+                      </div>
+                    </>
+                  ) : (
+                    <div>{formatPrice(item.price * item.quantity)}</div>
+                  )}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -332,36 +336,38 @@ export const OrderSummary = ({
         <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
 
         {/* Pricing */}
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Subtotal</span>
-            <span>{formatPrice(subtotal)}</span>
-          </div>
-          {appliedDiscount && (
-            <div className="flex justify-between text-green-600">
-              <span>
-                Discount (
-                {appliedDiscount.type === "percentage"
-                  ? `${appliedDiscount.value}%`
-                  : appliedDiscount.type === "buyXgetX"
-                  ? `BUY ${appliedDiscount.buyX} GET ${appliedDiscount.getX}`
-                  : formatPrice(appliedDiscount.value)}
-                )
-              </span>
-              <span>-{formatPrice(appliedDiscount.discountAmount)}</span>
+        {showPrices ? (
+          <>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              {appliedDiscount && (
+                <div className="flex justify-between text-green-600">
+                  <span>
+                    Discount (
+                    {appliedDiscount.type === "percentage"
+                      ? `${appliedDiscount.value}%`
+                      : appliedDiscount.type === "buyXgetX"
+                      ? `BUY ${appliedDiscount.buyX} GET ${appliedDiscount.getX}`
+                      : formatPrice(appliedDiscount.value)}
+                    )
+                  </span>
+                  <span>-{formatPrice(appliedDiscount.discountAmount)}</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
-
-        <div className="flex justify-between text-lg font-medium">
-          <span>Total</span>
-          <span>{formatPrice(total)}</span>
-        </div>
-        <p className="mt-1 text-xs text-gray-500">
-          All prices include shipping.
-        </p>
+            <div className="flex justify-between text-lg font-medium">
+              <span>Total</span>
+              <span>{formatPrice(total)}</span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              All prices include shipping.
+            </p>
+          </>
+        ) : null}
 
         {/* Form Error Message */}
         {formError && (

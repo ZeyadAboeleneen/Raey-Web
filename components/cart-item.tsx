@@ -53,17 +53,17 @@ interface CartItemProps {
   }
   onQuantityChange: (id: string, quantity: number, availableStock?: number) => void
   onRemove: (id: string) => void
-  onMoveToWishlist?: (string: string) => void
+  onMoveToWishlist?: (id: string) => void
 }
 
-export const CartItem = ({ 
-  item, 
-  onQuantityChange, 
-  onRemove, 
+export function CartItem({
+  item,
+  onQuantityChange,
+  onRemove,
   onMoveToWishlist 
-}: CartItemProps) => {
+}: CartItemProps) {
   const [isRemoving, setIsRemoving] = useState(false)
-  const { formatPrice } = useCurrencyFormatter()
+  const { formatPrice, showPrices } = useCurrencyFormatter()
 
   const handleRemove = () => {
     setIsRemoving(true)
@@ -152,16 +152,18 @@ export const CartItem = ({
                     {item.size} ({item.volume})
                   </p>
                 )}
-                <div className="text-sm font-medium">
-                  {item.originalPrice && item.originalPrice > item.price ? (
-                    <>
-                      <span className="line-through text-gray-400 mr-2">{formatPrice(item.originalPrice)}</span>
-                      <span className="text-red-600 font-bold">{formatPrice(item.price)}</span>
-                    </>
-                  ) : (
-                    <>{formatPrice(item.price)}</>
-                  )}
-                </div>
+                {showPrices ? (
+                  <div className="text-sm font-medium">
+                    {item.originalPrice && item.originalPrice > item.price ? (
+                      <>
+                        <span className="line-through text-gray-400 mr-2">{formatPrice(item.originalPrice)}</span>
+                        <span className="text-red-600 font-bold">{formatPrice(item.price)}</span>
+                      </>
+                    ) : (
+                      <>{formatPrice(item.price)}</>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -189,9 +191,11 @@ export const CartItem = ({
               </div>
 
               <div className="flex items-center space-x-2">
-                <div className="text-right">
-                  <p className="font-medium text-sm">{formatPrice(item.price * item.quantity)}</p>
-                </div>
+                {showPrices ? (
+                  <div className="text-right">
+                    <p className="font-medium text-sm">{formatPrice(item.price * item.quantity)}</p>
+                  </div>
+                ) : null}
                 <div className="flex space-x-1">
                   {onMoveToWishlist && (
                     <Button
@@ -229,15 +233,15 @@ export const CartItem = ({
 
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-lg mb-1">{item.name}</h3>
-                              {item.isGiftPackage && item.packageDetails ? (
-                  <div className="text-gray-600 text-sm mb-2">
-                    <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
-                    {item.packageDetails.sizes.map((sizeInfo, index) => (
-                      <p key={index} className="text-gray-500 text-xs">
-                        • {sizeInfo.size} ({sizeInfo.volume}): {sizeInfo.selectedProduct.productName}
-                      </p>
-                    ))}
-                  </div>
+              {item.isGiftPackage && item.packageDetails ? (
+                <div className="text-gray-600 text-sm mb-2">
+                  <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
+                  {item.packageDetails.sizes.map((sizeInfo, index) => (
+                    <p key={index} className="text-gray-500 text-xs">
+                      • {sizeInfo.size} ({sizeInfo.volume}): {sizeInfo.selectedProduct.productName}
+                    </p>
+                  ))}
+                </div>
               ) : item.isGiftPackage && item.selectedProduct ? (
                 <p className="text-gray-600 text-sm mb-2">
                   {item.size} ({item.volume}) - {item.selectedProduct.productName}
@@ -247,16 +251,18 @@ export const CartItem = ({
                   {item.size} ({item.volume})
                 </p>
               )}
-              <div className="text-lg font-light">
-                {item.originalPrice && item.originalPrice > item.price ? (
-                  <>
-                    <span className="line-through text-gray-400 mr-2 text-base">{formatPrice(item.originalPrice)}</span>
-                    <span className="text-red-600 font-bold">{formatPrice(item.price)}</span>
-                  </>
-                ) : (
-                  <>{formatPrice(item.price)}</>
-                )}
-              </div>
+              {showPrices ? (
+                <div className="text-lg font-light">
+                  {item.originalPrice && item.originalPrice > item.price ? (
+                    <>
+                      <span className="line-through text-gray-400 mr-2 text-base">{formatPrice(item.originalPrice)}</span>
+                      <span className="text-red-600 font-bold">{formatPrice(item.price)}</span>
+                    </>
+                  ) : (
+                    <>{formatPrice(item.price)}</>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center space-x-3">
@@ -281,7 +287,9 @@ export const CartItem = ({
             </div>
 
             <div className="text-right">
-              <p className="font-medium text-lg mb-2">{formatPrice(item.price * item.quantity)}</p>
+              {showPrices ? (
+                <p className="font-medium text-lg mb-2">{formatPrice(item.price * item.quantity)}</p>
+              ) : null}
               <div className="flex space-x-2">
                 {onMoveToWishlist && (
                   <Button

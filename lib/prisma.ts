@@ -18,7 +18,7 @@ function buildDatasourceUrl(): string {
     // Only add pool params if they aren't already present
     if (base.includes("connection_limit")) return base
     const separator = base.includes("?") ? "&" : "?"
-    return `${base}${separator}connection_limit=5&pool_timeout=30&connect_timeout=30`
+    return `${base}${separator}connection_limit=3&pool_timeout=60&connect_timeout=60`
 }
 
 export const prisma =

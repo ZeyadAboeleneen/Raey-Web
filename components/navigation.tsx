@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Menu, X, Heart, LogOut, Settings, ChevronDown, Search, ChevronRight, Facebook, Globe } from "lucide-react"
@@ -27,6 +27,7 @@ export function Navigation() {
   const { state: authState, logout } = useAuth()
   const { state: favoritesState } = useFavorites()
   const pathname = usePathname()
+  const router = useRouter()
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
   const t = useTranslation(settings.language)
   const [menuCollectionMode, setMenuCollectionMode] = useState<"wedding" | "soiree">(
@@ -431,12 +432,16 @@ export function Navigation() {
                   {/* Quick Switches */}
                   <div className="py-4 border-b border-gray-200">
                     {/* Mobile: segmented selector */}
-                    <div className="md:hidden">
+                    <div>
                       <div className="rounded-2xl bg-gray-50 p-3">
                         <div className="flex w-full items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-sm">
                           <button
                             type="button"
-                            onClick={() => setMenuCollectionMode("wedding")}
+                            onClick={() => {
+                              setMenuCollectionMode("wedding")
+                              setIsOpen(false)
+                              router.push("/wedding")
+                            }}
                             className={`flex-1 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide uppercase transition-all ${menuCollectionMode === "wedding" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-50"}`}
                             style={{ letterSpacing: '0.08em' }}
                           >
@@ -444,52 +449,29 @@ export function Navigation() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setMenuCollectionMode("soiree")}
+                            onClick={() => {
+                              setMenuCollectionMode("soiree")
+                              setIsOpen(false)
+                              router.push("/soiree")
+                            }}
                             className={`flex-1 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide uppercase transition-all ${menuCollectionMode === "soiree" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-50"}`}
                             style={{ letterSpacing: '0.08em' }}
                           >
-                            {(() => {
-                              const [l1, l2] = splitToTwoLines(t("soireeCollectionsTitle"))
-                              return (
-                                <span className="flex flex-col items-center leading-tight">
-                                  <span>{l1}</span>
-                                  {l2 ? <span>{l2}</span> : null}
-                                </span>
-                              )
-                            })()}
+                            <span className="hidden md:inline">{t("soireeCollectionsTitle")}</span>
+                            <span className="md:hidden">
+                              {(() => {
+                                const [l1, l2] = splitToTwoLines(t("soireeCollectionsTitle"))
+                                return (
+                                  <span className="flex flex-col items-center leading-tight">
+                                    <span>{l1}</span>
+                                    {l2 ? <span>{l2}</span> : null}
+                                  </span>
+                                )
+                              })()}
+                            </span>
                           </button>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Desktop: original links */}
-                    <div className="hidden md:block">
-                      <Link
-                        href="/wedding"
-                        className="flex items-center justify-between py-4 border-b border-gray-100 bg-rose-50/50 hover:bg-rose-50 transition-colors"
-                        onClick={() => {
-                          setMenuCollectionMode("wedding")
-                          setIsOpen(false)
-                        }}
-                      >
-                        <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
-                          {t("weddingCollectionsTitle")}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-rose-500" />
-                      </Link>
-                      <Link
-                        href="/soiree/products"
-                        className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
-                        onClick={() => {
-                          setMenuCollectionMode("soiree")
-                          setIsOpen(false)
-                        }}
-                      >
-                        <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
-                          {t("soireeCollectionsTitle")}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-rose-500" />
-                      </Link>
                     </div>
                   </div>
 

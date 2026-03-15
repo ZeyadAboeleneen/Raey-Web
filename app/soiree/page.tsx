@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -162,9 +163,10 @@ export default function SoireePage() {
 
   const { dispatch: cartDispatch } = useCart()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
-  const { formatPrice } = useCurrencyFormatter()
+  const router = useRouter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+  const { formatPrice, showPrices } = useCurrencyFormatter()
 
   const sizeChart: SizeChartRow[] = [
     { label: "XL", shoulderIn: "16", waistIn: "32", bustIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", bustCm: "101", hipsCm: "106", sleeveCm: "58" },
@@ -447,18 +449,28 @@ export default function SoireePage() {
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                  <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
+                  {showPrices ? (
+                    <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
+                  ) : null}
                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <div className="text-[11px] sm:text-xs">
-                      {hasDiscount ? (
-                        <>
-                          <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>
+                    {!showPrices ? (
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                          {product.name}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] sm:text-xs">
+                        {hasDiscount ? (
+                          <>
+                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>
+                            <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                          </>
+                        ) : (
                           <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
-                        </>
-                      ) : (
-                        <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                     <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock}>
                       <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
                     </Button>
