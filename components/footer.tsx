@@ -20,7 +20,7 @@ export function Footer() {
     if (pathname.startsWith('/wedding')) {
       return '/wedding';
     }
-    return '/products';
+    return '/soiree/products';
   };
 
   const getCollectionLink = (collectionSlug: string) => {
@@ -30,7 +30,7 @@ export function Footer() {
     if (pathname.startsWith('/wedding')) {
       return `/wedding/${collectionSlug}`;
     }
-    return `/products/${collectionSlug}`;
+    return `/soiree/${collectionSlug}`;
   };
 
   return (

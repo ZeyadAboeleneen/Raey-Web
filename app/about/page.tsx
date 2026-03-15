@@ -173,7 +173,7 @@ export default function AboutPage() {
             <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
               {t("experienceDesc")}
             </p>
-            <Link href="/products">
+            <Link href="/soiree/products">
               <Button size="lg" className="bg-black text-white hover:bg-gray-800 px-8 py-3">
                 {t("exploreCollectionsButton")}
               </Button>

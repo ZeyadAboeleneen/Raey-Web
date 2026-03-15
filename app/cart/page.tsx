@@ -6,10 +6,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ShoppingBag, ArrowLeft, Package, Truck, Sparkles, UserPlus } from "lucide-react"
+import { ShoppingBag, ArrowLeft, Package, Sparkles, UserPlus } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/auth-context"
@@ -21,20 +20,15 @@ import { useTranslation } from "@/lib/translations"
 
 export default function CartPage() {
   const router = useRouter()
-
-  useEffect(() => {
-    router.replace("/")
-  }, [router])
-
-  // Page disabled: immediately redirect to home
-  return null
-
   const { state, dispatch } = useCart()
   const { state: authState } = useAuth()
   const { formatPrice } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
-  
+
+  useEffect(() => {
+    // router.replace("/") // Disabled redirect to allow cart viewing
+  }, [router])
 
   const subtotal = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const total = subtotal 
@@ -79,7 +73,7 @@ export default function CartPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5 }}
               >
-                <Link href="/products">
+                <Link href="/soiree/products">
                   <Button className={`bg-black text-white hover:bg-gray-800 rounded-full px-8 py-6 relative overflow-hidden group ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                     <span className="relative z-10">{t("continueShopping")}</span>
                     <motion.span 
@@ -104,17 +98,16 @@ export default function CartPage() {
 
       <section className="pt-28 md:pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6">
-          {/* Progress Indicator */}
           <CheckoutProgress currentStep={1} />
           
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="mb-8"
           >
             <Link
-              href="/products"
+              href="/soiree/products"
               className={`inline-flex items-center text-gray-600 hover:text-black mb-6 transition-colors text-sm sm:text-base ${settings.language === "ar" ? "flex-row-reverse" : ""}`}
             >
               <ArrowLeft className={`h-4 w-4 ${settings.language === "ar" ? "ml-2 rotate-180" : "mr-2"}`} />
@@ -128,11 +121,10 @@ export default function CartPage() {
               className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mb-4 rounded-full"
             />
             <p className="text-gray-600 text-sm sm:text-base">
-              {state.items.length} item{state.items.length !== 1 ? "s" : ""} in your cart
+              {state.items.length === 1 ? t("itemInCart") : t("itemsInCart", { count: state.items.length })}
             </p>
           </motion.div>
 
-          {/* Sign Up Prompt for Non-Authenticated Users */}
           {!authState.isAuthenticated && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -145,7 +137,7 @@ export default function CartPage() {
                 <AlertDescription className="text-gray-700">
                   <div className={`flex items-center justify-between flex-wrap gap-3 ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                     <span className="text-sm sm:text-base">
-                      Sign up to easily track your orders and enjoy a better shopping experience!
+                      {t("signUpPrompt")}
                     </span>
                     <Link href="/auth/register?redirect=/cart">
                       <Button 
@@ -162,7 +154,6 @@ export default function CartPage() {
           )}
 
           <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {/* Cart Items */}
             <div className="lg:col-span-2">
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
@@ -181,51 +172,25 @@ export default function CartPage() {
               </motion.div>
             </div>
 
-            {/* Order Summary */}
             <div className="lg:col-span-1">
               <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
                 <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 sticky top-24 relative overflow-hidden">
-                  <motion.div 
-                    className="absolute -inset-4 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg -z-10"
-                    animate={{
-                      rotate: [0, 1, 0, -1, 0],
-                    }}
-                    transition={{
-                      duration: 6,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  />
-                  <motion.div 
-                    className="absolute -inset-2 bg-gradient-to-r from-purple-300/30 to-pink-300/30 rounded-lg -z-10"
-                    animate={{
-                      rotate: [0, -0.5, 0, 0.5, 0],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  />
                   <CardHeader className="pb-4">
                     <CardTitle className={`text-lg sm:text-xl font-light flex items-center ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                       <Package className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
-                      {t("orderSummary") || "Order Summary"}
+                      {t("orderSummary")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Item Count */}
                     <div className="flex items-center justify-between text-sm text-gray-600">
-                      <span>Items ({state.items.length})</span>
+                      <span>{t("items")} ({state.items.length})</span>
                       <span>{formatPrice(subtotal)}</span>
                     </div>
 
                     <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
 
-                    <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
-
                     <div className="flex justify-between text-lg font-medium">
-                      <span>Total</span>
+                      <span>{t("total")}</span>
                       <span>{formatPrice(total)}</span>
                     </div>
 
@@ -233,11 +198,11 @@ export default function CartPage() {
 
                     {!authState.isAuthenticated && (
                       <Alert className="bg-purple-50 border-purple-200">
-                        <AlertDescription className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <span>Sign up first to easily track your order and enjoy a smoother checkout experience.</span>
+                        <AlertDescription className="text-sm flex flex-col gap-3">
+                          <span>{t("signUpFirst")}</span>
                           <Link href="/auth/register?redirect=/cart">
-                            <Button variant="outline" size="sm" className="rounded-full">
-                              Go to Sign Up
+                            <Button variant="outline" size="sm" className="rounded-full w-full">
+                              {t("goToSignUp")}
                             </Button>
                           </Link>
                         </AlertDescription>
@@ -256,10 +221,9 @@ export default function CartPage() {
                       </Button>
                     </Link>
 
-                    {/* Additional Info */}
                     <div className="text-center text-xs sm:text-sm text-gray-600 space-y-1">
-                      <p>All prices include shipping.</p>
-                      <p>Secure checkout</p>
+                      <p>{t("allPricesIncludeShipping")}</p>
+                      <p>{t("secureCheckout")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -269,7 +233,6 @@ export default function CartPage() {
         </div>
       </section>
 
-      {/* Decorative floating elements */}
       <motion.div
         animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
         transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}

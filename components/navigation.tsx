@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Menu, X, Heart, LogOut, Settings, ChevronDown, Search, ChevronRight, Facebook } from "lucide-react"
+import { Menu, X, Heart, LogOut, Settings, ChevronDown, Search, ChevronRight, Facebook, Globe } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useFavorites } from "@/lib/favorites-context"
 import { useScroll } from "@/lib/scroll-context"
@@ -29,6 +29,16 @@ export function Navigation() {
   const pathname = usePathname()
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
   const t = useTranslation(settings.language)
+  const [menuCollectionMode, setMenuCollectionMode] = useState<"wedding" | "soiree">(
+    pathname.startsWith("/wedding") ? "wedding" : "soiree"
+  )
+
+  const splitToTwoLines = (text: string): [string, string?] => {
+    const normalized = (text || "").trim()
+    const idx = normalized.indexOf(" ")
+    if (idx === -1) return [normalized]
+    return [normalized.slice(0, idx), normalized.slice(idx + 1)]
+  }
 
   // Check if we're on a page that should have a transparent-to-white header
   const isTransparentPage = pathname === "/" || pathname === "/wedding" || pathname === "/soiree"
@@ -204,24 +214,22 @@ export function Navigation() {
   }
 
   const getCollectionsLink = () => {
-    if (pathname.startsWith('/soiree')) {
-      return '/soiree/products';
-    }
-    if (pathname.startsWith('/wedding')) {
-      return '/wedding/products';
-    }
-    return '/products';
+    return menuCollectionMode === "wedding" ? "/wedding/products" : "/soiree/products"
   };
 
   const getCollectionLink = (collectionSlug: string) => {
-    if (pathname.startsWith('/soiree')) {
-      return `/soiree/${collectionSlug}`;
-    }
-    if (pathname.startsWith('/wedding')) {
-      return `/wedding/${collectionSlug}`;
-    }
-    return `/products/${collectionSlug}`;
+    return menuCollectionMode === "wedding" ? `/wedding/${collectionSlug}` : `/soiree/${collectionSlug}`
   };
+
+  useEffect(() => {
+    if (pathname.startsWith("/wedding")) {
+      setMenuCollectionMode("wedding")
+      return
+    }
+    if (pathname.startsWith("/soiree")) {
+      setMenuCollectionMode("soiree")
+    }
+  }, [pathname])
 
   // Show loading state while auth is initializing
   if (authState.isLoading) {
@@ -242,6 +250,11 @@ export function Navigation() {
         </div>
       </nav>
     )
+  }
+
+  const toggleLanguage = async () => {
+    const newLang = settings.language === "en" ? "ar" : "en"
+    await setSettings(settings.countryCode, newLang)
   }
 
   const logoColors = getLogoTextColors()
@@ -302,6 +315,18 @@ export function Navigation() {
 
           {/* Right Side Icons */}
           <div className="flex justify-end items-center space-x-2 md:space-x-4">
+            {/* Language Switcher */}
+            <button
+              onClick={toggleLanguage}
+              className={`p-2 transition-colors flex items-center space-x-1 ${getIconColors()}`}
+              title={settings.language === "en" ? "Switch to Arabic" : "Switch to English"}
+            >
+              <Globe className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="text-xs md:text-sm font-medium">
+                {settings.language === "en" ? "AR" : "EN"}
+              </span>
+            </button>
+
             {/* Favorites */}
             <Link
               href="/favorites"
@@ -371,15 +396,24 @@ export function Navigation() {
                       <Image
                         src="/raey-logo-black.png"
                         alt="Raey"
-                        width={260}
-                        height={52}
-                        className="h-10 w-auto"
+                        width={864}
+                        height={288}
+                        className="h-24 w-auto"
                         style={{ objectFit: 'contain' }}
                       />
                     </Link>
 
                     {/* Right Icons */}
                     <div className="flex items-center space-x-4">
+                      <button
+                        onClick={toggleLanguage}
+                        className="p-2 transition-colors flex items-center space-x-1 text-black"
+                      >
+                        <Globe className="h-5 w-5" />
+                        <span className="text-sm font-medium">
+                          {settings.language === "en" ? "AR" : "EN"}
+                        </span>
+                      </button>
                       <Link href="/favorites" onClick={() => setIsOpen(false)} className="relative p-1">
                         <Heart className="h-5 w-5 text-black" />
                         {favoritesState.count > 0 && (
@@ -395,26 +429,69 @@ export function Navigation() {
                 {/* Menu Content */}
                 <div className="px-6 py-6 pb-24 space-y-0">
                   {/* Quick Switches */}
-                  <Link
-                    href="/wedding"
-                    className="flex items-center justify-between py-4 border-b border-gray-100 bg-rose-50/50 hover:bg-rose-50 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
-                      WEDDING COLLECTION
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-rose-500" />
-                  </Link>
-                  <Link
-                    href="/soiree/products"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
-                      SOIREE COLLECTION
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-rose-500" />
-                  </Link>
+                  <div className="py-4 border-b border-gray-200">
+                    {/* Mobile: segmented selector */}
+                    <div className="md:hidden">
+                      <div className="rounded-2xl bg-gray-50 p-3">
+                        <div className="flex w-full items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setMenuCollectionMode("wedding")}
+                            className={`flex-1 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide uppercase transition-all ${menuCollectionMode === "wedding" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-50"}`}
+                            style={{ letterSpacing: '0.08em' }}
+                          >
+                            {t("weddingCollectionsTitle")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMenuCollectionMode("soiree")}
+                            className={`flex-1 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide uppercase transition-all ${menuCollectionMode === "soiree" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-50"}`}
+                            style={{ letterSpacing: '0.08em' }}
+                          >
+                            {(() => {
+                              const [l1, l2] = splitToTwoLines(t("soireeCollectionsTitle"))
+                              return (
+                                <span className="flex flex-col items-center leading-tight">
+                                  <span>{l1}</span>
+                                  {l2 ? <span>{l2}</span> : null}
+                                </span>
+                              )
+                            })()}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desktop: original links */}
+                    <div className="hidden md:block">
+                      <Link
+                        href="/wedding"
+                        className="flex items-center justify-between py-4 border-b border-gray-100 bg-rose-50/50 hover:bg-rose-50 transition-colors"
+                        onClick={() => {
+                          setMenuCollectionMode("wedding")
+                          setIsOpen(false)
+                        }}
+                      >
+                        <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
+                          {t("weddingCollectionsTitle")}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-rose-500" />
+                      </Link>
+                      <Link
+                        href="/soiree/products"
+                        className="flex items-center justify-between py-4 border-b border-gray-200 bg-rose-50/50 hover:bg-rose-50 transition-colors"
+                        onClick={() => {
+                          setMenuCollectionMode("soiree")
+                          setIsOpen(false)
+                        }}
+                      >
+                        <span className="text-sm font-semibold tracking-wide text-rose-700 uppercase" style={{ letterSpacing: '0.1em' }}>
+                          {t("soireeCollectionsTitle")}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-rose-500" />
+                      </Link>
+                    </div>
+                  </div>
 
                   {/* Main Navigation */}
 
@@ -502,13 +579,6 @@ export function Navigation() {
                   </Link>
 
                   {/* Currency/Locale Selector */}
-                  <div ref={currencySelectorRef} className="border-t border-gray-200 pt-3">
-                    <div className="flex items-center justify-between w-full py-3">
-                      <span className="text-sm font-light text-gray-600">
-                        EGP | Egypt
-                      </span>
-                    </div>
-                  </div>
 
                   {/* Social Media Links */}
                   <div className="flex items-center space-x-4 pt-2 border-t border-gray-200">

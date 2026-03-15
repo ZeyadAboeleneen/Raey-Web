@@ -1,9 +1,21 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { useLocale } from "@/lib/locale-context"
+import { useTranslation } from "@/lib/translations"
 
 export default function HomePage() {
+  const router = useRouter()
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
+
+  // Pre-navigation handler to make it feel instant
+  const handleNavigation = (href: string) => {
+    router.push(href)
+  }
+
   return (
     <div className="fixed inset-0 h-[100dvh] w-full overflow-hidden bg-black z-0">
       <Navigation />
@@ -11,8 +23,8 @@ export default function HomePage() {
       {/* Hero Section - 50/50 Vertical Split Screen */}
       <section className="absolute inset-0 h-[100dvh] flex flex-col md:flex-row w-full overflow-hidden">
         {/* Left Panel - Wedding Collection */}
-        <Link
-          href="/wedding"
+        <div
+          onClick={() => handleNavigation("/wedding")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           {/* Background Image with CSS zoom via group-hover */}
@@ -25,14 +37,14 @@ export default function HomePage() {
           {/* Text */}
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white uppercase tracking-[0.2em] leading-tight drop-shadow-2xl">
-              Wedding<br />Collection
+              {t("weddingCollectionsTitle")}
             </h1>
           </div>
-        </Link>
+        </div>
 
         {/* Right Panel - Soiree Collection */}
-        <Link
-          href="/soiree"
+        <div
+          onClick={() => handleNavigation("/soiree")}
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           {/* Background Image with CSS zoom via group-hover */}
@@ -45,10 +57,10 @@ export default function HomePage() {
           {/* Text */}
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white uppercase tracking-[0.2em] leading-tight drop-shadow-2xl">
-              Soiree<br />Collection
+              {t("soireeCollectionsTitle")}
             </h1>
           </div>
-        </Link>
+        </div>
       </section>
     </div>
   )

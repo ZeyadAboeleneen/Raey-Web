@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5 }}
               >
-                <Link href="/products">
+                <Link href="/soiree/products">
                   <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-8 py-6 relative overflow-hidden group">
                     <span className="relative z-10">Continue Shopping</span>
                     <motion.span

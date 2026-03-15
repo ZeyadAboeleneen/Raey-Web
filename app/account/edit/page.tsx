@@ -50,8 +50,8 @@ export default function EditProfilePage() {
     if (authState.user) {
       setFormData((prev) => ({
         ...prev,
-        name: authState.user.name,
-        email: authState.user.email,
+        name: authState.user?.name || "",
+        email: authState.user?.email || "",
       }))
     }
   }, [authState, router])

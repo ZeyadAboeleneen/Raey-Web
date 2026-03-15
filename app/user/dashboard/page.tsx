@@ -99,7 +99,7 @@ export default function UserDashboard() {
                 <h1 className="text-3xl font-light tracking-wider mb-2">My Dashboard</h1>
                 <p className="text-gray-600">Welcome back, {authState.user?.name}</p>
               </div>
-              <Link href="/products">
+              <Link href="/soiree/products">
                 <Button className="bg-black text-white hover:bg-gray-800">
                   <ShoppingCart className="mr-2 h-4 w-4" />
                   Continue Shopping
@@ -224,7 +224,7 @@ export default function UserDashboard() {
                     <div className="text-center py-8">
                       <Package className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                       <p className="text-gray-600 mb-4">No orders yet</p>
-                      <Link href="/products">
+                      <Link href="/soiree/products">
                         <Button className="bg-black text-white hover:bg-gray-800">Start Shopping</Button>
                       </Link>
                     </div>

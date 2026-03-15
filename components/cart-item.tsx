@@ -15,7 +15,7 @@ interface CartItemProps {
     price: number
     originalPrice?: number
     size: string
-    volume: string
+    volume?: string
     quantity: number
     image?: string
     stockCount?: number
@@ -28,7 +28,7 @@ interface CartItemProps {
     }
     selectedProducts?: Array<{
       size: string
-      volume: string
+      volume?: string
       selectedProduct: {
         productId: string
         productName: string
@@ -41,7 +41,7 @@ interface CartItemProps {
       packagePrice: number
       sizes: Array<{
         size: string
-        volume: string
+        volume?: string
         selectedProduct: {
           productId: string
           productName: string

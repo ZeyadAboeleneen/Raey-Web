@@ -155,7 +155,7 @@ export function HomePageContent() {
         event.preventDefault()
         const email = newsletterEmail.trim()
         if (!email) {
-            toast({ title: t("stayUpdated"), description: "Please enter a valid email address." })
+            toast({ title: t("stayUpdated"), description: t("enterValidEmail") })
             return
         }
         try {
@@ -167,19 +167,19 @@ export function HomePageContent() {
             })
             const data = await response.json().catch(() => null)
             if (!response.ok || (data && data.error)) {
-                toast({ title: t("stayUpdated"), description: (data && data.error) || "Failed to subscribe. Please try again." })
+                toast({ title: t("stayUpdated"), description: (data && data.error) || t("newsletterError") })
                 return
             }
             setNewsletterEmail("")
             toast({
                 title: t("stayUpdated"),
                 description: data && data.alreadySubscribed
-                    ? "You are already subscribed to our offers."
-                    : "You have been subscribed. We will email you future offers.",
+                    ? t("newsletterAlreadySubscribed")
+                    : t("newsletterSuccess"),
             })
         } catch (error) {
             console.error("Newsletter subscribe error:", error)
-            toast({ title: t("stayUpdated"), description: "Failed to subscribe. Please try again." })
+            toast({ title: t("stayUpdated"), description: t("newsletterError") })
         } finally {
             setIsSubscribing(false)
         }
@@ -416,7 +416,7 @@ export function HomePageContent() {
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                                            <p className="text-gray-600 text-sm">Select your preferred size</p>
+                                            <p className="text-gray-600 text-sm">{t("selectSize")}</p>
                                         </div>
                                         <div className="flex">
                                             <button
@@ -472,7 +472,7 @@ export function HomePageContent() {
                                         />
                                         {isCustomSizeMode && selectedProduct && isRentCategory(selectedProduct.category) && (
                                             <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                                <p className="mb-2 font-medium">Select your occasion date</p>
+                                                <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
                                                 <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
                                             </div>
                                         )}
@@ -530,27 +530,27 @@ export function HomePageContent() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
                             <AlertCircle className="h-5 w-5 text-amber-500" />
-                            Confirm Your Custom Size
+                            {t("confirmCustomSize")}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="space-y-2 pt-2">
-                            <p>These are the custom measurements we will use for this gown. Please review them carefully:</p>
+                            <p>{t("confirmCustomSizeDesc")}</p>
                             <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
                                 <div className="grid grid-cols-2 gap-2">
-                                    <span><strong>Shoulder:</strong> {measurements.shoulder} {measurementUnit}</span>
-                                    <span><strong>Bust:</strong> {measurements.bust} {measurementUnit}</span>
-                                    <span><strong>Waist:</strong> {measurements.waist} {measurementUnit}</span>
-                                    <span><strong>Hips:</strong> {measurements.hips} {measurementUnit}</span>
-                                    <span><strong>Sleeve:</strong> {measurements.sleeve} {measurementUnit}</span>
-                                    <span><strong>Length:</strong> {measurements.length} {measurementUnit}</span>
+                                    <span><strong>{t("shoulder")}:</strong> {measurements.shoulder} {measurementUnit}</span>
+                                    <span><strong>{t("bust")}:</strong> {measurements.bust} {measurementUnit}</span>
+                                    <span><strong>{t("waist")}:</strong> {measurements.waist} {measurementUnit}</span>
+                                    <span><strong>{t("hips")}:</strong> {measurements.hips} {measurementUnit}</span>
+                                    <span><strong>{t("sleeve")}:</strong> {measurements.sleeve} {measurementUnit}</span>
+                                    <span><strong>{t("length")}:</strong> {measurements.length} {measurementUnit}</span>
                                 </div>
                             </div>
-                            <p className="text-amber-600 font-medium">If anything looks incorrect, choose "Review Again" to adjust your measurements before sending your order via WhatsApp.</p>
+                            <p className="text-amber-600 font-medium">{t("ifAnythingIncorrect")}</p>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>Review Again</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { addToCart(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">
-                            Confirm & Send on WhatsApp
+                            {t("confirmAndSendWhatsApp")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -580,20 +580,20 @@ export function HomePageContent() {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <p className="text-xs sm:text-sm tracking-[0.35em] uppercase text-rose-200 mb-4">Raey · Soiree Dresses</p>
+                        <p className="text-xs sm:text-sm tracking-[0.35em] uppercase text-rose-200 mb-4">{t("heroSubtitle")}</p>
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-white mb-4 leading-tight">
-                            Rent or buy your perfect dress for every occasion.
+                            {t("heroTitle")}
                         </h1>
                         <p className="text-sm sm:text-base text-gray-200 max-w-2xl mx-auto mb-6">
-                            Curated collections of evening dresses, gowns and outfits styled for your special moments.
+                            {t("heroDescription")}
                         </p>
                         <Button onClick={scrollToCollections} className="bg-rose-400 text-white hover:bg-rose-500 rounded-full px-6 py-3 text-sm sm:text-base inline-flex items-center justify-center">
-                            <span>Browse collections</span>
+                            <span>{t("browseCollections")}</span>
                             <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
                         <div className="mt-4 flex justify-center">
                             <Button variant="outline" onClick={scrollToBestSellers} className="border-black text-black hover:bg-black hover:text-white bg-white rounded-full px-6 py-3 sm:py-4 text-xs sm:text-sm group relative overflow-hidden inline-flex items-center justify-center">
-                                <span className="relative z-10">View Best Rental</span>
+                                <span className="relative z-10">{t("viewBestRental")}</span>
                                 <ArrowRight className="ml-2 h-4 w-4 relative z-10 text-rose-400" />
                                 <motion.span className="absolute inset-0 bg-black opacity-0 group-hover:opacity-100" initial={{ x: "-100%" }} whileHover={{ x: 0 }} transition={{ duration: 0.2 }} />
                             </Button>
@@ -606,7 +606,7 @@ export function HomePageContent() {
             <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-10 sm:py-12 bg-rose-50 overflow-hidden">
                 <div className="container mx-auto px-4 sm:px-6">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="max-w-2xl mx-auto text-center space-y-4">
-                        <p className="text-[10px] sm:text-xs tracking-[0.35em] uppercase text-rose-600">Raey evenings</p>
+                        <p className="text-[10px] sm:text-xs tracking-[0.35em] uppercase text-rose-600">{t("raeyEvenings")}</p>
                         <div className="flex flex-col items-center gap-3">
                             <div className="relative inline-flex h-9 sm:h-11 overflow-hidden">
                                 <AnimatePresence mode="wait">
@@ -627,11 +627,11 @@ export function HomePageContent() {
                             </div>
                         </div>
                         <motion.p className="text-xs sm:text-sm text-rose-900/90 max-w-xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.25 }} viewport={{ once: true }}>
-                            Choose how you want to glow tonight and we'll surface gowns made for that moment.
+                            {t("moodDescription")}
                         </motion.p>
                         <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }} viewport={{ once: true }} className="pt-1 flex justify-center">
                             <Button onClick={scrollToCollections} className="bg-white text-rose-600 hover:bg-rose-100 rounded-full px-6 py-3 text-sm sm:text-base inline-flex items-center justify-center relative overflow-hidden group border border-rose-200">
-                                <span className="relative z-10">Find my dress</span>
+                                <span className="relative z-10">{t("findMyDress")}</span>
                                 <ArrowRight className="ml-2 h-5 w-5 relative z-10 text-rose-500" />
                                 <motion.span className="absolute inset-0 bg-gradient-to-r from-rose-100 via-rose-200 to-rose-100 opacity-0 group-hover:opacity-100" initial={{ x: "-100%" }} whileHover={{ x: 0 }} transition={{ duration: 0.2 }} />
                             </Button>
@@ -644,13 +644,13 @@ export function HomePageContent() {
             <motion.section ref={bestSellersRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-white overflow-hidden">
                 <div className="container mx-auto px-6">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Discover the most-loved gowns available to rent across all Raey collections.</p>
+                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
                     </motion.div>
                     {bestSellersLoading ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best rentals...</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">{t("loadingBestRentals")}</div>
                     ) : bestSellersRent.length === 0 ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best rentals to show yet.</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
                             {bestSellersRent.slice(0, 8).map((product, index) => {
@@ -701,13 +701,13 @@ export function HomePageContent() {
             <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-rose-50 overflow-hidden">
                 <div className="container mx-auto px-6">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">Best Rental</h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Customer favorites you can make part of your wardrobe from the Sell Dresses collection.</p>
+                        <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalSellDesc")}</p>
                     </motion.div>
                     {bestSellersLoading ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">Loading best rentals...</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">{t("loadingBestRentals")}</div>
                     ) : bestSellersSell.length === 0 ? (
-                        <div className="flex justify-center py-10 text-gray-500 text-sm">No best rentals to show yet.</div>
+                        <div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
                             {bestSellersSell.slice(0, 8).map((product, index) => {
@@ -760,7 +760,7 @@ export function HomePageContent() {
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} viewport={{ once: true }} className="text-center mb-16">
                         <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("collectionsTitle")}</h2>
                         <motion.div initial={{ width: 0 }} whileInView={{ width: "100px" }} transition={{ duration: 0.3, delay: 0.2 }} viewport={{ once: true }} className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mx-auto my-6 rounded-full" />
-                        <p className="text-gray-600 max-w-2xl mx-auto">Explore our curated collections of evening dresses, designed for every special occasion.</p>
+                        <p className="text-gray-600 max-w-2xl mx-auto">{t("soireeCollectionsDesc")}</p>
                     </motion.div>
                     <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                         {collections.map((collection) => (
@@ -811,28 +811,28 @@ export function HomePageContent() {
                 <div className="container mx-auto px-6">
                     <div className="grid md:grid-cols-2 gap-12 items-center">
                         <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-1 md:order-2">
-                            <h2 className="text-3xl md:text-4xl font-light tracking-wider mb-6">Why choose Raey</h2>
+                            <h2 className="text-3xl md:text-4xl font-light tracking-wider mb-6">{t("whyChooseRaey")}</h2>
                             <motion.p className="text-gray-600 mb-6 leading-relaxed" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.15 }} viewport={{ once: true }}>
-                                Discover a carefully curated selection of evening dresses designed to make every occasion feel unforgettable.
+                                {t("whyChooseRaeyDesc")}
                             </motion.p>
                             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
                                 <div className="flex items-start space-x-3">
                                     <div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Sparkles className="h-4 w-4" /></div>
-                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">Signature designs</h3><p className="text-sm text-gray-600">Exclusive pieces you will not find anywhere else, tailored to your personal style.</p></div>
+                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">{t("signatureDesigns")}</h3><p className="text-sm text-gray-600">{t("signatureDesignsDesc")}</p></div>
                                 </div>
                                 <div className="flex items-start space-x-3">
                                     <div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Star className="h-4 w-4" /></div>
-                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">Premium quality</h3><p className="text-sm text-gray-600">Fine fabrics and precise tailoring to ensure comfort, fit, and elegance.</p></div>
+                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">{t("premiumQuality")}</h3><p className="text-sm text-gray-600">{t("premiumQualityDesc")}</p></div>
                                 </div>
                                 <div className="flex items-start space-x-3">
                                     <div className="mt-1 rounded-full bg-rose-100 text-rose-600 p-2"><Package className="h-4 w-4" /></div>
-                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">Flexible choices</h3><p className="text-sm text-gray-600">Rent, buy, or customize to match your exact occasion and preferences.</p></div>
+                                    <div><h3 className="text-sm font-semibold tracking-wide uppercase">{t("flexibleChoices")}</h3><p className="text-sm text-gray-600">{t("flexibleChoicesDesc")}</p></div>
                                 </div>
                             </div>
                             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.35 }} viewport={{ once: true }}>
                                 <Link href="/about">
                                     <Button variant="outline" className="border-black text-black hover:bg-black hover:text-white bg-transparent rounded-full px-6 py-5 group relative overflow-hidden">
-                                        <span className="relative z-10">Learn More About Us</span>
+                                        <span className="relative z-10">{t("learnMoreAboutUs")}</span>
                                         <ArrowRight className="ml-2 h-4 w-4 relative z-10 text-rose-400" />
                                         <motion.span className="absolute inset-0 bg-black opacity-0 group-hover:opacity-100" initial={{ x: "-100%" }} whileHover={{ x: 0 }} transition={{ duration: 0.2 }} />
                                     </Button>
