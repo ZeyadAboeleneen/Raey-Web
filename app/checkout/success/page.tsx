@@ -20,7 +20,7 @@ export default function CheckoutSuccessPage() {
   return null
 
   const searchParams = useSearchParams()
-  const orderId = searchParams.get("orderId")
+  const orderId = searchParams?.get("orderId")
   const [orderDetails, setOrderDetails] = useState<any>(null)
 
   useEffect(() => {

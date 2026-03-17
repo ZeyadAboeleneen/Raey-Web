@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowLeft, Star, Heart, ShoppingCart, Truck, Shield, RotateCcw, ChevronDown, X, Package, Instagram, Facebook, ChevronLeft, ChevronRight, AlertCircle, MessageCircle } from "lucide-react"
+import { ArrowLeft, Star, Heart, ShoppingCart, Truck, Shield, RotateCcw, ChevronDown, X, Package, Instagram, Facebook, ChevronLeft, ChevronRight, AlertCircle, MessageCircle, Maximize2 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
@@ -206,6 +206,7 @@ export default function ProductDetailPage() {
   const [showRelatedCustomSizeConfirmation, setShowRelatedCustomSizeConfirmation] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false)
   const validImages = getValidImages(product?.images)
   const touchStartXRef = useRef<number | null>(null)
   const lastScrollTimeRef = useRef<number>(0)
@@ -647,15 +648,13 @@ export default function ProductDetailPage() {
             >
               <div className="relative rounded-xl overflow-hidden bg-gray-50">
                 <div
-                  className="w-full h-[500px] sm:h-[600px] lg:h-[750px] relative select-none"
+                  className="w-full h-[500px] sm:h-[600px] lg:h-[750px] relative select-none cursor-zoom-in"
                   onMouseEnter={() => setIsHovered(true)}
                   onMouseLeave={() => setIsHovered(false)}
-                  onKeyDown={handleKeyDown}
-                  onTouchStart={handleTouchStart}
-                  onTouchEnd={handleTouchEnd}
+                  onClick={() => setIsZoomModalOpen(true)}
                   tabIndex={0}
-                  role="img"
-                  aria-label="Product image gallery. Use the arrows or thumbnails to change image."
+                  role="button"
+                  aria-label="Open product image preview"
                   style={{ userSelect: "none", touchAction: "pan-y" }}
                 >
                   <Image
@@ -663,7 +662,14 @@ export default function ProductDetailPage() {
                     alt={product.name}
                     fill
                     className={`object-contain transition-all duration-300 ${isHovered ? "scale-105" : "scale-100"}`}
+                    priority
                   />
+                  {/* Zoom Icon Overlay */}
+                  <div 
+                    className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  >
+                    <Maximize2 className="h-5 w-5 text-gray-700" />
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -858,6 +864,60 @@ export default function ProductDetailPage() {
         </div>
       </section>
       <Footer />
+
+      {/* Image Zoom Modal */}
+      {isZoomModalOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 sm:p-8"
+          onClick={() => setIsZoomModalOpen(false)}
+        >
+          <button
+            onClick={() => setIsZoomModalOpen(false)}
+            className="absolute top-6 right-6 p-2 text-white hover:text-rose-400 transition-colors z-[110]"
+            aria-label="Close preview"
+          >
+            <X className="h-8 w-8" />
+          </button>
+
+          <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+            <Image
+              src={mainImage}
+              alt={product.name}
+              fill
+              className="object-contain"
+              quality={100}
+              priority
+            />
+          </div>
+
+          {/* Navigation for multiple images in zoom mode */}
+          {imagesForDisplay.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goToPrevImage()
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all"
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goToNextImage()
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all"
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            </>
+          )}
+        </motion.div>
+      )}
     </div>
   )
 }

@@ -35,6 +35,7 @@ model Product {
   afterSalePrice       Float?   @map("after_sale_price")
   sizes                Json     @default("[]")
   images               Json     @default("[]")
+  imageUrl             String?  @db.VarChar(500) @map("image_url")
   rating               Float    @default(0)
   reviewCount          Int      @default(0) @map("reviews")
   notes                Json     @default("{\"top\":[],\"middle\":[],\"base\":[]}")

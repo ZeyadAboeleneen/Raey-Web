@@ -35,13 +35,18 @@ function transformProduct(product: any) {
             ? product.isOutOfStock
             : calculateIsOutOfStock(sizes)
 
+    const imagesArray = Array.isArray(product.images) ? product.images : []
+    const primaryImage = product.imageUrl || product.image_url
+
     return {
         _id: product.productId,
         id: product.productId,
         name: product.name,
         description: product.description ?? "",
         longDescription: product.longDescription ?? "",
-        images: product.images || [],
+        images: primaryImage
+            ? [primaryImage, ...imagesArray.filter((x: any) => x && x !== primaryImage)]
+            : imagesArray,
         rating: product.rating || 0,
         reviews: product.reviewCount || 0,
         category: product.category,

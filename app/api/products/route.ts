@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 import type { Product as BaseProduct } from "@/lib/models/types"
-import { getProductsServer } from "@/lib/get-products-server"
 
 type CachedProductsEntry = {
   status: number
@@ -34,8 +33,8 @@ const buildCacheKey = (url: URL) => {
   return params ? `${url.pathname}?${params}` : url.pathname
 }
 
-const getCachedResponse = (url: URL) => {
-  const cacheKey = buildCacheKey(url)
+const getCachedResponse = (url: URL, variant?: string) => {
+  const cacheKey = variant ? `${buildCacheKey(url)}|${variant}` : buildCacheKey(url)
   const entry = productsCache.get(cacheKey)
   if (!entry) return null
   if (Date.now() > entry.expiresAt) {
@@ -45,8 +44,9 @@ const getCachedResponse = (url: URL) => {
   return new NextResponse(entry.body, { status: entry.status, headers: entry.headers })
 }
 
-const setCachedResponse = (url: URL, status: number, body: string, headers: Record<string, string>, ttl: number) => {
-  productsCache.set(buildCacheKey(url), { status, body, headers, expiresAt: Date.now() + Math.max(ttl, 1_000) })
+const setCachedResponse = (url: URL, status: number, body: string, headers: Record<string, string>, ttl: number, variant?: string) => {
+  const cacheKey = variant ? `${buildCacheKey(url)}|${variant}` : buildCacheKey(url)
+  productsCache.set(cacheKey, { status, body, headers, expiresAt: Date.now() + Math.max(ttl, 1_000) })
 }
 
 const clearProductsCache = () => { 
@@ -87,6 +87,9 @@ const transformProduct = (product: any): ApiProduct => {
     ? product.isOutOfStock
     : calculateIsOutOfStock(sizes)
 
+  const primaryImage = product.imageUrl || product.image_url
+  const images = primaryImage ? [primaryImage] : []
+
   return {
     _id: product.productId,
     id: product.productId,
@@ -98,7 +101,7 @@ const transformProduct = (product: any): ApiProduct => {
     beforeSalePrice: product.beforeSalePrice,
     afterSalePrice: product.afterSalePrice,
     sizes: sizes.map((size: any) => ({ ...size, stockCount: size.stockCount ?? size.stock_count })),
-    images: product.images || [],
+    images,
     rating: product.rating || 0,
     reviews: product.reviewCount || 0,
     notes: product.notes || { top: [], middle: [], base: [] },
@@ -117,6 +120,27 @@ const transformProduct = (product: any): ApiProduct => {
   }
 }
 
+const listSelect = {
+  productId: true,
+  name: true,
+  description: true,
+  price: true,
+  beforeSalePrice: true,
+  afterSalePrice: true,
+  sizes: true,
+  imageUrl: true,
+  rating: true,
+  reviewCount: true,
+  category: true,
+  collection: true,
+  isNew: true,
+  isBestseller: true,
+  isActive: true,
+  isOutOfStock: true,
+  createdAt: true,
+  updatedAt: true,
+} as const
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   console.log("🔍 [API] GET /api/products - Request received")
@@ -125,6 +149,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const requestUrl = new URL(request.url)
     const includeInactive = searchParams.get("includeInactive") === "true"
+
+    const cachedResponse = getCachedResponse(requestUrl)
+    if (cachedResponse && !includeInactive) {
+      console.log("⚡ Served from API cache")
+      return cachedResponse
+    }
 
     let isAdmin = false
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
@@ -135,11 +165,7 @@ export async function GET(request: NextRequest) {
       } catch { }
     }
 
-    const cachedResponse = (includeInactive && isAdmin) ? null : getCachedResponse(requestUrl)
-    if (cachedResponse) {
-      console.log(`⚡ [API] Cache hit in ${Date.now() - startTime}ms`)
-      return cachedResponse
-    }
+    const cacheEligible = !(includeInactive && isAdmin)
 
     const id = searchParams.get("id")
     const category = searchParams.get("category")
@@ -154,38 +180,6 @@ export async function GET(request: NextRequest) {
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1)
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 1000)
     const skip = (page - 1) * limit
-
-    const isSimpleAllProductsRequest =
-      !includeInactive &&
-      !id &&
-      !category &&
-      !collection &&
-      !search &&
-      isBestsellerParam === null &&
-      isNewParam === null &&
-      isGiftPackageParam === null &&
-      !hasPageParam
-
-    if (isSimpleAllProductsRequest) {
-      const products = await getProductsServer()
-      const productsForList = products
-        .slice(0, hasLimitParam ? limit : products.length)
-        .map((p: any) => ({
-          ...p,
-          images: Array.isArray(p.images) ? p.images.slice(0, 1) : [],
-          longDescription: undefined,
-          notes: undefined,
-        }))
-
-      const headers = {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-      }
-      const body = JSON.stringify(productsForList)
-      setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
-      console.log(`⚡ [API] Served from SSR cache in ${Date.now() - startTime}ms (all=${productsForList.length})`)
-      return new NextResponse(body, { status: 200, headers })
-    }
 
     // Build shared where clause
     const where: any = {}
@@ -211,21 +205,21 @@ export async function GET(request: NextRequest) {
 
       const body = JSON.stringify(transformProduct(product))
       const headers = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300", "Content-Type": "application/json" }
-      setCachedResponse(requestUrl, 200, body, headers, DETAIL_CACHE_TTL_MS)
+      if (cacheEligible) {
+        setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+      }
       return new NextResponse(body, { status: 200, headers })
     }
 
     // Paginated list
     if (hasPageParam) {
       const [products, total] = await prisma.$transaction([
-        prisma.product.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
+        prisma.product.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit, select: listSelect }),
         prisma.product.count({ where }),
       ])
 
       const totalPages = Math.max(Math.ceil(total / limit), 1)
-      const productsForList = products.map(transformProduct).map((p: ApiProduct) => ({
-        ...p, images: p.images.slice(0, 1), longDescription: undefined, notes: undefined,
-      }))
+      const productsForList = products.map(transformProduct)
 
       const headers = {
         "Content-Type": "application/json",
@@ -236,23 +230,26 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
       }
       const body = JSON.stringify(productsForList)
-      setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+      if (cacheEligible) {
+        setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+      }
       return new NextResponse(body, { status: 200, headers })
     }
 
     // All products (no pagination)
     const queryOptions: any = { where, orderBy: { createdAt: "desc" } }
     if (hasLimitParam) queryOptions.take = limit
+    queryOptions.select = listSelect
 
     const products = await prisma.product.findMany(queryOptions)
-    const productsForList = products.map(transformProduct).map((p: ApiProduct) => ({
-      ...p, images: p.images.slice(0, 1), longDescription: undefined, notes: undefined,
-    }))
+    const productsForList = products.map(transformProduct)
 
     console.log(`⏱️ [API] ${Date.now() - startTime}ms (all=${productsForList.length})`)
     const headers = { "Content-Type": "application/json", "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" }
     const body = JSON.stringify(productsForList)
-    setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+    if (cacheEligible) {
+      setCachedResponse(requestUrl, 200, body, headers, LIST_CACHE_TTL_MS)
+    }
     return new NextResponse(body, { status: 200, headers })
 
   } catch (error) {

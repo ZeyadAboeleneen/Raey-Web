@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { ArrowRight, Sparkles, Star, ShoppingCart, Heart, X, Instagram, Facebook, Package, AlertCircle } from "lucide-react"
-import dynamic from "next/dynamic"
 
 // Lazy load heavy components
 const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {

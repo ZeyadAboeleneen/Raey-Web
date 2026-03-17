@@ -7,7 +7,7 @@ import { useLocale } from "@/lib/locale-context"
 export const useCurrencyFormatter = () => {
   const { settings } = useLocale()
   const pathname = usePathname()
-  const showPrices = useMemo(() => pathname.startsWith("/admin"), [pathname])
+  const showPrices = useMemo(() => pathname?.startsWith("/admin") ?? false, [pathname])
 
   const formatter = useMemo(() => {
     try {

@@ -77,7 +77,7 @@ export default function EditProductPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const productId = searchParams.get('id')
+        const productId = searchParams?.get('id')
         if (!productId) {
           setError("Product ID not found")
           setLoading(false)
@@ -180,7 +180,7 @@ export default function EditProductPage() {
     setLoading(true)
 
     try {
-      const productId = searchParams.get('id')
+      const productId = searchParams?.get('id')
       if (!productId) {
         throw new Error("Product ID not found")
       }
