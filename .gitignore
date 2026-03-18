@@ -7,6 +7,7 @@
 /.next/
 /out/
 
+backup.sql 
 # production
 /build
 
