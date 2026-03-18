@@ -963,7 +963,7 @@ export default function WeddingCategoryPage() {
                       </Button>
 
                       <div className="flex flex-wrap items-center justify-center gap-1 max-w-[210px] sm:max-w-none">
-                        {Array.from({ length: clientTotalPages }, (_, i) => i + 1).map((p) => (
+                        {Array.from({ length: Math.min(5, clientTotalPages) }, (_, i) => { let start = Math.max(1, page - 2); if (start + 4 > clientTotalPages) start = Math.max(1, clientTotalPages - 4); return start + i; }).map((p) => (
                           <Button
                             key={p}
                             variant={page === p ? "default" : "ghost"}
