@@ -129,6 +129,7 @@ export function CartItem({
                   src={item.image || "/placeholder.svg"}
                   alt={item.name}
                   fill
+                  sizes="64px"
                   className="object-cover rounded-lg"
                 />
               </div>
@@ -227,6 +228,7 @@ export function CartItem({
                 src={item.image || "/placeholder.svg"}
                 alt={item.name}
                 fill
+                sizes="80px"
                 className="object-cover rounded-lg"
               />
             </div>

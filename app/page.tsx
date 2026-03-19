@@ -58,7 +58,7 @@ export default function HomePage() {
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={85}
             className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
-            onLoadingComplete={() => setWeddingLoaded(true)}
+            onLoad={() => setWeddingLoaded(true)}
           />
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/75 z-10" />
@@ -84,7 +84,7 @@ export default function HomePage() {
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={85}
             className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
-            onLoadingComplete={() => setSoireeLoaded(true)}
+            onLoad={() => setSoireeLoaded(true)}
           />
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/75 z-10" />

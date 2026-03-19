@@ -162,9 +162,9 @@ export const translations = {
     // Collections/Products Page
     collectionsTitle: "Collections",
     collectionsDesc: "Discover our curated gowns, jumpsuits, and accessories—each designed to spotlight your individuality at every celebration.",
-    soireeCollectionsTitle: "Soiree Collections",
+    soireeCollectionsTitle: "Soiree Collection",
     soireeCollectionsDesc: "Discover our stunning collection of evening and soiree dresses for every special occasion.",
-    weddingCollectionsTitle: "Wedding Collections",
+    weddingCollectionsTitle: "Wedding Collection",
     weddingCollectionsDesc: "Discover your dream wedding gown from our curated collections.",
     refreshAllProducts: "Refresh All Products",
     refresh: "Refresh",

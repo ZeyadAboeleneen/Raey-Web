@@ -139,6 +139,7 @@ export const OrderSummary = ({
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}
                       fill
+                      sizes="40px"
                       className="object-cover rounded"
                     />
                   </div>
@@ -197,6 +198,7 @@ export const OrderSummary = ({
                   src={item.image || "/placeholder.svg"}
                   alt={item.name}
                   fill
+                  sizes="48px"
                   className="object-cover rounded"
                 />
               </div>

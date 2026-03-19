@@ -448,6 +448,7 @@ export default function SoireeProductsPage() {
           price: price,
           image: product.images[0],
           category: product.category,
+          collection: product.collection,
           rating: product.rating,
           isNew: product.isNew,
           isBestseller: product.isBestseller,
@@ -597,54 +598,62 @@ export default function SoireeProductsPage() {
 
                 {/* Bottom overlay with name, price and cart button - mirror Best Sellers */}
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
-                  {showPrices ? (
-                    <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
-                      {product.name}
-                    </h3>
-                  ) : null}
+                  {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
+                  {(() => {
+                    const showProductPrice = showPrices || product.category === "sell-dresses"
+                    return (
+                      <>
+                        {showProductPrice ? (
+                          <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
+                            {product.name}
+                          </h3>
+                        ) : null}
 
-                  <div className={priceRowClassName}>
-                    {!showPrices ? (
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
-                          {product.name}
+                        <div className={priceRowClassName}>
+                          {!showProductPrice ? (
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                {product.name}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={priceTextWrapperClassName}>
+                              {hasDiscount ? (
+                                <>
+                                  <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                    {formatPrice(priceData.original)}
+                                  </span>
+                                  <span className="text-xs sm:text-sm font-semibold">
+                                    {formatPrice(priceData.price)}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs sm:text-sm font-semibold">
+                                  {formatPrice(priceData.price)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <Button
+                            onClick={handleAddToCartClick}
+                            className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
+                              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              : "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                              }`}
+                            disabled={product.isOutOfStock}
+                            aria-label={addToCartAriaLabel}
+                          >
+                            {layout === "desktop" && product.isGiftPackage ? (
+                              <Package className={cartIconClassName} />
+                            ) : (
+                              <ShoppingCart className={`${cartIconClassName} text-rose-500`} />
+                            )}
+                          </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className={priceTextWrapperClassName}>
-                        {hasDiscount ? (
-                          <>
-                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
-                              {formatPrice(priceData.original)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-semibold">
-                              {formatPrice(priceData.price)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-xs sm:text-sm font-semibold">
-                            {formatPrice(priceData.price)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleAddToCartClick}
-                      className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
-                        ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                        : "bg-rose-100 text-rose-700 hover:bg-rose-200"
-                        }`}
-                      disabled={product.isOutOfStock}
-                      aria-label={addToCartAriaLabel}
-                    >
-                      {layout === "desktop" && product.isGiftPackage ? (
-                        <Package className={cartIconClassName} />
-                      ) : (
-                        <ShoppingCart className={`${cartIconClassName} text-rose-500`} />
-                      )}
-                    </Button>
-                  </div>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             </Link>
@@ -752,6 +761,7 @@ export default function SoireeProductsPage() {
                         src={selectedProduct.images[0] || "/placeholder.svg"}
                         alt={selectedProduct.name}
                         fill
+                        sizes="80px"
                         className="rounded-lg object-cover"
                       />
                     </div>
@@ -1360,6 +1370,7 @@ export default function SoireeProductsPage() {
                 price: product.packagePrice || 0,
                 image: product.images[0],
                 category: product.category,
+                collection: product.collection,
                 rating: product.rating,
                 isNew: product.isNew || false,
                 isBestseller: product.isBestseller || false,
@@ -1367,7 +1378,7 @@ export default function SoireeProductsPage() {
                 isGiftPackage: product.isGiftPackage,
                 packagePrice: product.packagePrice,
                 packageOriginalPrice: product.packageOriginalPrice,
-                giftPackageSizes: product.giftPackageSizes,
+                giftPackageSizes: product.giftPackageSizes
               })
             }
           }}

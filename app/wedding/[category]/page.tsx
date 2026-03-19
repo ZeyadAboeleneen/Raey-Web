@@ -477,10 +477,15 @@ export default function WeddingCategoryPage() {
                           price: selectedSize ? (selectedSize.discountedPrice || selectedSize.originalPrice || 0) : getSmallestPrice(selectedProduct.sizes),
                           image: selectedProduct.images[0],
                           category: selectedProduct.category,
+                          collection: selectedProduct.collection,
                           rating: selectedProduct.rating,
                           isNew: selectedProduct.isNew,
                           isBestseller: selectedProduct.isBestseller,
                           sizes: selectedProduct.sizes,
+                          isGiftPackage: selectedProduct.isGiftPackage,
+                          packagePrice: selectedProduct.packagePrice,
+                          packageOriginalPrice: selectedProduct.packageOriginalPrice,
+                          giftPackageSizes: selectedProduct.giftPackageSizes
                         })
                       }
                     }}
@@ -510,6 +515,7 @@ export default function WeddingCategoryPage() {
                     src={selectedProduct.images[0] || "/placeholder.svg"}
                     alt={selectedProduct.name}
                     fill
+                    sizes="80px"
                     className="rounded-lg object-cover"
                   />
                 </div>
@@ -808,6 +814,7 @@ export default function WeddingCategoryPage() {
                                   price,
                                   image: product.images[0],
                                   category: product.category,
+                                  collection: product.collection,
                                   rating: product.rating,
                                   isNew: product.isNew,
                                   isBestseller: product.isBestseller,
@@ -858,6 +865,7 @@ export default function WeddingCategoryPage() {
                                     src={product.images[0] || "/placeholder.svg"}
                                     alt={product.name}
                                     fill
+                                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                                   />
 
@@ -866,67 +874,75 @@ export default function WeddingCategoryPage() {
 
                                   {/* Bottom overlay with name, price and cart button */}
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                                    {showPrices ? (
-                                      <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
-                                        {product.name}
-                                      </h3>
-                                    ) : null}
+                                    {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
+                                    {(() => {
+                                      const showProductPrice = showPrices || product.category === "sell-dresses"
+                                      return (
+                                        <>
+                                          {showProductPrice ? (
+                                            <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
+                                              {product.name}
+                                            </h3>
+                                          ) : null}
 
-                                    <div className="mt-0.5 flex items-center justify-between gap-2">
-                                      {!showPrices ? (
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
-                                            {product.name}
+                                          <div className="mt-0.5 flex items-center justify-between gap-2">
+                                            {!showProductPrice ? (
+                                              <div className="flex-1 min-w-0">
+                                                <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                                  {product.name}
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="text-[11px] sm:text-xs">
+                                                {hasDiscount ? (
+                                                  <>
+                                                    <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                                      {formatPrice(originalPrice)}
+                                                    </span>
+                                                    <span className="text-xs sm:text-sm font-semibold">
+                                                      {formatPrice(price)}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-xs sm:text-sm font-semibold">
+                                                    {formatPrice(price)}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            <Button
+                                              onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+
+                                                if (product.isOutOfStock) return
+                                                if (product.isGiftPackage) {
+                                                  setSelectedProduct(product)
+                                                  setShowGiftPackageSelector(true)
+                                                } else {
+                                                  openSizeSelector(product)
+                                                }
+                                              }}
+                                              className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
+                                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                                : "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                                                }`}
+                                              disabled={product.isOutOfStock}
+                                              aria-label={
+                                                product.isOutOfStock
+                                                  ? "Out of stock"
+                                                  : isRentCategory
+                                                    ? "Rent Now"
+                                                    : "Buy Now"
+                                              }
+                                            >
+                                              <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                                            </Button>
                                           </div>
-                                        </div>
-                                      ) : (
-                                        <div className="text-[11px] sm:text-xs">
-                                          {hasDiscount ? (
-                                            <>
-                                              <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
-                                                {formatPrice(originalPrice)}
-                                              </span>
-                                              <span className="text-xs sm:text-sm font-semibold">
-                                                {formatPrice(price)}
-                                              </span>
-                                            </>
-                                          ) : (
-                                            <span className="text-xs sm:text-sm font-semibold">
-                                              {formatPrice(price)}
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      <Button
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-
-                                          if (product.isOutOfStock) return
-                                          if (product.isGiftPackage) {
-                                            setSelectedProduct(product)
-                                            setShowGiftPackageSelector(true)
-                                          } else {
-                                            openSizeSelector(product)
-                                          }
-                                        }}
-                                        className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
-                                          ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                                          : "bg-rose-100 text-rose-700 hover:bg-rose-200"
-                                          }`}
-                                        disabled={product.isOutOfStock}
-                                        aria-label={
-                                          product.isOutOfStock
-                                            ? "Out of stock"
-                                            : isRentCategory
-                                              ? "Rent Now"
-                                              : "Buy Now"
-                                        }
-                                      >
-                                        <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
-                                      </Button>
-                                    </div>
+                                        </>
+                                      )
+                                    })()}
                                   </div>
                                 </div>
                               </Link>
@@ -1017,6 +1033,7 @@ export default function WeddingCategoryPage() {
                 price: product.packagePrice || 0,
                 image: product.images[0],
                 category: product.category,
+                collection: product.collection,
                 rating: product.rating,
                 isNew: product.isNew || false,
                 isBestseller: product.isBestseller || false,
@@ -1024,7 +1041,7 @@ export default function WeddingCategoryPage() {
                 isGiftPackage: product.isGiftPackage,
                 packagePrice: product.packagePrice,
                 packageOriginalPrice: product.packageOriginalPrice,
-                giftPackageSizes: product.giftPackageSizes,
+                giftPackageSizes: product.giftPackageSizes
               })
             }
           }}

@@ -426,6 +426,7 @@ export default function SoireePage() {
         price,
         image: product.images[0],
         category: product.category,
+        collection: product.collection,
         rating: product.rating,
         isNew: product.isNew,
         isBestseller: product.isBestseller,
@@ -443,13 +444,17 @@ export default function SoireePage() {
     const price = isGift ? product.packagePrice || 0 : getSmallestPrice(product.sizes)
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
+    
+    // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
+    const showProductPrice = showPrices || product.category === "sell-dresses"
+
     return (
       <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="p-0 h-full">
             <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
               <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
-                <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                 <button onClick={(e) => handleFavoriteClick(e, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200">
                   <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                 </button>
@@ -460,11 +465,11 @@ export default function SoireePage() {
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                  {showPrices ? (
+                  {showProductPrice ? (
                     <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
                   ) : null}
                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                    {!showPrices ? (
+                    {!showProductPrice ? (
                       <div className="flex-1 min-w-0">
                         <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                           {product.name}
@@ -537,7 +542,7 @@ export default function SoireePage() {
               </div>
               <div className="flex items-center mb-6">
                 <div className="relative w-20 h-20 mr-4">
-                  <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill className="rounded-lg object-cover" />
+                  <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill sizes="80px" className="rounded-lg object-cover" />
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm line-clamp-2">{selectedProduct.description}</p>
@@ -633,14 +638,14 @@ export default function SoireePage() {
 
       {showGiftPackageSelector && selectedProduct && (
         <GiftPackageSelector product={selectedProduct} isOpen={showGiftPackageSelector} onClose={() => setShowGiftPackageSelector(false)}
-          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], category: product.category, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
+          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], category: product.category, collection: product.collection, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
           isFavorite={isFavorite} />
       )}
 
       {/* ─── Hero ─── */}
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
-          <Image src="/elraey-bg.PNG" alt="Soiree background" fill priority className="object-cover" />
+          <Image src="/elraey-bg.PNG" alt="Soiree background" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-black/45" />
         </motion.div>
         <motion.div className="relative z-10 max-w-3xl mx-auto px-4 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -783,7 +788,7 @@ export default function SoireePage() {
               <Link href="/about"><Button variant="outline" className="border-black text-black hover:bg-black hover:text-white bg-transparent rounded-full px-6 py-5 group relative overflow-hidden"><span className="relative z-10">{t("learnMoreAboutUs")}</span><ArrowRight className="ml-2 h-4 w-4 relative z-10 text-rose-400" /></Button></Link>
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-2 md:order-1">
-              <div className="w-full h-64 md:h-96 relative"><Image src="/elraey-bg.PNG" alt="Raey Background" fill className="object-cover rounded-lg" priority /></div>
+              <div className="w-full h-64 md:h-96 relative"><Image src="/elraey-bg.PNG" alt="Raey Background" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover rounded-lg" priority /></div>
             </motion.div>
           </div>
         </div>

@@ -10,6 +10,7 @@ interface FavoriteItem {
   price: number
   image: string
   category: string
+  collection?: string
   rating?: number
   isNew?: boolean
   isBestseller?: boolean

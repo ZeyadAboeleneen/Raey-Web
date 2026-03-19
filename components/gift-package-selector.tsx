@@ -30,6 +30,7 @@ interface Product {
   images: string[]
   rating: number
   category: string
+  collection?: string
   isGiftPackage?: boolean
   packagePrice?: number
   packageOriginalPrice?: number
@@ -239,6 +240,7 @@ export function GiftPackageSelector({
                 src={product.images[0] || "/placeholder.svg"}
                 alt={product.name}
                 fill
+                sizes="80px"
                 className="rounded-lg object-cover"
               />
             </div>
@@ -326,6 +328,7 @@ export function GiftPackageSelector({
                                         src={option.productImage || "/placeholder.svg"}
                                         alt={option.productName}
                                         fill
+                                        sizes="24px"
                                         className="rounded object-cover"
                                       />
                                     </div>
@@ -346,6 +349,7 @@ export function GiftPackageSelector({
                               src={getSelectedProduct(size.size)?.productImage || "/placeholder.svg"}
                               alt={getSelectedProduct(size.size)?.productName || ""}
                               fill
+                              sizes="48px"
                               className="rounded-lg object-cover"
                             />
                           </div>

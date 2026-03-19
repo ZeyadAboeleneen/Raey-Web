@@ -55,6 +55,7 @@ interface ProductDetail {
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
   category: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isOutOfStock?: boolean
@@ -661,6 +662,7 @@ export default function ProductDetailPage() {
                     src={mainImage}
                     alt={product.name}
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className={`object-contain transition-all duration-300 ${isHovered ? "scale-105" : "scale-100"}`}
                     priority
                   />
@@ -702,57 +704,62 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
                   </div>
-                  {showPrices ? (
-                    <div className="text-2xl sm:text-3xl font-light text-left">
-                      {(() => {
-                        if (product.isGiftPackage && product.packagePrice) {
-                          const packagePrice = product.packagePrice
-                          const packageOriginalPrice = product.packageOriginalPrice || 0
-                          if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
-                            return (
-                              <div className="text-left space-y-2">
-                                <div className="flex flex-col items-start">
-                                  <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
-                                  <div className="flex items-center space-x-3">
-                                    <span className="line-through text-gray-400 text-lg">
-                                      {formatPrice(packageOriginalPrice)}
-                                    </span>
-                                    <span className="text-xl sm:text-2xl font-bold text-red-600">
-                                      {formatPrice(packagePrice)}
-                                    </span>
+                  {(() => {
+                    const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
+                    const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                    if (!showProductPrice) return null
+                    return (
+                      <div className="text-2xl sm:text-3xl font-light text-left">
+                        {(() => {
+                          if (product.isGiftPackage && product.packagePrice) {
+                            const packagePrice = product.packagePrice
+                            const packageOriginalPrice = product.packageOriginalPrice || 0
+                            if (packageOriginalPrice > 0 && packagePrice < packageOriginalPrice) {
+                              return (
+                                <div className="text-left space-y-2">
+                                  <div className="flex flex-col items-start">
+                                    <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
+                                    <div className="flex items-center space-x-3">
+                                      <span className="line-through text-gray-400 text-lg">
+                                        {formatPrice(packageOriginalPrice)}
+                                      </span>
+                                      <span className="text-xl sm:text-2xl font-bold text-red-600">
+                                        {formatPrice(packagePrice)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+                              )
+                            }
+                            return (
+                              <div className="text-left">
+                                <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
+                                <span className="text-xl sm:text-2xl font-bold ml-2 text-green-600">
+                                  {formatPrice(packagePrice)}
+                                </span>
                               </div>
                             )
                           }
-                          return (
-                            <div className="text-left">
-                              <span className="text-gray-600 text-base sm:text-lg">Package Price:</span>
-                              <span className="text-xl sm:text-2xl font-bold ml-2 text-green-600">
-                                {formatPrice(packagePrice)}
-                              </span>
-                            </div>
-                          )
-                        }
-                        const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
-                        const selectedPrice = selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
-                        const originalPrice = selectedSizeObj?.originalPrice || 0
-                        if (originalPrice > 0 && selectedPrice < originalPrice) {
-                          return (
-                            <div className="flex items-center space-x-3">
-                              <span className="line-through text-gray-400 text-lg sm:text-2xl">
-                                {formatPrice(originalPrice || 0)}
-                              </span>
-                              <span className="text-red-600 font-bold text-xl sm:text-2xl">
-                                {formatPrice(selectedPrice)}
-                              </span>
-                            </div>
-                          )
-                        }
-                        return <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
-                      })()}
-                    </div>
-                  ) : null}
+                          const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
+                          const selectedPrice = selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
+                          const originalPrice = selectedSizeObj?.originalPrice || 0
+                          if (originalPrice > 0 && selectedPrice < originalPrice) {
+                            return (
+                              <div className="flex items-center space-x-3">
+                                <span className="line-through text-gray-400 text-lg sm:text-2xl">
+                                  {formatPrice(originalPrice || 0)}
+                                </span>
+                                <span className="text-red-600 font-bold text-xl sm:text-2xl">
+                                  {formatPrice(selectedPrice)}
+                                </span>
+                              </div>
+                            )
+                          }
+                          return <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
+                        })()}
+                      </div>
+                    )
+                  })()}
                 </div>
                 {/* Description */}
                 <div className="mb-6">
@@ -887,6 +894,7 @@ export default function ProductDetailPage() {
               src={mainImage}
               alt={product.name}
               fill
+              sizes="100vw"
               className="object-contain"
               quality={100}
               priority

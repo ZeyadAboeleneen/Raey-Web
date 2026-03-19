@@ -28,7 +28,6 @@ export const useCurrencyFormatter = () => {
   }, [settings.currencyCode, settings.language, settings.locale])
 
   const formatPrice = (amount: number | undefined | null) => {
-    if (!showPrices) return ""
     if (!amount || Number.isNaN(amount)) return formatter.format(0)
     const converted = amount * (settings.exchangeRate || 1)
     // Round to nearest integer (e.g., 954.4 -> 954)

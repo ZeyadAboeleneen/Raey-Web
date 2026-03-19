@@ -348,7 +348,7 @@ export function HomePageContent() {
             if (product.isGiftPackage) {
                 addToFavorites({
                     id: product.id, name: product.name, price: product.packagePrice || 0,
-                    image: product.images[0], category: product.category, rating: product.rating,
+                    image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller,
                     sizes: product.giftPackageSizes || [], isGiftPackage: true,
                     packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
@@ -358,7 +358,7 @@ export function HomePageContent() {
                 const minPrice = getMinPrice(product)
                 addToFavorites({
                     id: product.id, name: product.name, price: minPrice,
-                    image: product.images[0], category: product.category, rating: product.rating,
+                    image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller, sizes: product.sizes,
                 })
             }
@@ -394,7 +394,7 @@ export function HomePageContent() {
                                 } else {
                                     addToFavorites({
                                         id: product.id, name: product.name, price: product.packagePrice || 0,
-                                        image: product.images[0], category: product.category, rating: product.rating,
+                                        image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
                                         isNew: product.isNew, isBestseller: product.isBestseller,
                                         sizes: product.giftPackageSizes || [], isGiftPackage: true,
                                         packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
@@ -436,6 +436,7 @@ export function HomePageContent() {
                                                             id: selectedProduct.id, name: selectedProduct.name,
                                                             price: getSmallestPrice(selectedProduct.sizes),
                                                             image: selectedProduct.images[0], category: selectedProduct.category,
+                                                            collection: selectedProduct.collection,
                                                             rating: selectedProduct.rating, isNew: selectedProduct.isNew || false,
                                                             isBestseller: selectedProduct.isBestseller || false, sizes: selectedProduct.sizes || [],
                                                         })
@@ -453,7 +454,7 @@ export function HomePageContent() {
 
                                     <div className="flex items-center mb-6">
                                         <div className="relative w-20 h-20 mr-4">
-                                            <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill className="rounded-lg object-cover" />
+                                            <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill sizes="80px" className="rounded-lg object-cover" />
                                         </div>
                                         <div>
                                             <p className="text-gray-600 text-sm line-clamp-2">{selectedProduct.description}</p>
@@ -575,7 +576,7 @@ export function HomePageContent() {
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}
                 >
-                    <Image src="/elraey-bg.PNG" alt="Raey background" fill priority className="object-cover" />
+                    <Image src="/elraey-bg.PNG" alt="Raey background" fill priority sizes="100vw" className="object-cover" />
                     <div className="absolute inset-0 bg-black/45" />
                 </motion.div>
 
@@ -671,7 +672,7 @@ export function HomePageContent() {
                                             <CardContent className="p-0 h-full">
                                                 <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
                                                     <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
-                                                        <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                                                        <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                                                         <button onClick={(e) => handleFavoriteClick(e as any, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200" aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}>
                                                             <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                                                         </button>
@@ -682,25 +683,34 @@ export function HomePageContent() {
                                                         </div>
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                                         <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                                                            {showPrices ? (
-                                                                <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
-                                                            ) : null}
-                                                            <div className="mt-0.5 flex items-center justify-between gap-2">
-                                                                {!showPrices ? (
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
-                                                                            {product.name}
+                                                            {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
+                                                            {(() => {
+                                                                const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
+                                                                const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                                                                return (
+                                                                    <>
+                                                                        {showProductPrice ? (
+                                                                            <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
+                                                                        ) : null}
+                                                                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                                                                            {!showProductPrice ? (
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                                                                        {product.name}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="text-[11px] sm:text-xs">
+                                                                                    {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
+                                                                                </div>
+                                                                            )}
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
+                                                                                <ShoppingCart className="h-4 w-4 text-rose-500" />
+                                                                            </Button>
                                                                         </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-[11px] sm:text-xs">
-                                                                        {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
-                                                                    </div>
-                                                                )}
-                                                                <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
-                                                                    <ShoppingCart className="h-4 w-4 text-rose-500" />
-                                                                </Button>
-                                                            </div>
+                                                                    </>
+                                                                )
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </Link>
@@ -738,7 +748,7 @@ export function HomePageContent() {
                                             <CardContent className="p-0 h-full">
                                                 <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
                                                     <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
-                                                        <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                                                        <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                                                         <button onClick={(e) => handleFavoriteClick(e as any, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200" aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}>
                                                             <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                                                         </button>
@@ -749,25 +759,34 @@ export function HomePageContent() {
                                                         </div>
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                                         <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                                                            {showPrices ? (
-                                                                <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
-                                                            ) : null}
-                                                            <div className="mt-0.5 flex items-center justify-between gap-2">
-                                                                {!showPrices ? (
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
-                                                                            {product.name}
+                                                            {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
+                                                            {(() => {
+                                                                const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
+                                                                const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                                                                return (
+                                                                    <>
+                                                                        {showProductPrice ? (
+                                                                            <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
+                                                                        ) : null}
+                                                                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                                                                            {!showProductPrice ? (
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                                                                        {product.name}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="text-[11px] sm:text-xs">
+                                                                                    {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
+                                                                                </div>
+                                                                            )}
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
+                                                                                <ShoppingCart className="h-4 w-4 text-rose-500" />
+                                                                            </Button>
                                                                         </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-[11px] sm:text-xs">
-                                                                        {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
-                                                                    </div>
-                                                                )}
-                                                                <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
-                                                                    <ShoppingCart className="h-4 w-4 text-rose-500" />
-                                                                </Button>
-                                                            </div>
+                                                                    </>
+                                                                )
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </Link>
@@ -868,7 +887,7 @@ export function HomePageContent() {
                         </motion.div>
                         <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} viewport={{ once: true }} className="order-2 md:order-1">
                             <div className="w-full h-64 md:h-96 relative">
-                                <Image src="/elraey-bg.PNG" alt="Raey Background" fill className="object-cover rounded-lg" priority />
+                                <Image src="/elraey-bg.PNG" alt="Raey Background" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover rounded-lg" priority />
                             </div>
                         </motion.div>
                     </div>
