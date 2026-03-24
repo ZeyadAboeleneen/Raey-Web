@@ -130,7 +130,6 @@ const listSelect = {
   beforeSalePrice: true,
   afterSalePrice: true,
   sizes: true,
-  images: true,
   imageUrl: true,
   rating: true,
   reviewCount: true,
@@ -301,6 +300,7 @@ export async function POST(request: NextRequest) {
         packagePrice: productData.packagePrice ? Number(productData.packagePrice) : 0,
         packageOriginalPrice: productData.packageOriginalPrice ? Number(productData.packageOriginalPrice) : null,
         images: productData.images || ["/placeholder.svg"],
+        imageUrl: (productData.images && productData.images.length > 0 && productData.images[0] !== "/placeholder.svg") ? productData.images[0] : null,
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
@@ -342,6 +342,7 @@ export async function POST(request: NextRequest) {
         sizes,
         giftPackageSizes: [],
         images: productData.images || ["/placeholder.svg"],
+        imageUrl: (productData.images && productData.images.length > 0 && productData.images[0] !== "/placeholder.svg") ? productData.images[0] : null,
         rating: 0, reviewCount: 0,
         notes: { top: productData.notes?.top || [], middle: productData.notes?.middle || [], base: productData.notes?.base || [] },
         category: productData.category,
@@ -393,7 +394,7 @@ export async function PUT(request: NextRequest) {
         category: productData.category, collection: productData.collection ? productData.collection.trim() : null, sizes: [], giftPackageSizes: productData.giftPackageSizes || [],
         packagePrice: productData.packagePrice ? Number(productData.packagePrice) : 0,
         packageOriginalPrice: productData.packageOriginalPrice ? Number(productData.packageOriginalPrice) : null,
-        images: productData.images, notes: productData.notes,
+        images: productData.images, imageUrl: (productData.images && productData.images.length > 0 && productData.images[0] !== "/placeholder.svg") ? productData.images[0] : null, notes: productData.notes,
         isActive: productData.isActive, isNew: productData.isNew, isBestseller: productData.isBestseller,
         isOutOfStock: productData.isOutOfStock, isGiftPackage: true,
         price: productData.packagePrice ? Number(productData.packagePrice) : 0,
@@ -407,7 +408,7 @@ export async function PUT(request: NextRequest) {
       })
       updateData = {
         name: productData.name, description: productData.description, longDescription: productData.longDescription || "",
-        category: productData.category, collection: productData.collection ? productData.collection.trim() : null, sizes, images: productData.images, notes: productData.notes,
+        category: productData.category, collection: productData.collection ? productData.collection.trim() : null, sizes, images: productData.images, imageUrl: (productData.images && productData.images.length > 0 && productData.images[0] !== "/placeholder.svg") ? productData.images[0] : null, notes: productData.notes,
         isActive: productData.isActive, isNew: productData.isNew, isBestseller: productData.isBestseller,
         isOutOfStock: calculateIsOutOfStock(sizes), isGiftPackage: false,
         price: productData.sizes?.length > 0
