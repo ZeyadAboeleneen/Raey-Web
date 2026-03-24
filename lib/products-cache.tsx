@@ -210,9 +210,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
       return products.filter((p) => {
         const pCollection = (p.collection || "").toLowerCase().trim()
         const isActive = p.isActive !== false
-        // Lenient match: check if target is contained in collection name
-        // or vice versa, to handle cases like "soiree collection" vs "soiree"
-        return (pCollection.includes(target) || target.includes(pCollection)) && isActive
+        return pCollection === target && isActive
       })
     },
     [products]

@@ -87,7 +87,7 @@ export default function SoireePage() {
     const target = "soiree"
     return cachedProducts.filter(p => {
       const pColl = (p.collection || "").toLowerCase().trim()
-      return (pColl.includes(target) || target.includes(pColl))
+      return pColl === target
     })
   }, [cachedProducts])
   
@@ -97,10 +97,10 @@ export default function SoireePage() {
     const target = "soiree"
     return getBestsellers().filter(p => {
       const pColl = (p.collection || "").toLowerCase().trim()
-      return pColl.includes(target) || target.includes(pColl)
+      return pColl === target
     })
   }, [getBestsellers])
-  const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
+  const bestSellersRent = bestSellers
   const newProducts = useMemo(() => allProducts.filter((p) => p.isNew), [allProducts])
 
   const [visibleNewCount, setVisibleNewCount] = useState(10)

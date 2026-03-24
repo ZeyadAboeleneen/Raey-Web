@@ -8,10 +8,19 @@ export const uploadImage = async (
   image: string,
   _folder: string
 ): Promise<string> => {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("token") || localStorage.getItem("authToken") || ""
-      : ""
+  const token = (() => {
+    if (typeof window === "undefined") return ""
+    // Auth context stores token as JSON under "sense_auth"
+    try {
+      const raw = localStorage.getItem("sense_auth")
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.token) return parsed.token as string
+      }
+    } catch {}
+    // Fallbacks for any legacy keys
+    return localStorage.getItem("token") || localStorage.getItem("authToken") || ""
+  })()
 
   const res = await fetch("/api/admin/upload-image", {
     method: "POST",
