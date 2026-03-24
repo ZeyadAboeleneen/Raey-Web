@@ -238,12 +238,8 @@ export default function EditProductPage() {
         throw new Error(message)
       }
 
-      // Refresh products cache so the updated product shows up immediately in the store
-      try {
-        await refresh()
-      } catch (refreshError) {
-        console.error("Failed to refresh products cache:", refreshError)
-      }
+      // Refresh products cache in background (don't block UI)
+      refresh().catch(err => console.error("Failed to refresh products cache:", err))
 
       setSuccess(true)
       setTimeout(() => router.push("/admin/dashboard"), 2000)
