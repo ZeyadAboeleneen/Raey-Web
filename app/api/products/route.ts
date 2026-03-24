@@ -88,7 +88,9 @@ const transformProduct = (product: any): ApiProduct => {
     : calculateIsOutOfStock(sizes)
 
   const primaryImage = product.imageUrl || product.image_url
-  const images = primaryImage ? [primaryImage] : []
+  const images = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
+    : (primaryImage ? [primaryImage] : [])
 
   return {
     _id: product.productId,
@@ -128,6 +130,7 @@ const listSelect = {
   beforeSalePrice: true,
   afterSalePrice: true,
   sizes: true,
+  images: true,
   imageUrl: true,
   rating: true,
   reviewCount: true,

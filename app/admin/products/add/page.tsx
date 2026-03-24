@@ -30,6 +30,7 @@ export default function AddProductPage() {
   const router = useRouter()
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [duplicateProduct, setDuplicateProduct] = useState<{ id: string; name: string } | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
@@ -69,7 +70,7 @@ export default function AddProductPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setLoading(true);
+    setUploading(true);
     setError('');
 
     try {
@@ -87,10 +88,10 @@ export default function AddProductPage() {
       const imageUrls = await Promise.all(imagePromises);
       setUploadedImages(prev => [...prev, ...imageUrls]);
     } catch (err) {
-      console.error('Image upload failed', err);
-      setError('Failed to upload images. Please try again.');
+      console.error('Image upload failed:', err);
+      setError(`Failed to upload images: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -356,7 +357,7 @@ export default function AddProductPage() {
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                               <Upload className="w-8 h-8 mb-4 text-gray-500" />
                               <p className="mb-2 text-sm text-gray-500">
-                                <span className="font-semibold">Click to upload</span> product images
+                                {uploading ? "Uploading..." : <><span className="font-semibold">Click to upload</span> product images</>}
                               </p>
                               <p className="text-xs text-gray-500">PNG, JPG or JPEG (MAX. 5MB each)</p>
                             </div>

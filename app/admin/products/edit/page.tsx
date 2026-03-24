@@ -49,6 +49,7 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [uploading, setUploading] = useState(false)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
@@ -145,7 +146,7 @@ export default function EditProductPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setLoading(true);
+    setUploading(true);
     setError('');
 
     try {
@@ -161,12 +162,12 @@ export default function EditProductPage() {
       })
 
       const imageUrls = await Promise.all(imagePromises);
-      setUploadedImages(imageUrls);
+      setUploadedImages(prev => [...prev, ...imageUrls]);
     } catch (err) {
-      console.error('Image upload failed', err);
-      setError('Failed to upload images. Please try again.');
+      console.error('Image upload failed:', err);
+      setError(`Failed to upload images: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -297,20 +298,6 @@ export default function EditProductPage() {
     return null
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => router.push("/admin/dashboard")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <section className="py-16 sm:py-24">
@@ -371,7 +358,7 @@ export default function EditProductPage() {
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                               <Upload className="w-8 h-8 mb-4 text-gray-500" />
                               <p className="mb-2 text-sm text-gray-500">
-                                <span className="font-semibold">Click to upload</span> product images
+                                {uploading ? "Uploading..." : <><span className="font-semibold">Click to upload</span> product images</>}
                               </p>
                               <p className="text-xs text-gray-500">PNG, JPG or JPEG (MAX. 5MB each)</p>
                             </div>
