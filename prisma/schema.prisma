@@ -27,15 +27,17 @@ model User {
 
 model Product {
   productId            String   @id @map("product_id")
+  code                 String?
+  branch               String?
   name                 String
   description          String?  @db.Text
-  longDescription      String?  @db.LongText @map("long_description")
+  longDescription      String?  @map("long_description") @db.LongText
   price                Float    @default(0)
   beforeSalePrice      Float?   @map("before_sale_price")
   afterSalePrice       Float?   @map("after_sale_price")
   sizes                Json     @default("[]")
   images               Json     @default("[]")
-  imageUrl             String?  @db.VarChar(500) @map("image_url")
+  imageUrl             String?  @map("image_url") @db.VarChar(500)
   rating               Float    @default(0)
   reviewCount          Int      @default(0) @map("reviews")
   notes                Json     @default("{\"top\":[],\"middle\":[],\"base\":[]}")
@@ -53,6 +55,7 @@ model Product {
   updatedAt            DateTime @updatedAt @map("updated_at")
   reviewsList          Review[]
 
+  @@unique([name, collection], name: "name_collection_unique")
   @@map("products")
 }
 
@@ -119,7 +122,7 @@ model Offer {
   id           String   @id @default(uuid())
   title        String?
   description  String   @db.Text
-  imageUrl     String?  @db.LongText @map("image_url")
+  imageUrl     String?  @map("image_url") @db.LongText
   linkUrl      String?  @map("link_url")
   discountCode String?  @map("discount_code")
   isActive     Boolean  @default(true) @map("is_active")

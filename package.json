@@ -62,6 +62,7 @@
     "input-otp": "1.4.1",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "latest",
+    "jszip": "^3.10.1",
     "kerberos": "latest",
     "lucide-react": "^0.454.0",
     "mongodb": "^6.20.0",

@@ -783,15 +783,15 @@ export default function AdminDashboard() {
   const downloadTemplate = () => {
     const templateData = [
       {
-        "Product Name": "Sample Product",
-        "Category": "mona-saleh",
-        "Short Description": "A brief overview of the product",
-        "Long Description": "A detailed description including features and benefits",
-        "Original Price": 1000,
-        "Discounted Price": 900,
+        "name": "Sample Product",
+        "price": 1000,
+        "collection": "summer-collection",
+        "images": "sample-product.jpg, sample-product-2.jpg",
+        "sale_price": 900,
+        "category": "mona-saleh",
+        "description": "A brief overview of the product",
         "Is New?": "Yes",
         "Is Bestseller?": "No",
-        "Image": "https://example.com/image.jpg",
         "Size": "Standard",
         "Volume": "100ml"
       }
@@ -895,29 +895,16 @@ export default function AdminDashboard() {
                   Template
                 </Button>
 
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={handleExcelUpload}
-                    className="hidden"
-                    id="excel-upload"
-                    disabled={refreshing}
-                  />
-                  <label htmlFor="excel-upload">
-                    <Button
-                      variant="outline"
-                      className="bg-transparent text-xs sm:text-sm cursor-pointer"
-                      size="sm"
-                      asChild
-                    >
-                      <span>
-                        <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        Bulk Upload
-                      </span>
-                    </Button>
-                  </label>
-                </div>
+                <Link href="/admin/products/bulk-upload">
+                  <Button
+                    variant="outline"
+                    className="bg-transparent text-xs sm:text-sm"
+                    size="sm"
+                  >
+                    <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Bulk Upload
+                  </Button>
+                </Link>
 
                 <Link href="/admin/products/add" prefetch={true}>
                   <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">
