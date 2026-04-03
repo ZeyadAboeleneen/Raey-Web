@@ -885,15 +885,7 @@ export default function AdminDashboard() {
                   Refresh
                 </Button>
 
-                <Button
-                  onClick={downloadTemplate}
-                  variant="outline"
-                  className="bg-transparent text-xs sm:text-sm border-dashed"
-                  size="sm"
-                >
-                  <FileSpreadsheet className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Template
-                </Button>
+
 
                 <Link href="/admin/products/bulk-upload">
                   <Button

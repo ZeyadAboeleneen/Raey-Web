@@ -82,7 +82,17 @@ const calculateIsOutOfStock = (sizes: any[]): boolean => {
 type ApiProduct = BaseProduct & { _id: string; createdAt: string; updatedAt: string }
 
 const transformProduct = (product: any): ApiProduct => {
-  const sizes = product.sizes || []
+  let sizes = product.sizes || []
+  if (sizes.length === 0 && product.price) {
+    sizes = [{
+      size: "Standard",
+      volume: "-",
+      originalPrice: product.beforeSalePrice || product.price,
+      discountedPrice: product.price,
+      stockCount: 10
+    }]
+  }
+
   const isOutOfStock = product.isOutOfStock !== undefined
     ? product.isOutOfStock
     : calculateIsOutOfStock(sizes)

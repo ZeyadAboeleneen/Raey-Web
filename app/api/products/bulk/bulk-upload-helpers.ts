@@ -170,16 +170,35 @@ export function matchImagesToProduct(
   
   // Strategy 1: from images column
   if (imagesColumn) {
-    const names = imagesColumn.split(",").map((n) => n.trim()).filter(Boolean)
-    for (const imgName of names) {
-      if (zipMap.has(imgName.toLowerCase())) {
-        matched.push(imgName.toLowerCase())
-      } else {
-        console.log(`[Image Match] Row "${name}": requested explicit image "${imgName}" not found in ZIP!`)
+    const requestedNames = imagesColumn.split(",").map((n) => n.trim().toLowerCase()).filter(Boolean)
+    for (const reqName of requestedNames) {
+      // Direct exact match
+      if (zipMap.has(reqName)) {
+        if (!matched.includes(reqName)) matched.push(reqName)
+        continue
+      }
+      
+      // Extension-agnostic match
+      let found = false
+      const queryBaseName = reqName.includes(".") ? reqName.substring(0, reqName.lastIndexOf(".")) : reqName
+      
+      for (const [filename] of zipMap) {
+        const zipBaseName = filename.substring(0, filename.lastIndexOf("."))
+        if (zipBaseName === queryBaseName) {
+          if (!matched.includes(filename)) matched.push(filename)
+          found = true
+          break // Pick first matching extension to avoid duplicates
+        }
+      }
+      
+      if (!found) {
+        console.log(`[Image Match] Row "${name}": requested explicit image "${reqName}" not found in ZIP!`)
       }
     }
+
     if (matched.length > 0) {
       console.log(`[Image Match] Row "${name}": matched ${matched.length} images via explicit column.`);
+      matched.sort()
       return matched
     }
   }

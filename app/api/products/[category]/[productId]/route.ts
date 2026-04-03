@@ -20,6 +20,17 @@ const transformProduct = (product: any): Product => {
   const imagesArray = Array.isArray(product.images) ? product.images : []
   const primaryImage = product.imageUrl || product.image_url
 
+  let sizes = product.sizes || []
+  if (sizes.length === 0 && product.price) {
+    sizes = [{
+      size: "Standard",
+      volume: "-",
+      originalPrice: product.beforeSalePrice || product.price,
+      discountedPrice: product.price,
+      stockCount: 10
+    }]
+  }
+
   return {
     id: product.productId,
     product_id: product.productId,
@@ -29,7 +40,7 @@ const transformProduct = (product: any): Product => {
     price: product.price || 0,
     beforeSalePrice: product.beforeSalePrice,
     afterSalePrice: product.afterSalePrice,
-    sizes: product.sizes || [],
+    sizes,
     images: primaryImage
       ? [primaryImage, ...imagesArray.filter((x: any) => x && x !== primaryImage)]
       : imagesArray,
