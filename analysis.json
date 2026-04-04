@@ -1,0 +1,39 @@
+{
+  "unusedDeps": [
+    "@aws-sdk/credential-providers",
+    "@emotion/is-prop-valid",
+    "@fontsource/bodoni-moda",
+    "@hookform/resolvers",
+    "@mongodb-js/zstd",
+    "date-fns",
+    "gcp-metadata",
+    "geist",
+    "gsap",
+    "ioredis",
+    "kerberos",
+    "mongodb-client-encryption",
+    "react-intersection-observer",
+    "sharp",
+    "snappy",
+    "socks",
+    "tailwindcss-animate"
+  ],
+  "unusedApi": [
+    "/api/auth/me",
+    "/api/auth/reset-password",
+    "/api/orders/update-status",
+    "/api/send-offer-email",
+    "/api/send-order-confirmation",
+    "/api/send-order-update",
+    "/api/test-functionality"
+  ],
+  "unusedComps": [
+    "\\components\\CalendarPicker.tsx",
+    "\\components\\Categories.tsx",
+    "\\components\\country-language-selector.tsx",
+    "\\components\\home-page-content.tsx",
+    "\\components\\NewsletterSubscription.tsx",
+    "\\components\\theme-provider.tsx",
+    "\\components\\WhatsAppButton.tsx"
+  ]
+}

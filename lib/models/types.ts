@@ -12,6 +12,8 @@ export interface User {
 export interface Product {
   id?: string // UUID
   product_id: string // The actual product ID (e.g., "midnight-essence")
+  code?: string
+  branch?: string
   name: string
   description: string
   longDescription?: string
