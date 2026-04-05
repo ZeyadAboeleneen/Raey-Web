@@ -101,6 +101,21 @@ interface Offer {
 
 const PRODUCTS_PER_PAGE = 10
 
+// Category format helper
+const formatCategoryName = (category: string) => {
+  if (!category) return ""
+  if (category === "el-raey-1") return "Raey 1"
+  if (category === "el-raey-2") return "Raey 2"
+  if (category === "el-raey-the-yard") return "Raey The Yard"
+  if (category === "mona-saleh") return "Mona Saleh"
+  if (category === "sell-dresses") return "Sell Dresses"
+  
+  // fallback capitalize
+  return category.split('-').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ')
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const { state: authState, logout } = useAuth()
@@ -121,6 +136,9 @@ export default function AdminDashboard() {
   const productsPageCacheRef = useRef(new Map<string, Product[]>())
   const [productSearchQuery, setProductSearchQuery] = useState("")
   const [debouncedProductSearchQuery, setDebouncedProductSearchQuery] = useState("")
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all")
+  const [productCollectionFilter, setProductCollectionFilter] = useState("all")
+  const [absoluteStats, setAbsoluteStats] = useState({ totalProducts: 0, activeProducts: 0 })
 
   const handleSignOut = () => {
     logout()
@@ -179,7 +197,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     setProductPage(1)
     productsPageCacheRef.current.clear()
-  }, [debouncedProductSearchQuery])
+  }, [debouncedProductSearchQuery, productCategoryFilter, productCollectionFilter])
 
   const fetchProductsPage = useCallback(async (page: number) => {
     try {
@@ -190,19 +208,25 @@ export default function AdminDashboard() {
         cache: 'no-store' as RequestCache,
       }
 
-      const cacheKey = `${debouncedProductSearchQuery}::${page}`
+      const cacheKey = `${debouncedProductSearchQuery}::${productCategoryFilter}::${productCollectionFilter}::${page}`
       const cached = productsPageCacheRef.current.get(cacheKey)
       if (cached) {
         setProducts(cached)
         return
       }
 
-      const searchParam = debouncedProductSearchQuery ? `&search=${encodeURIComponent(debouncedProductSearchQuery)}` : ""
+      let url = `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`
+      if (debouncedProductSearchQuery) {
+        url += `&search=${encodeURIComponent(debouncedProductSearchQuery)}`
+      }
+      if (productCategoryFilter !== "all") {
+        url += `&category=${encodeURIComponent(productCategoryFilter)}`
+      }
+      if (productCollectionFilter !== "all") {
+        url += `&collection=${encodeURIComponent(productCollectionFilter)}`
+      }
 
-      const response = await fetch(
-        `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}${searchParam}`,
-        fetchOptions
-      )
+      const response = await fetch(url, fetchOptions)
 
       if (response.ok) {
         const products = await response.json()
@@ -222,7 +246,7 @@ export default function AdminDashboard() {
     } finally {
       setIsSearching(false)
     }
-  }, [authState.token, debouncedProductSearchQuery])
+  }, [authState.token, debouncedProductSearchQuery, productCategoryFilter, productCollectionFilter])
 
   const fetchData = useCallback(async () => {
     try {
@@ -246,10 +270,20 @@ export default function AdminDashboard() {
       setLoading(false)
 
       // Then load secondary data in the background (does not block initial render)
-      const [discountCodesRes, offersRes] = await Promise.all([
+      const [discountCodesRes, offersRes, totalProdsRes, activeProdsRes] = await Promise.all([
         fetch("/api/discount-codes", fetchOptions),
         fetch("/api/offers", fetchOptions),
+        fetch("/api/products?includeInactive=true&page=1&limit=1", fetchOptions),
+        fetch("/api/products?page=1&limit=1", fetchOptions),
       ])
+
+      if (totalProdsRes.ok && activeProdsRes.ok) {
+        const total = Number(totalProdsRes.headers.get("X-Total-Count") || 0)
+        const active = Number(activeProdsRes.headers.get("X-Total-Count") || 0)
+        if (total > 0 || active > 0) {
+          setAbsoluteStats({ totalProducts: total, activeProducts: active })
+        }
+      }
 
       if (discountCodesRes.ok) {
         const codes = await discountCodesRes.json()
@@ -820,11 +854,22 @@ export default function AdminDashboard() {
   // Memoize expensive calculations to prevent recalculation on every render
   // IMPORTANT: All hooks must be called before any conditional returns
   const dashboardStats = useMemo(() => {
-    const totalProducts = productTotalCount || products.length
-    const activeProducts = products.filter((p) => p.isActive).length
+    let totalProducts = absoluteStats.totalProducts;
+    let activeProducts = absoluteStats.activeProducts;
+
+    // Use current page stats as fallback if absolute stats haven't loaded
+    // and we aren't currently filtering anything that would reduce the count
+    if (totalProducts === 0 && productCategoryFilter === "all" && productCollectionFilter === "all" && !debouncedProductSearchQuery) {
+      totalProducts = productTotalCount || products.length;
+    }
+
+    // Active products fallback (may be inaccurate if pagination is > 10, but good enough for initial flash)
+    if (activeProducts === 0) {
+       activeProducts = products.filter((p) => p.isActive).length;
+    }
 
     return { totalProducts, activeProducts }
-  }, [products, productTotalCount])
+  }, [absoluteStats, products, productTotalCount, productCategoryFilter, productCollectionFilter, debouncedProductSearchQuery])
 
   const { totalProducts, activeProducts } = dashboardStats
 
@@ -993,6 +1038,31 @@ export default function AdminDashboard() {
                           ) : null}
                         </div>
                       </div>
+                      <div className="flex gap-2">
+                        <Select value={productCollectionFilter} onValueChange={setProductCollectionFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Collection" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Collections</SelectItem>
+                            <SelectItem value="wedding">Wedding</SelectItem>
+                            <SelectItem value="soiree">Soiree</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={productCategoryFilter} onValueChange={setProductCategoryFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
+                            <SelectItem value="el-raey-1">Raey 1</SelectItem>
+                            <SelectItem value="el-raey-2">Raey 2</SelectItem>
+                            <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
+                            <SelectItem value="sell-dresses">Sell Dresses</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 sm:p-6">
@@ -1087,7 +1157,7 @@ export default function AdminDashboard() {
                                   <div className="space-y-2">
                                     <p className="font-bold text-lg sm:text-xl text-gray-900 leading-tight">{product.name}</p>
                                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                                      <p className="text-sm text-gray-600 capitalize font-medium">{product.category}</p>
+                                      <p className="text-sm text-gray-600 font-medium">{formatCategoryName(product.category)}</p>
                                       {product.isGiftPackage && (
                                         <motion.div
                                           initial={{ scale: 0, x: -20 }}

@@ -75,9 +75,9 @@ const PRICE_RANGES = [
 
 const COLLECTIONS_FILTER = [
   { slug: "mona-saleh", label: "Mona Saleh" },
-  { slug: "el-raey-1", label: "El Raey 1" },
-  { slug: "el-raey-2", label: "El Raey 2" },
-  { slug: "el-raey-the-yard", label: "El Raey The Yard" },
+  { slug: "el-raey-1", label: "Raey 1" },
+  { slug: "el-raey-2", label: "Raey 2" },
+  { slug: "el-raey-the-yard", label: "Raey The Yard" },
   { slug: "sell-dresses", label: "Sell Dresses" },
 ]
 
