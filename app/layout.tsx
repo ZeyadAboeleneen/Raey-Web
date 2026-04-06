@@ -13,6 +13,7 @@ import { CartSuccessNotification } from "@/components/cart-success-notification"
 import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 import { warmProductsServerCache } from "@/lib/get-products-server"
+import { GoogleAnalytics } from "@next/third-parties/google"
 
 // Configure fonts with optimized loading
 const playfairDisplay = Playfair_Display({
@@ -61,6 +62,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
       </head>
       <body className="font-sans">
+        <GoogleAnalytics gaId="G-F487HSDE42" />
         <LocaleProvider>
           <HtmlLangWrapper>
             <AuthProvider>
