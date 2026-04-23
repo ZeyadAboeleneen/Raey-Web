@@ -40,7 +40,7 @@ interface PreviewProduct {
   name: string
   price: number
   collection: string
-  category?: string
+  branch?: string
   description?: string
   status: "create" | "update"
   matchedImages: string[]
@@ -107,7 +107,7 @@ export default function BulkUploadPage() {
         price: 1500,
         collection: "summer-collection",
         images: "sample-product-1.jpg,sample-product-2.jpg",
-        category: "womens-wear",
+        branch: "womens-wear",
         description: "Product description here",
       },
     ]
@@ -600,7 +600,7 @@ export default function BulkUploadPage() {
                             <th className="text-left p-3 font-medium text-gray-600">Name</th>
                             <th className="text-left p-3 font-medium text-gray-600">Collection</th>
                             <th className="text-left p-3 font-medium text-gray-600">Price</th>
-                            <th className="text-left p-3 font-medium text-gray-600">Category</th>
+                            <th className="text-left p-3 font-medium text-gray-600">Branch</th>
                             <th className="text-left p-3 font-medium text-gray-600">Images</th>
                             <th className="text-left p-3 font-medium text-gray-600">Errors</th>
                           </tr>
@@ -633,8 +633,8 @@ export default function BulkUploadPage() {
                               </td>
                               <td className="p-3">{product.price ? `${product.price.toLocaleString()} EGP` : "—"}</td>
                               <td className="p-3">
-                                {product.category ? (
-                                  <Badge variant="secondary" className="text-xs">{product.category}</Badge>
+                                {product.branch ? (
+                                  <Badge variant="secondary" className="text-xs">{product.branch}</Badge>
                                 ) : "—"}
                               </td>
                               <td className="p-3">

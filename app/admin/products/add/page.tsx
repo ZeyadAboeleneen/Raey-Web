@@ -40,7 +40,6 @@ export default function AddProductPage() {
     description: "",
     longDescription: "",
     collection: "wedding",
-    category: "mona-saleh",
     sizes: [{
       originalPrice: "",
       discountedPrice: "",
@@ -106,36 +105,21 @@ export default function AddProductPage() {
     setLoading(true)
 
     try {
+      const firstSize = formData.sizes[0]
       const product: any = {
         name: formData.name,
-        description: formData.description,
-        longDescription: formData.longDescription,
-        category: formData.category,
         collection: formData.collection,
-        images: uploadedImages.length > 0 ? uploadedImages : ["/placeholder.svg"],
-        // Keep notes structure for backend compatibility but no longer editable in UI
-        notes: {
-          top: [],
-          middle: [],
-          base: [],
-        },
-        isActive: formData.isActive,
-        isNew: formData.isNew,
-        isBestseller: formData.isBestseller,
-        sizes: formData.sizes.map((size) => ({
-          size: "M",
-          volume: "Standard",
-          originalPrice: size.originalPrice && size.originalPrice.trim() !== "" ? size.originalPrice : undefined,
-          discountedPrice: size.discountedPrice && size.discountedPrice.trim() !== "" ? size.discountedPrice : undefined,
-          stockCount: size.stockCount && size.stockCount.trim() !== "" ? parseInt(size.stockCount, 10) : undefined,
-        })),
-        checkDuplicate: !forceReplace
+        image: uploadedImages[0] || "",
+        price: Number(
+          firstSize?.discountedPrice?.trim() ||
+            firstSize?.originalPrice?.trim() ||
+            "0"
+        ),
       }
 
       let response;
       if (forceReplace && duplicateProduct) {
-        // Use PUT to replace existing product
-        response = await fetch(`/api/products?id=${duplicateProduct.id}`, {
+        response = await fetch(`/api/items/${duplicateProduct.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -144,8 +128,7 @@ export default function AddProductPage() {
           body: JSON.stringify(product),
         })
       } else {
-        // Normal creation
-        response = await fetch("/api/products", {
+        response = await fetch("/api/items/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -167,7 +150,6 @@ export default function AddProductPage() {
           description: "",
           longDescription: "",
           collection: "wedding",
-          category: "mona-saleh",
           sizes: [{
             originalPrice: "",
             discountedPrice: "",
@@ -217,7 +199,7 @@ export default function AddProductPage() {
       }
     } catch (error) {
       console.error("Error adding product:", error)
-      setError("An error occurred while adding the product")
+        setError("An error occurred while saving the product")
     } finally {
       setLoading(false)
     }
@@ -285,7 +267,7 @@ export default function AddProductPage() {
               Back to Dashboard
             </Link>
             <h1 className="text-3xl font-light tracking-wider mb-2">Add New Product</h1>
-            <p className="text-gray-600">Create a new product for your catalog</p>
+            <p className="text-gray-600">Create a new MSSQL ERP product</p>
           </motion.div>
 
           <div className="max-w-4xl mx-auto">
@@ -420,25 +402,9 @@ export default function AddProductPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="category">Category *</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => handleChange("category", value)}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                          <SelectItem value="el-raey-1">Raey 1</SelectItem>
-                          <SelectItem value="el-raey-2">Raey 2</SelectItem>
-                          <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
-                          <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <p className="text-sm text-gray-600 rounded-md border border-dashed border-gray-200 bg-gray-50 p-3">
+                      Branch is determined in ERP by linking the item to a booking and store (Booking → Stores). It is not stored on the item row.
+                    </p>
 
                     <div>
                       <Label htmlFor="description">Short Description</Label>

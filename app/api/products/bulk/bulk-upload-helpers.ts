@@ -7,7 +7,7 @@ export interface ParsedRow {
   price: number
   collection: string
   images: string
-  category?: string
+  branch?: string
   description?: string
 }
 
@@ -22,7 +22,7 @@ export interface PreviewProduct {
   name: string
   price: number
   collection: string
-  category?: string
+  branch?: string
   description?: string
   status: "create" | "update"
   matchedImages: string[]
@@ -125,7 +125,9 @@ export function extractRow(
     price: parsedPrice,
     collection: String(normalized.collection ?? "").trim(),
     images: String(normalized.images ?? "").trim(),
-    category: normalized.category ? String(normalized.category).trim() : undefined,
+    branch: normalized.branch
+      ? String(normalized.branch).trim()
+      : undefined,
     description: normalized.description ? String(normalized.description).trim() : undefined,
   }
 }

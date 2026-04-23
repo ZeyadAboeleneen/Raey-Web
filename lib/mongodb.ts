@@ -47,7 +47,7 @@ async function ensureIndexes(db: Db) {
   try {
     await db.collection('products').createIndexes([
       { key: { id: 1 }, name: 'idx_products_id', unique: true },
-      { key: { isActive: 1, category: 1, createdAt: -1 }, name: 'idx_products_active_category_createdAt' },
+      { key: { isActive: 1, branch: 1, createdAt: -1 }, name: 'idx_products_active_branch_createdAt' },
       { key: { isActive: 1, createdAt: -1 }, name: 'idx_products_active_createdAt' },
       { key: { isActive: 1, isGiftPackage: 1, createdAt: -1 }, name: 'idx_products_active_gift_createdAt' },
       { key: { createdAt: -1 }, name: 'idx_products_createdAt' },

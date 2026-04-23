@@ -28,7 +28,7 @@ async function seedDatabase() {
 
     // Create indexes for better performance
     console.log("📝 Creating database indexes...")
-    await db.collection("products").createIndex({ id: 1, category: 1 })
+    await db.collection("products").createIndex({ id: 1, branch: 1 })
     await db.collection("products").createIndex({ isActive: 1 })
     await db.collection("orders").createIndex({ userId: 1 })
     await db.collection("orders").createIndex({ id: 1 })
@@ -89,7 +89,7 @@ async function seedDatabase() {
           middle: ["Cedar", "Lavender", "Geranium"],
           base: ["Amber", "Vanilla", "Musk"],
         },
-        category: "men",
+        branch: "mona-saleh",
         isBestseller: true,
         isNew: false,
         isActive: true,
@@ -120,7 +120,7 @@ async function seedDatabase() {
           middle: ["Dark Rose", "Patchouli", "Jasmine"],
           base: ["Vanilla", "Sandalwood", "Amber"],
         },
-        category: "women",
+        branch: "el-raey-2",
         isBestseller: true,
         isNew: false,
         isActive: true,
@@ -147,7 +147,7 @@ async function seedDatabase() {
           middle: ["Leather", "Cardamom", "Rose"],
           base: ["Vanilla", "Sandalwood", "Patchouli"],
         },
-        category: "men",
+        branch: "mona-saleh",
         isBestseller: false,
         isNew: true,
         isActive: true,
@@ -174,7 +174,7 @@ async function seedDatabase() {
           middle: ["Peony", "Jasmine", "Freesia"],
           base: ["White Musk", "Cedar", "Amber"],
         },
-        category: "women",
+        branch: "el-raey-2",
         isBestseller: false,
         isNew: true,
         isActive: true,
@@ -197,7 +197,7 @@ async function seedDatabase() {
           middle: ["Cedar", "Dark Rose", "Patchouli"],
           base: ["Amber", "Vanilla", "Sandalwood"],
         },
-        category: "packages",
+        branch: "sell-dresses",
         isBestseller: true,
         isNew: false,
         isActive: true,
@@ -222,13 +222,13 @@ async function seedDatabase() {
 
     // Test product queries
     console.log("🧪 Testing product queries...")
-    const menProducts = await db.collection("products").find({ category: "men", isActive: true }).toArray()
-    const womenProducts = await db.collection("products").find({ category: "women", isActive: true }).toArray()
-    const packageProducts = await db.collection("products").find({ category: "packages", isActive: true }).toArray()
+    const branchAProducts = await db.collection("products").find({ branch: "mona-saleh", isActive: true }).toArray()
+    const branchBProducts = await db.collection("products").find({ branch: "el-raey-2", isActive: true }).toArray()
+    const branchCProducts = await db.collection("products").find({ branch: "sell-dresses", isActive: true }).toArray()
 
-    console.log(`   Men's products: ${menProducts.length}`)
-    console.log(`   Women's products: ${womenProducts.length}`)
-    console.log(`   Package products: ${packageProducts.length}`)
+    console.log(`   mona-saleh products: ${branchAProducts.length}`)
+    console.log(`   el-raey-2 products: ${branchBProducts.length}`)
+    console.log(`   sell-dresses products: ${branchCProducts.length}`)
 
     console.log("🎉 Database seeded successfully!")
     console.log("🔗 Connection string used:", uri.replace(/\/\/.*@/, "//***:***@"))

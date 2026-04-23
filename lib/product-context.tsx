@@ -16,7 +16,7 @@ interface Product {
   rating: number
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
-  category: string
+  branch: string | null
   isNew?: boolean
   isBestseller?: boolean
   isActive: boolean
@@ -38,8 +38,8 @@ const ProductContext = createContext<{
   addProduct: (product: Omit<Product, "id">) => void
   updateProduct: (product: Product) => void
   deleteProduct: (productId: string) => void
-  getProductsByCategory: (category: string) => Product[]
-  getProductById: (category: string, productId: string) => Product | undefined
+  getProductsByBranch: (branchSlug: string) => Product[]
+  getProductById: (branchSlug: string, productId: string) => Product | undefined
 } | null>(null)
 
 // Initial products data
@@ -70,7 +70,7 @@ const initialProducts: Product[] = [
       middle: ["Cedar", "Lavender", "Geranium"],
       base: ["Amber", "Vanilla", "Musk"],
     },
-    category: "men",
+    branch: "men",
     isBestseller: true,
     isActive: true,
   },
@@ -100,7 +100,7 @@ const initialProducts: Product[] = [
       middle: ["Dark Rose", "Patchouli", "Jasmine"],
       base: ["Vanilla", "Sandalwood", "Amber"],
     },
-    category: "women",
+    branch: "women",
     isBestseller: true,
     isActive: true,
   },
@@ -150,12 +150,12 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "DELETE_PRODUCT", payload: productId })
   }
 
-  const getProductsByCategory = (category: string): Product[] => {
-    return state.products.filter((product) => product.category === category && product.isActive)
+  const getProductsByBranch = (branchSlug: string): Product[] => {
+    return state.products.filter((product) => product.branch === branchSlug && product.isActive)
   }
 
-  const getProductById = (category: string, productId: string): Product | undefined => {
-    return state.products.find((product) => product.category === category && product.id === productId)
+  const getProductById = (branchSlug: string, productId: string): Product | undefined => {
+    return state.products.find((product) => product.branch === branchSlug && product.id === productId)
   }
 
   return (
@@ -166,7 +166,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         addProduct,
         updateProduct,
         deleteProduct,
-        getProductsByCategory,
+        getProductsByBranch,
         getProductById,
       }}
     >

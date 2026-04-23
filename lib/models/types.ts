@@ -13,7 +13,6 @@ export interface Product {
   id?: string // UUID
   product_id: string // The actual product ID (e.g., "midnight-essence")
   code?: string
-  branch?: string
   name: string
   description: string
   longDescription?: string
@@ -25,7 +24,7 @@ export interface Product {
   rating: number
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
-  category: string
+  branch: string
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -47,7 +46,7 @@ export interface OrderItem {
   size: string
   volume: string
   image: string
-  category: string
+  branch: string
   quantity: number
   isGiftPackage?: boolean
   selectedProducts?: any[]
@@ -102,6 +101,6 @@ export interface CartItem {
   size: string
   volume: string
   image: string
-  category: string
+  branch: string
   quantity: number
 }

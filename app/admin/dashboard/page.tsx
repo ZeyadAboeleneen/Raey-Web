@@ -51,7 +51,7 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string | null
   isActive: boolean
   isNew: boolean
   isBestseller: boolean
@@ -101,17 +101,17 @@ interface Offer {
 
 const PRODUCTS_PER_PAGE = 10
 
-// Category format helper
-const formatCategoryName = (category: string) => {
-  if (!category) return ""
-  if (category === "el-raey-1") return "Raey 1"
-  if (category === "el-raey-2") return "Raey 2"
-  if (category === "el-raey-the-yard") return "Raey The Yard"
-  if (category === "mona-saleh") return "Mona Saleh"
-  if (category === "sell-dresses") return "Sell Dresses"
+// Branch display helper (expects storefront slug from API)
+const formatBranchName = (branch: string | null | undefined) => {
+  if (!branch) return ""
+  if (branch === "el-raey-1") return "Raey 1"
+  if (branch === "el-raey-2") return "Raey 2"
+  if (branch === "el-raey-the-yard") return "Raey The Yard"
+  if (branch === "mona-saleh") return "Mona Saleh"
+  if (branch === "sell-dresses") return "Sell Dresses"
   
   // fallback capitalize
-  return category.split('-').map(word => 
+  return branch.split('-').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ')
 }
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
   const productsPageCacheRef = useRef(new Map<string, Product[]>())
   const [productSearchQuery, setProductSearchQuery] = useState("")
   const [debouncedProductSearchQuery, setDebouncedProductSearchQuery] = useState("")
-  const [productCategoryFilter, setProductCategoryFilter] = useState("all")
+  const [productBranchFilter, setProductBranchFilter] = useState("all")
   const [productCollectionFilter, setProductCollectionFilter] = useState("all")
   const [absoluteStats, setAbsoluteStats] = useState({ totalProducts: 0, activeProducts: 0 })
 
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     setProductPage(1)
     productsPageCacheRef.current.clear()
-  }, [debouncedProductSearchQuery, productCategoryFilter, productCollectionFilter])
+  }, [debouncedProductSearchQuery, productBranchFilter, productCollectionFilter])
 
   const fetchProductsPage = useCallback(async (page: number) => {
     try {
@@ -208,19 +208,19 @@ export default function AdminDashboard() {
         cache: 'no-store' as RequestCache,
       }
 
-      const cacheKey = `${debouncedProductSearchQuery}::${productCategoryFilter}::${productCollectionFilter}::${page}`
+      const cacheKey = `${debouncedProductSearchQuery}::${productBranchFilter}::${productCollectionFilter}::${page}`
       const cached = productsPageCacheRef.current.get(cacheKey)
       if (cached) {
         setProducts(cached)
         return
       }
 
-      let url = `/api/products?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`
+      let url = `/api/items?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`
       if (debouncedProductSearchQuery) {
         url += `&search=${encodeURIComponent(debouncedProductSearchQuery)}`
       }
-      if (productCategoryFilter !== "all") {
-        url += `&category=${encodeURIComponent(productCategoryFilter)}`
+      if (productBranchFilter !== "all") {
+        url += `&branch=${encodeURIComponent(productBranchFilter)}`
       }
       if (productCollectionFilter !== "all") {
         url += `&collection=${encodeURIComponent(productCollectionFilter)}`
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
     } finally {
       setIsSearching(false)
     }
-  }, [authState.token, debouncedProductSearchQuery, productCategoryFilter, productCollectionFilter])
+  }, [authState.token, debouncedProductSearchQuery, productBranchFilter, productCollectionFilter])
 
   const fetchData = useCallback(async () => {
     try {
@@ -273,8 +273,8 @@ export default function AdminDashboard() {
       const [discountCodesRes, offersRes, totalProdsRes, activeProdsRes] = await Promise.all([
         fetch("/api/discount-codes", fetchOptions),
         fetch("/api/offers", fetchOptions),
-        fetch("/api/products?includeInactive=true&page=1&limit=1", fetchOptions),
-        fetch("/api/products?page=1&limit=1", fetchOptions),
+        fetch("/api/items?includeInactive=true&page=1&limit=1", fetchOptions),
+        fetch("/api/items?page=1&limit=1", fetchOptions),
       ])
 
       if (totalProdsRes.ok && activeProdsRes.ok) {
@@ -703,7 +703,7 @@ export default function AdminDashboard() {
     try {
       const token = getAuthToken();
 
-      const response = await fetch(`/api/products?id=${productId}`, {
+      const response = await fetch(`/api/items/${productId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -713,7 +713,8 @@ export default function AdminDashboard() {
       const result = await response.json()
 
       if (response.ok) {
-        setProducts(products.filter(p => p._id !== productId))
+        setProducts(products.filter(p => p.id !== productId))
+        setProductTotalCount((prev) => Math.max(prev - 1, 0))
       } else {
         setError(result.error || "Failed to delete product")
       }
@@ -722,28 +723,6 @@ export default function AdminDashboard() {
       setError("An error occurred while deleting the product")
     }
   }
-
-  const handleUpdateProduct = async (productId: string, updatedData: Partial<Product>) => {
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`/api/products/${productId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedData),
-      })
-
-      if (response.ok) {
-        setProducts(products.map(product =>
-          product._id === productId ? { ...product, ...updatedData } : product
-        ))
-      }
-    } catch (error) {
-      console.error("Error updating product:", error)
-    }
-  };
 
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -770,7 +749,7 @@ export default function AdminDashboard() {
           name: row["Product Name"] || row.Name || row.name,
           description: row["Short Description"] || row.Description || row.description || "",
           longDescription: row["Long Description"] || row.longDescription || "",
-          category: row.Category || row.category || "mona-saleh",
+          branch: row.Branch || row.branch || "mona-saleh",
           isActive: true,
           isNew: row["Is New?"] === "Yes" || row.isNew === true,
           isBestseller: row["Is Bestseller?"] === "Yes" || row.isBestseller === true,
@@ -822,7 +801,7 @@ export default function AdminDashboard() {
         "collection": "summer-collection",
         "images": "sample-product.jpg, sample-product-2.jpg",
         "sale_price": 900,
-        "category": "mona-saleh",
+        "branch": "mona-saleh",
         "description": "A brief overview of the product",
         "Is New?": "Yes",
         "Is Bestseller?": "No",
@@ -859,7 +838,7 @@ export default function AdminDashboard() {
 
     // Use current page stats as fallback if absolute stats haven't loaded
     // and we aren't currently filtering anything that would reduce the count
-    if (totalProducts === 0 && productCategoryFilter === "all" && productCollectionFilter === "all" && !debouncedProductSearchQuery) {
+    if (totalProducts === 0 && productBranchFilter === "all" && productCollectionFilter === "all" && !debouncedProductSearchQuery) {
       totalProducts = productTotalCount || products.length;
     }
 
@@ -869,7 +848,7 @@ export default function AdminDashboard() {
     }
 
     return { totalProducts, activeProducts }
-  }, [absoluteStats, products, productTotalCount, productCategoryFilter, productCollectionFilter, debouncedProductSearchQuery])
+  }, [absoluteStats, products, productTotalCount, productBranchFilter, productCollectionFilter, debouncedProductSearchQuery])
 
   const { totalProducts, activeProducts } = dashboardStats
 
@@ -931,17 +910,6 @@ export default function AdminDashboard() {
                 </Button>
 
 
-
-                <Link href="/admin/products/bulk-upload">
-                  <Button
-                    variant="outline"
-                    className="bg-transparent text-xs sm:text-sm"
-                    size="sm"
-                  >
-                    <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Bulk Upload
-                  </Button>
-                </Link>
 
                 <Link href="/admin/products/add" prefetch={true}>
                   <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">
@@ -1049,12 +1017,12 @@ export default function AdminDashboard() {
                             <SelectItem value="soiree">Soiree</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Select value={productCategoryFilter} onValueChange={setProductCategoryFilter}>
+                        <Select value={productBranchFilter} onValueChange={setProductBranchFilter}>
                           <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Category" />
+                            <SelectValue placeholder="Branch" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="all">All branches</SelectItem>
                             <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
                             <SelectItem value="el-raey-1">Raey 1</SelectItem>
                             <SelectItem value="el-raey-2">Raey 2</SelectItem>
@@ -1081,7 +1049,7 @@ export default function AdminDashboard() {
                       <div className="space-y-4">
                         {products.map((product) => (
                           <motion.div
-                            key={product._id}
+                            key={product.id}
                             className="p-4 sm:p-5 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-200 relative overflow-hidden"
                             whileHover={{ y: -5 }}
                             initial={{ opacity: 0, y: 20 }}
@@ -1153,11 +1121,11 @@ export default function AdminDashboard() {
 
                                 {/* Product Details - Mobile First Layout */}
                                 <div className="flex-1 min-w-0 space-y-3 text-center sm:text-left">
-                                  {/* Product Name and Category */}
+                                  {/* Product name and branch */}
                                   <div className="space-y-2">
                                     <p className="font-bold text-lg sm:text-xl text-gray-900 leading-tight">{product.name}</p>
                                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                                      <p className="text-sm text-gray-600 font-medium">{formatCategoryName(product.category)}</p>
+                                      <p className="text-sm text-gray-600 font-medium">{formatBranchName(product.branch)}</p>
                                       {product.isGiftPackage && (
                                         <motion.div
                                           initial={{ scale: 0, x: -20 }}
@@ -1346,7 +1314,7 @@ export default function AdminDashboard() {
                                     viewport={{ once: true }}
                                     whileHover={{ scale: 1.05 }}
                                   >
-                                    <Link href={`/products/${product.category}/${product.id}`} prefetch={true}>
+                                    <Link href={`/products/${product.branch}/${product.id}`} prefetch={true}>
                                       <Button size="sm" variant="outline" className="h-12 w-12 p-0 sm:h-10 sm:w-10 rounded-xl border-2 hover:border-blue-300 hover:bg-blue-50 transition-all">
                                         <Eye className="h-5 w-5 sm:h-4 sm:w-4 text-blue-600" />
                                       </Button>

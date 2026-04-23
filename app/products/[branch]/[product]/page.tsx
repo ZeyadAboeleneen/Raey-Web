@@ -54,7 +54,7 @@ interface ProductDetail {
   rating: number
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
-  category: string
+  branch: string
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -99,9 +99,9 @@ const getValidImages = (images?: string[] | null) => {
 }
 
 export default function ProductDetailPage() {
-  const { category, product: productId } = useParams() as { category: string; product: string }
-  const isRentCategory = category !== "sell-dresses"
-  const { getById, getByCategory, loading: cacheLoading } = useProductsCache()
+  const { branch, product: productId } = useParams() as { branch: string; product: string }
+  const isRentBranch = branch !== "sell-dresses"
+  const { getById, getByBranch, loading: cacheLoading } = useProductsCache()
   const [product, setProduct] = useState<ProductDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedSize, setSelectedSize] = useState<number>(0)
@@ -311,7 +311,7 @@ export default function ProductDetailPage() {
   const openWhatsAppOrder = () => {
     if (!product) return
 
-    const isRent = isRentCategory
+    const isRent = isRentBranch
     const actionVerb = isRent ? "rent" : "buy"
     const now = new Date()
     const requestDate = now.toLocaleString()
@@ -329,7 +329,7 @@ export default function ProductDetailPage() {
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${product.name}\n`
     message += `Dress Code: ${product.id}\n`
-    message += `Category: ${product.category}\n\n`
+    message += `branch: ${product.branch}\n\n`
 
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\n`
@@ -398,7 +398,7 @@ export default function ProductDetailPage() {
           size: "custom",
           volume: measurementUnit,
           image: cartImage,
-          category: product.category,
+          branch: product.branch,
           quantity,
           stockCount: undefined,
           customMeasurements: {
@@ -437,7 +437,7 @@ export default function ProductDetailPage() {
           size: "one-size",
           volume: undefined,
           image: cartImage,
-          category: product.category,
+          branch: product.branch,
           quantity,
           stockCount: selectedSizeObj.stockCount,
         },
@@ -459,7 +459,7 @@ export default function ProductDetailPage() {
 
   const fetchRelatedProducts = async () => {
     // Try cache first
-    const cached = getByCategory(category)
+    const cached = getByBranch(branch)
     if (cached.length > 0) {
       const filtered = (cached as unknown as ProductDetail[])
         .filter((p) => p.id !== productId && p.isActive !== false)
@@ -469,8 +469,8 @@ export default function ProductDetailPage() {
       return
     }
     try {
-      // Fetch products from the same category, excluding the current product
-      const response = await fetch(`/api/products?category=${category}&limit=4`)
+      // Fetch products from the same branch, excluding the current product
+      const response = await fetch(`/api/items?branch=${branch}`)
       if (response.ok) {
         const data = await response.json()
         const filteredProducts = data
@@ -485,7 +485,7 @@ export default function ProductDetailPage() {
 
   // Try to load from cache first, fall back to API
   useEffect(() => {
-    if (!category || !productId) return
+    if (!branch || !productId) return
 
     // Try cache
     const cached = getById(productId) as unknown as ProductDetail | undefined
@@ -503,7 +503,7 @@ export default function ProductDetailPage() {
       fetchProduct()
       fetchRelatedProducts()
     }
-  }, [category, productId, cacheLoading, getById])
+  }, [branch, productId, cacheLoading, getById])
 
   // Set custom size mode as default when product loads
   useEffect(() => {
@@ -562,7 +562,7 @@ export default function ProductDetailPage() {
 
   const fetchProduct = async () => {
     try {
-      const response = await fetch(`/api/products?id=${productId}`)
+      const response = await fetch(`/api/items/${productId}`)
       if (response.ok) {
         const data = await response.json()
         console.log("Product data:", data)
@@ -629,10 +629,10 @@ export default function ProductDetailPage() {
               <span className="text-gray-400">/</span>
               {product && (
                 <Link
-                  href={`/products/${category}`}
+                  href={`/products/${branch}`}
                   className="text-gray-600 hover:text-black transition-colors font-medium"
                 >
-                  {collectionDetails[category]?.titleKey ? t(collectionDetails[category].titleKey) : category}
+                  {collectionDetails[branch]?.titleKey ? t(collectionDetails[branch].titleKey) : branch}
                 </Link>
               )}
               <span className="text-gray-400">/</span>
@@ -688,7 +688,7 @@ export default function ProductDetailPage() {
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight mb-2">
                       {product.name}
                     </h1>
-                    <p className="text-sm uppercase tracking-widest text-gray-600 mb-2">{collectionDetails[category]?.titleKey ? t(collectionDetails[category].titleKey) : category}</p>
+                    <p className="text-sm uppercase tracking-widest text-gray-600 mb-2">{collectionDetails[branch]?.titleKey ? t(collectionDetails[branch].titleKey) : branch}</p>
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
@@ -706,7 +706,7 @@ export default function ProductDetailPage() {
                   </div>
                   {(() => {
                     const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
-                    const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                    const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
                     if (!showProductPrice) return null
                     return (
                       <div className="text-2xl sm:text-3xl font-light text-left">
@@ -779,7 +779,7 @@ export default function ProductDetailPage() {
               {/* Size selection & add to cart */}
               {!product.isGiftPackage && (
                 <div className="space-y-4">
-                  <h3 className="text-base sm:text-lg font-medium mb-4 text-gray-900">Select Size to {isRentCategory ? "Rent" : "Buy"}</h3>
+                  <h3 className="text-base sm:text-lg font-medium mb-4 text-gray-900">Select Size to {isRentBranch ? "Rent" : "Buy"}</h3>
                   <CustomSizeForm
                     controller={{
                       isCustomSizeMode,
@@ -818,7 +818,7 @@ export default function ProductDetailPage() {
                     }}
                     formatPrice={formatPrice}
                   />
-                  {isCustomSizeMode && isRentCategory && (
+                  {isCustomSizeMode && isRentBranch && (
                     <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                       <p className="mb-2 font-medium">Select your occasion date</p>
                       <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
@@ -859,7 +859,7 @@ export default function ProductDetailPage() {
                       <ShoppingCart className="mr-2 h-5 w-5" />
                       {product.isOutOfStock
                         ? "Out of Stock"
-                        : isRentCategory
+                        : isRentBranch
                           ? "Rent Now"
                           : "Buy Now"}
                     </Button>

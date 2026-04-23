@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useFavorites } from "@/lib/favorites-context"
 import { useAuth } from "@/lib/auth-context"
@@ -36,7 +36,7 @@ export default function DebugPage() {
                 <div key={index} className="border p-4 rounded bg-gray-50">
                   <h4 className="font-medium">{item.name}</h4>
                   <p><strong>ID:</strong> {item.id}</p>
-                  <p><strong>Category:</strong> {item.category}</p>
+                  <p><strong>branch: </strong> {item.branch}</p>
                   <p><strong>Price:</strong> {item.price}</p>
                   <p><strong>isGiftPackage:</strong> {item.isGiftPackage ? 'Yes' : 'No'}</p>
                   <p><strong>packagePrice:</strong> {item.packagePrice || 'N/A'}</p>

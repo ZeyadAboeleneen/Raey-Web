@@ -38,11 +38,11 @@ async function runCompleteSetup() {
     const activeProducts = await db.collection("products").find({ isActive: true }).toArray()
     console.log(`✅ Active products query: ${activeProducts.length} results`)
 
-    const menProducts = await db.collection("products").find({ category: "men", isActive: true }).toArray()
-    console.log(`✅ Men's products query: ${menProducts.length} results`)
+    const branchAProducts = await db.collection("products").find({ branch: "mona-saleh", isActive: true }).toArray()
+    console.log(`✅ mona-saleh products query: ${branchAProducts.length} results`)
 
-    const womenProducts = await db.collection("products").find({ category: "women", isActive: true }).toArray()
-    console.log(`✅ Women's products query: ${womenProducts.length} results`)
+    const branchBProducts = await db.collection("products").find({ branch: "el-raey-2", isActive: true }).toArray()
+    console.log(`✅ el-raey-2 products query: ${branchBProducts.length} results`)
 
     await client.close()
 

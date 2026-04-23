@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,8 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowLeft, Star, ShoppingCart, X, Heart, Instagram, Facebook, Package, AlertCircle, MessageCircle, Search } from "lucide-react"
-import { useParams } from "next/navigation"
+import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ArrowLeft } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
@@ -40,12 +40,12 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string
+  collection?: string
   isNew?: boolean
   isBestseller?: boolean
   isOutOfStock?: boolean
   sizes: ProductSize[]
-  // Gift package fields
   isGiftPackage?: boolean
   packagePrice?: number
   packageOriginalPrice?: number
@@ -61,14 +61,18 @@ const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
 }
 
 const CATEGORY_PAGE_SIZE = 10
-
 const WHATSAPP_NUMBER = "201094448044"
 
-export default function CategoryPage() {
-  const { category } = useParams() as { category: string }
-  const isRentCategory = category !== "sell-dresses"
-  const { getByCategory, loading: cacheLoading } = useProductsCache()
-  const allCategoryProducts = useMemo(() => getByCategory(category), [getByCategory, category])
+export default function SoireeBranchPage() {
+  const { branch } = useParams() as { branch: string }
+  const isRentBranch = branch !== "sell-dresses"
+
+  const { products: cachedProducts, loading: cacheLoading, getByCollection } = useProductsCache()
+  const allProducts = useMemo(
+    () => getByCollection("soiree").filter(p => p.branch === branch),
+    [getByCollection, branch]
+  )
+
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -188,17 +192,17 @@ export default function CategoryPage() {
   // Use cached products instead of fetching
   useEffect(() => {
     if (!cacheLoading) {
-      setProducts(allCategoryProducts as Product[])
+      setProducts(allProducts as Product[])
       setLoading(false)
     }
-  }, [cacheLoading, allCategoryProducts])
+  }, [cacheLoading, allProducts])
 
-  // Reset page when category changes
+  // Reset page when branch changes
   useEffect(() => {
-    if (category) {
+    if (branch) {
       setPage(1)
     }
-  }, [category])
+  }, [branch])
 
   // Debounce search query for better UX
   useEffect(() => {
@@ -244,7 +248,7 @@ export default function CategoryPage() {
   const openWhatsAppOrder = () => {
     if (!selectedProduct) return
 
-    const isRent = isRentCategory
+    const isRent = isRentBranch
     const actionVerb = isRent ? "rent" : "buy"
     const now = new Date()
     const requestDate = now.toLocaleString()
@@ -260,7 +264,7 @@ export default function CategoryPage() {
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${selectedProduct.name}\n`
     message += `Dress Code: ${selectedProduct.id}\n`
-    message += `Category: ${selectedProduct.category}\n\n`
+    message += `branch: ${selectedProduct.branch}\n\n`
 
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\n`
@@ -340,7 +344,7 @@ export default function CategoryPage() {
         size: isCustomSizeMode ? "custom" : baseSize.size,
         volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
         image: selectedProduct.images[0],
-        category: selectedProduct.category,
+        branch: selectedProduct.branch,
         quantity,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
         customMeasurements: isCustomSizeMode
@@ -415,7 +419,7 @@ export default function CategoryPage() {
     return kept.map(x => x.p)
   }, [products, debouncedQuery])
 
-  const details = collectionDetails[category as keyof typeof collectionDetails];
+  const details = collectionDetails[branch as keyof typeof collectionDetails];
 
   if (!details) {
     return (
@@ -423,10 +427,10 @@ export default function CategoryPage() {
         <Navigation />
         <div className="pt-28 md:pt-24 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-medium mb-4">Category not found</h1>
-            <Link href="/products">
+            <h1 className="text-2xl font-medium mb-4">branch not found</h1>
+            <Link href="/soiree/products">
               <Button className="bg-black text-white hover:bg-gray-800">
-                Back to Collections
+                Back to Soiree Collection
               </Button>
             </Link>
           </div>
@@ -458,7 +462,7 @@ export default function CategoryPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                  <p className="text-gray-600 text-sm">Select your size to {isRentCategory ? "rent" : "buy"}</p>
+                  <p className="text-gray-600 text-sm">Select your size to {isRentBranch ? "rent" : "buy"}</p>
                 </div>
                 <div className="flex">
                   <button
@@ -468,17 +472,21 @@ export default function CategoryPage() {
                         removeFromFavorites(selectedProduct.id)
                       } else {
                         addToFavorites({
-                          id: selectedProduct.id,
-                          name: selectedProduct.name,
-                          price: selectedSize ? (selectedSize.discountedPrice || selectedSize.originalPrice || 0) : getSmallestPrice(selectedProduct.sizes),
-                          image: selectedProduct.images[0],
-                          category: selectedProduct.category,
-                          collection: (selectedProduct as any).collection,
-                          rating: selectedProduct.rating,
-                          isNew: selectedProduct.isNew,
-                          isBestseller: selectedProduct.isBestseller,
-                          sizes: selectedProduct.sizes,
-                        })
+                            id: selectedProduct.id,
+                            name: selectedProduct.name,
+                            price: selectedSize ? (selectedSize.discountedPrice || selectedSize.originalPrice || 0) : getSmallestPrice(selectedProduct.sizes),
+                            image: selectedProduct.images[0],
+                            branch: selectedProduct.branch,
+                            collection: selectedProduct.collection,
+                            rating: selectedProduct.rating,
+                            isNew: selectedProduct.isNew,
+                            isBestseller: selectedProduct.isBestseller,
+                            sizes: selectedProduct.sizes,
+                            isGiftPackage: selectedProduct.isGiftPackage,
+                            packagePrice: selectedProduct.packagePrice,
+                            packageOriginalPrice: selectedProduct.packageOriginalPrice,
+                            giftPackageSizes: selectedProduct.giftPackageSizes
+                          })
                       }
                     }}
                     className="mr-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors"
@@ -556,7 +564,7 @@ export default function CategoryPage() {
                   }}
                   formatPrice={formatPrice}
                 />
-                {isCustomSizeMode && isRentCategory && (
+                {isCustomSizeMode && isRentBranch && (
                   <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                     <p className="mb-2 font-medium">Select your occasion date</p>
                     <Calendar
@@ -631,7 +639,7 @@ export default function CategoryPage() {
                   aria-label={
                     selectedProduct?.isOutOfStock
                       ? "Out of stock"
-                      : isRentCategory
+                      : isRentBranch
                         ? "Rent Now"
                         : "Buy Now"
                   }
@@ -639,7 +647,7 @@ export default function CategoryPage() {
                   <ShoppingCart className="h-4 w-4" />
                   {selectedProduct?.isOutOfStock || (!isCustomSizeMode && selectedSize && selectedSize.stockCount !== undefined && selectedSize.stockCount === 0)
                     ? "Out of Stock"
-                    : isRentCategory
+                    : isRentBranch
                       ? "Rent Now"
                       : "Buy Now"}
                 </Button>
@@ -683,7 +691,7 @@ export default function CategoryPage() {
               }}
               className="bg-black hover:bg-gray-800"
             >
-              Confirm {isRentCategory ? "Rent" : "Buy"}
+              Confirm {isRentBranch ? "Rent" : "Buy"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -699,11 +707,11 @@ export default function CategoryPage() {
             className="max-w-4xl mx-auto text-center"
           >
             <Link
-              href="/products"
+              href="/soiree/products"
               className="inline-flex items-center justify-center text-xs md:text-sm font-medium text-gray-500 hover:text-gray-800 mb-4 transition-colors"
             >
               <ArrowLeft className="mr-2 h-3.5 w-3.5" />
-              Back to Collections
+              Back to Soiree Collection
             </Link>
 
             <h1
@@ -723,7 +731,7 @@ export default function CategoryPage() {
       <section className="pt-6 pb-16">
         <div className="container mx-auto px-6">
           <div className="mb-10 max-w-2xl mx-auto">
-            <label htmlFor="category-search" className="sr-only">Search products</label>
+            <label htmlFor="branch-search" className="sr-only">Search products</label>
             <div className="relative group">
               <div
                 className={`pointer-events-none absolute inset-y-0 flex items-center text-gray-400 transition-colors duration-200 ${settings.language === "ar" ? "right-5" : "left-5"
@@ -732,7 +740,7 @@ export default function CategoryPage() {
                 <Search className="h-4 w-4" />
               </div>
               <Input
-                id="category-search"
+                id="branch-search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${t(details.titleKey)}...`}
@@ -759,9 +767,9 @@ export default function CategoryPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-600 text-lg">No products found in this category.</p>
-              <Link href="/products">
-                <Button className="mt-4 bg-black text-white hover:bg-gray-800">Browse All Collections</Button>
+              <p className="text-gray-600 text-lg">No products found in this branch.</p>
+              <Link href="/soiree/products">
+                <Button className="mt-4 bg-black text-white hover:bg-gray-800">Browse Soiree Collection</Button>
               </Link>
             </div>
           ) : (
@@ -805,8 +813,8 @@ export default function CategoryPage() {
                                   name: product.name,
                                   price,
                                   image: product.images[0],
-                                  category: product.category,
-                                  collection: (product as any).collection,
+                                  branch: product.branch,
+                                  collection: product.collection,
                                   rating: product.rating,
                                   isNew: product.isNew,
                                   isBestseller: product.isBestseller,
@@ -851,7 +859,7 @@ export default function CategoryPage() {
                           {/* Product Card - aligned with Best Sellers */}
                           <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                             <CardContent className="p-0 h-full">
-                              <Link href={`/products/${category}/${product.id}`} className="block relative w-full h-full">
+                              <Link href={`/products/${branch}/${product.id}`} className="block relative w-full h-full">
                                 <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                                   <Image
                                     src={product.images[0] || "/placeholder.svg"}
@@ -868,8 +876,7 @@ export default function CategoryPage() {
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                     {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                                     {(() => {
-                                      const isWeddingOrSoiree = (product as any).collection?.toLowerCase().includes("wedding") || (product as any).collection?.toLowerCase().includes("soiree")
-                                      const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                                      const showProductPrice = showPrices || product.branch === "sell-dresses"
                                       return (
                                         <>
                                           {showProductPrice ? (
@@ -925,7 +932,7 @@ export default function CategoryPage() {
                                               aria-label={
                                                 product.isOutOfStock
                                                   ? "Out of stock"
-                                                  : isRentCategory
+                                                  : isRentBranch
                                                     ? "Rent Now"
                                                     : "Buy Now"
                                               }
@@ -1025,7 +1032,7 @@ export default function CategoryPage() {
                 name: product.name,
                 price: product.packagePrice || 0,
                 image: product.images[0],
-                category: product.category,
+                branch: product.branch,
                 collection: product.collection,
                 rating: product.rating,
                 isNew: product.isNew || false,
@@ -1042,8 +1049,8 @@ export default function CategoryPage() {
         />
       )}
 
-      {/* Footer */}
       <Footer />
     </div>
   )
 }
+

@@ -32,7 +32,7 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string | null
   collection?: string
   sizes: ProductSize[]
   isActive: boolean
@@ -57,7 +57,6 @@ export default function EditProductPage() {
     description: "",
     longDescription: "",
     collection: "wedding",
-    category: "mona-saleh",
     sizes: [{
       originalPrice: "",
       discountedPrice: "",
@@ -85,7 +84,7 @@ export default function EditProductPage() {
           return
         }
 
-        const response = await fetch(`/api/products?id=${productId}&includeInactive=true`, {
+        const response = await fetch(`/api/items/${productId}?includeInactive=true`, {
           headers: {
             'Authorization': `Bearer ${authState.token}`
           }
@@ -102,7 +101,6 @@ export default function EditProductPage() {
           description: product.description || "",
           longDescription: product.longDescription || "",
           collection: product.collection || "wedding",
-          category: product.category || "mona-saleh",
           sizes: product.sizes?.map((size: any) => ({
             originalPrice: size.originalPrice?.toString() || "",
             discountedPrice: size.discountedPrice?.toString() || "",
@@ -186,33 +184,20 @@ export default function EditProductPage() {
         throw new Error("Product ID not found")
       }
 
+      const firstSize = formData.sizes[0]
       const productToSave = {
         name: formData.name,
-        description: formData.description,
-        longDescription: formData.longDescription,
-        category: formData.category,
         collection: formData.collection,
-        sizes: formData.sizes.map(size => ({
-          size: "M",
-          volume: "Standard",
-          originalPrice: size.originalPrice ? parseFloat(size.originalPrice) : undefined,
-          discountedPrice: size.discountedPrice ? parseFloat(size.discountedPrice) : undefined,
-          stockCount: size.stockCount && size.stockCount.trim() !== "" ? parseInt(size.stockCount, 10) : undefined,
-        })),
-        images: uploadedImages.length > 0 ? uploadedImages : ["/placeholder.svg"],
-        // Keep notes structure for backend compatibility but no longer editable in UI
-        notes: {
-          top: [],
-          middle: [],
-          base: [],
-        },
+        image: uploadedImages[0] || "",
+        price: Number(
+          firstSize?.discountedPrice?.trim() ||
+            firstSize?.originalPrice?.trim() ||
+            "0"
+        ),
         isActive: formData.isActive,
-        isNew: formData.isNew,
-        isBestseller: formData.isBestseller,
-        isOutOfStock: formData.isOutOfStock,
       }
 
-      const response = await fetch(`/api/products?id=${productId}`, {
+      const response = await fetch(`/api/items/${productId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -421,25 +406,9 @@ export default function EditProductPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="category">Category *</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => handleChange("category", value)}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                          <SelectItem value="el-raey-1">Raey 1</SelectItem>
-                          <SelectItem value="el-raey-2">Raey 2</SelectItem>
-                          <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
-                          <SelectItem value="sell-dresses">Collection for Sell Dresses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <p className="text-sm text-gray-600 rounded-md border border-dashed border-gray-200 bg-gray-50 p-3">
+                      Branch shown on the site comes from ERP bookings and stores. To change it, update the booking or store link in ERP, not this form.
+                    </p>
 
                     <div>
                       <Label htmlFor="description">Short Description</Label>

@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+﻿import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       description: p.description, price: p.price || 0, beforeSalePrice: p.beforeSalePrice,
       afterSalePrice: p.afterSalePrice, sizes: p.sizes || [], images: p.images || [],
       rating: p.rating || 0, reviews: p.reviewCount || 0, notes: p.notes,
-      category: p.category, isNew: p.isNew, isBestseller: p.isBestseller, isActive: p.isActive,
+      branch: p.branch, isNew: p.isNew, isBestseller: p.isBestseller, isActive: p.isActive,
       isOutOfStock: p.isOutOfStock, isGiftPackage: p.isGiftPackage,
       packagePrice: p.packagePrice, packageOriginalPrice: p.packageOriginalPrice,
       giftPackageSizes: p.giftPackageSizes || [],

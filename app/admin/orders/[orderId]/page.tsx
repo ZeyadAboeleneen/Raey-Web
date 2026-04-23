@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -26,7 +26,7 @@ interface OrderDetails {
     size: string
     volume: string
     image: string
-    category: string
+    branch: string
     quantity: number
     isGiftPackage?: boolean
     customMeasurements?: {
@@ -334,7 +334,7 @@ export default function AdminOrderDetailsPage() {
                               </div>
                             </div>
                           )}
-                          <p className="text-sm text-gray-500">Category: {item.category}</p>
+                          <p className="text-sm text-gray-500">branch: {item.branch}</p>
 
                           {/* Gift Package Details */}
                           {item.isGiftPackage && item.packageDetails && (

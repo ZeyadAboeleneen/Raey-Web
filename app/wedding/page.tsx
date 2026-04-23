@@ -50,7 +50,7 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -90,7 +90,7 @@ export default function WeddingPage() {
       return pColl === target
     })
   }, [cachedProducts])
-  
+
   // Show loading state only if we have NO products at all
   const isLoading = cacheLoading && cachedProducts.length === 0
   const bestSellers = useMemo(() => {
@@ -202,7 +202,7 @@ export default function WeddingPage() {
   const getProductPrice = (product: Product) =>
     product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
 
-  const isRentCategory = (cat: string) => cat !== "sell-dresses"
+  const isRentBranch = (branchSlug: string) => branchSlug !== "sell-dresses"
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery), 250)
@@ -212,7 +212,7 @@ export default function WeddingPage() {
   useEffect(() => {
     setPage(1)
   }, [debouncedQuery, selectedCollection, selectedPriceRanges])
-  
+
   useEffect(() => {
     if (showSizeSelector || showGiftPackageSelector || showCustomSizeConfirmation) {
       document.body.style.overflow = 'hidden'
@@ -271,7 +271,7 @@ export default function WeddingPage() {
 
   const filteredProducts = useMemo(() => {
     let result = allProducts
-    if (selectedCollection) result = result.filter(p => p.category === selectedCollection)
+    if (selectedCollection) result = result.filter(p => p.branch === selectedCollection)
     if (selectedPriceRanges.length > 0) {
       result = result.filter(p => {
         const price = getProductPrice(p)
@@ -337,9 +337,9 @@ export default function WeddingPage() {
 
   const openWhatsAppOrder = () => {
     if (!selectedProduct) return
-    const isRent = isRentCategory(selectedProduct.category)
+    const isRent = isRentBranch(selectedProduct.branch)
     const actionVerb = isRent ? "rent" : "buy"
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nCategory: ${selectedProduct.category}\n\n`
+    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nBranch: ${selectedProduct.branch}\n\n`
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\nMeasurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
@@ -354,7 +354,7 @@ export default function WeddingPage() {
       message += `\n`
     }
     if (occasionDate) {
-      try { message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n` } catch {}
+      try { message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n` } catch { }
     }
     message += `Quantity: 1\nRequest Date: ${new Date().toLocaleString()}\n`
     if (typeof window !== "undefined") {
@@ -396,7 +396,7 @@ export default function WeddingPage() {
         size: isCustomSizeMode ? "custom" : baseSize.size,
         volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
         image: selectedProduct.images[0],
-        category: selectedProduct.category,
+        branch: selectedProduct.branch,
         quantity: 1,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
         customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined
@@ -425,7 +425,7 @@ export default function WeddingPage() {
         name: product.name,
         price,
         image: product.images[0],
-        category: product.category,
+        branch: product.branch,
         collection: product.collection,
         rating: product.rating,
         isNew: product.isNew,
@@ -444,15 +444,15 @@ export default function WeddingPage() {
     const price = isGift ? product.packagePrice || 0 : getSmallestPrice(product.sizes)
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
-    
+
     // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
-    const showProductPrice = showPrices || product.category === "sell-dresses"
+    const showProductPrice = showPrices || product.branch === "sell-dresses"
 
     return (
       <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="p-0 h-full">
-            <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
+            <Link href={`/products/${product.branch}/${product.id}`} className="block relative w-full h-full">
               <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                 <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                 <button onClick={(e) => handleFavoriteClick(e, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200">
@@ -555,15 +555,15 @@ export default function WeddingPage() {
                 </div>
               </div>
               <div className="mb-6">
-                <CustomSizeForm 
-                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }} 
-                  sizeChart={sizeChart} 
-                  sizes={selectedProduct.sizes} 
-                  selectedSize={selectedSize} 
-                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }} 
-                  formatPrice={formatPrice} 
+                <CustomSizeForm
+                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }}
+                  sizeChart={sizeChart}
+                  sizes={selectedProduct.sizes}
+                  selectedSize={selectedSize}
+                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }}
+                  formatPrice={formatPrice}
                 />
-                {isCustomSizeMode && isRentCategory(selectedProduct.category) && (
+                {isCustomSizeMode && isRentBranch(selectedProduct.branch) && (
                   <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                     <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
                     <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
@@ -597,7 +597,7 @@ export default function WeddingPage() {
                   </div>
                 </div>
                 <Button onClick={() => { if (!selectedProduct || selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCart(); return }; if (!isMeasurementsValid) { alert("Please complete your custom measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`flex items-center rounded-full px-6 py-5 ${selectedProduct?.isOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct?.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
-                  <ShoppingCart className="h-4 w-4" />{selectedProduct?.isOutOfStock ? t("outOfStock") : isRentCategory(selectedProduct.category) ? t("rentNow") : t("buyNow")}
+                  <ShoppingCart className="h-4 w-4" />{selectedProduct?.isOutOfStock ? t("outOfStock") : isRentBranch(selectedProduct.branch) ? t("rentNow") : t("buyNow")}
                 </Button>
               </div>
             </div>
@@ -638,14 +638,14 @@ export default function WeddingPage() {
 
       {showGiftPackageSelector && selectedProduct && (
         <GiftPackageSelector product={selectedProduct} isOpen={showGiftPackageSelector} onClose={() => setShowGiftPackageSelector(false)}
-          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], category: product.category, collection: product.collection, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
+          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
           isFavorite={isFavorite} />
       )}
 
       {/* ─── Hero ─── */}
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
-          <Image src="/wedding.jpg" alt="Wedding background" fill priority sizes="100vw" className="object-cover" />
+          <Image src="/wedding.jpg?v=2" alt="Wedding background" fill priority sizes="100vw" className="object-cover object-[center_30%]" />
           <div className="absolute inset-0 bg-black/45" />
         </motion.div>
         <motion.div className="relative z-10 max-w-3xl mx-auto px-4 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -664,7 +664,7 @@ export default function WeddingPage() {
                 <p className="text-gray-600 max-w-2xl text-sm md:text-base">{t("newArrivalsDesc")}</p>
               </div>
             </div>
-            
+
             <div className="relative group/carousel">
               <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
                 <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollPrevNew ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiNew?.scrollPrev()} disabled={!canScrollPrevNew}><ChevronLeft className="h-6 w-6" /></Button>
@@ -680,7 +680,7 @@ export default function WeddingPage() {
                       {renderProductCard(product as Product, index)}
                     </div>
                   ))}
-                  
+
                   {newProducts.length > visibleNewCount && (
                     <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
                       <motion.button
@@ -707,33 +707,33 @@ export default function WeddingPage() {
       {/* ─── Best Rental ─── */}
       <motion.section ref={bestSellersRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-white overflow-hidden">
         <div className="container mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
-            </motion.div>
-            
-            {bestSellersRent.length === 0 && !cacheLoading ? (
-              <div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>
-            ) : (
-              <div className="relative group/carousel">
-                <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
-                  <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollPrevBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollPrev()} disabled={!canScrollPrevBest}><ChevronLeft className="h-6 w-6" /></Button>
-                </div>
-                <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
-                  <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollNextBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollNext()} disabled={!canScrollNextBest}><ChevronRight className="h-6 w-6" /></Button>
-                </div>
-                <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefBest}>
-                  <div className="flex -ml-4">
-                    {displayedBestProducts.map((product, index) => (<div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">{renderProductCard(product as Product, index)}</div>))}
-                    {bestSellersRent.length > visibleBestCount && (
-                      <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setVisibleBestCount(prev => prev + 10)} className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"><div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors"><Plus className="h-6 w-6" /></div><span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span><span className="text-xs text-gray-500 mt-1">{bestSellersRent.length - visibleBestCount} more</span></motion.button>
-                      </div>
-                    )}
-                  </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
+          </motion.div>
+
+          {bestSellersRent.length === 0 && !cacheLoading ? (
+            <div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>
+          ) : (
+            <div className="relative group/carousel">
+              <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
+                <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollPrevBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollPrev()} disabled={!canScrollPrevBest}><ChevronLeft className="h-6 w-6" /></Button>
+              </div>
+              <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
+                <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollNextBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollNext()} disabled={!canScrollNextBest}><ChevronRight className="h-6 w-6" /></Button>
+              </div>
+              <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefBest}>
+                <div className="flex -ml-4">
+                  {displayedBestProducts.map((product, index) => (<div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">{renderProductCard(product as Product, index)}</div>))}
+                  {bestSellersRent.length > visibleBestCount && (
+                    <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
+                      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setVisibleBestCount(prev => prev + 10)} className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"><div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors"><Plus className="h-6 w-6" /></div><span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span><span className="text-xs text-gray-500 mt-1">{bestSellersRent.length - visibleBestCount} more</span></motion.button>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </motion.section>
 
@@ -745,10 +745,10 @@ export default function WeddingPage() {
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("allProductsDesc")}</p>
           </motion.div>
           <div className="mb-8 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-4xl mx-auto">
-                <div className="relative flex-1"><div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchProducts")} className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" /></div>
-                <div className="relative sm:w-56"><select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full appearance-none rounded-full border border-gray-200 bg-white/90 py-3 pl-5 pr-10 text-sm tracking-wide focus:outline-none focus:border-black transition-colors cursor-pointer"><option value="">{t("allCollections")}</option>{COLLECTIONS_FILTER.map(c => (<option key={c.slug} value={c.slug}>{c.label}</option>))}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /></div>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-3 max-w-4xl mx-auto">
+              <div className="relative flex-1"><div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchProducts")} className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" /></div>
+              <div className="relative sm:w-56"><select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full appearance-none rounded-full border border-gray-200 bg-white/90 py-3 pl-5 pr-10 text-sm tracking-wide focus:outline-none focus:border-black transition-colors cursor-pointer"><option value="">{t("allCollections")}</option>{COLLECTIONS_FILTER.map(c => (<option key={c.slug} value={c.slug}>{c.label}</option>))}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /></div>
+            </div>
             <div className="max-w-4xl mx-auto">
               <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <motion.button type="button" onClick={() => setSelectedPriceRanges([])} whileTap={{ scale: 0.97 }} className={`inline-flex items-center justify-center h-[38px] sm:h-[40px] px-4 sm:px-5 rounded-full text-[11px] sm:text-xs tracking-wide uppercase font-medium border transition-all duration-300 cursor-pointer select-none ${selectedPriceRanges.length === 0 ? "bg-rose-400 text-white border-rose-400 shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:bg-rose-50 hover:border-rose-200"}`}>{t("allPrices")}</motion.button>
@@ -756,8 +756,8 @@ export default function WeddingPage() {
               </div>
             </div>
             <div className="text-center text-sm text-gray-500">
-              {debouncedQuery || selectedCollection || selectedPriceRanges.length > 0 
-                ? t("showingProducts", { count: filteredProducts.length, total: allProducts.length }) 
+              {debouncedQuery || selectedCollection || selectedPriceRanges.length > 0
+                ? t("showingProducts", { count: filteredProducts.length, total: allProducts.length })
                 : t("showingAllProducts", { total: allProducts.length })}
             </div>
           </div>

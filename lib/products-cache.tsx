@@ -18,7 +18,8 @@ interface CachedProduct {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  /** Storefront branch slug from Booking→Stores; null if none / unmapped. */
+  branch: string | null
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -35,6 +36,7 @@ interface CachedProduct {
     middle: string[]
     base: string[]
   }
+  unavailableDates?: { from: string; to: string }[]
 }
 
 interface ProductsCacheContextType {
@@ -46,8 +48,8 @@ interface ProductsCacheContextType {
   refresh: () => Promise<void>
   /** Get a single product by its id */
   getById: (id: string) => CachedProduct | undefined
-  /** Get products filtered by category */
-  getByCategory: (category: string) => CachedProduct[]
+  /** Get products filtered by branch slug */
+  getByBranch: (branchSlug: string) => CachedProduct[]
   /** Get products filtered by collection */
   getByCollection: (collection: string) => CachedProduct[]
   /** Get bestseller products */
@@ -56,10 +58,14 @@ interface ProductsCacheContextType {
 
 const ProductsCacheContext = createContext<ProductsCacheContextType | null>(null)
 
-const STORAGE_KEY = "raey_products_cache_v2"
-const STORAGE_TS_KEY = "raey_products_cache_ts_v2"
+const STORAGE_KEY = "raey_products_cache_v4"
+const STORAGE_TS_KEY = "raey_products_cache_ts_v4"
 /** How long the sessionStorage cache is considered fresh (5 minutes) */
 const STORAGE_MAX_AGE_MS = 5 * 60 * 1000
+
+function normalizeCachedProduct(raw: Record<string, unknown>): CachedProduct {
+  return raw as CachedProduct
+}
 
 function readFromStorage(): CachedProduct[] | null {
   try {
@@ -68,7 +74,8 @@ function readFromStorage(): CachedProduct[] | null {
     if (!ts || Date.now() - Number(ts) > STORAGE_MAX_AGE_MS) return null
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as CachedProduct[]
+    const parsed = JSON.parse(raw) as Record<string, unknown>[]
+    return parsed.map(normalizeCachedProduct)
   } catch {
     return null
   }
@@ -92,13 +99,13 @@ interface ProductsCacheProviderProps {
 }
 
 export function ProductsCacheProvider({ children, initialProducts }: ProductsCacheProviderProps) {
-  // Priority: server-side initialProducts > sessionStorage > empty
   const [products, setProducts] = useState<CachedProduct[]>(() => {
-    if (initialProducts && initialProducts.length > 0) return initialProducts
+    if (initialProducts && initialProducts.length > 0) {
+      return initialProducts.map((p) => normalizeCachedProduct(p as unknown as Record<string, unknown>))
+    }
     return readFromStorage() ?? []
   })
 
-  // If we already have data (from server or storage), start with loading=false
   const [loading, setLoading] = useState(() => {
     if (initialProducts && initialProducts.length > 0) return false
     return readFromStorage() === null
@@ -119,11 +126,12 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
       if (!quiet) setLoading(true)
-      const response = await fetch(`/api/products?limit=1000`)
+      const response = await fetch(`/api/items`)
       if (response.ok) {
-        const data: CachedProduct[] = await response.json()
-        setProducts(data)
-        writeToStorage(data)
+        const data = (await response.json()) as Record<string, unknown>[]
+        const normalized = data.map(normalizeCachedProduct)
+        setProducts(normalized)
+        writeToStorage(normalized)
       }
     } catch (error) {
       console.error("Error preloading products:", error)
@@ -135,12 +143,10 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const fetchStage = useCallback(async (url: string) => {
     const response = await fetch(url)
     if (!response.ok) return [] as CachedProduct[]
-    return (await response.json()) as CachedProduct[]
+    const data = (await response.json()) as Record<string, unknown>[]
+    return data.map(normalizeCachedProduct)
   }, [])
 
-  // On mount: if we already have server-provided data we still do a quiet
-  // background revalidation so the client picks up any recent changes.
-  // If we have NO data, we do a loud fetch that sets loading=true.
   useEffect(() => {
     if (!fetched.current) {
       fetched.current = true
@@ -155,21 +161,18 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
         try {
           setLoading(true)
 
-          const newArrivals = await fetchStage(`/api/products?isNew=true&limit=20`)
+          const newArrivals = await fetchStage(`/api/items`)
           setProducts((prev) => mergeById(prev, newArrivals))
 
-          const bestRentals = await fetchStage(`/api/products?isBestseller=true&limit=20`)
-          setProducts((prev) => mergeById(prev, bestRentals))
-
           const [weddingFirstPage, soireeFirstPage] = await Promise.all([
-            fetchStage(`/api/products?collection=wedding&limit=60`),
-            fetchStage(`/api/products?collection=soiree&limit=60`),
+            fetchStage(`/api/items?collection=wedding`),
+            fetchStage(`/api/items?collection=soiree`),
           ])
           setProducts((prev) => mergeById(prev, mergeById(weddingFirstPage, soireeFirstPage)))
 
           setLoading(false)
 
-          const fullList = await fetchStage(`/api/products?limit=1000`)
+          const fullList = await fetchStage(`/api/items`)
           setProducts((prev) => {
             const merged = mergeById(prev, fullList)
             writeToStorage(merged)
@@ -183,11 +186,9 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     }
   }, [fetchAll, fetchStage, mergeById, products.length])
 
-  // Persist server-provided initialProducts to sessionStorage on first mount
-  // so subsequent client-side navigations are also instant.
   useEffect(() => {
     if (initialProducts && initialProducts.length > 0) {
-      writeToStorage(initialProducts)
+      writeToStorage(initialProducts.map((p) => normalizeCachedProduct(p as unknown as Record<string, unknown>)))
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -195,10 +196,10 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     await fetchAll(false)
   }, [fetchAll])
 
-  const getByCategory = useCallback(
-    (category: string) => {
+  const getByBranch = useCallback(
+    (branchSlug: string) => {
       return products.filter(
-        (p) => p.category === category && p.isActive !== false
+        (p) => p.branch === branchSlug && p.isActive !== false
       )
     },
     [products]
@@ -231,7 +232,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
   return (
     <ProductsCacheContext.Provider
-      value={{ products, loading, refresh, getById, getByCategory, getByCollection, getBestsellers }}
+      value={{ products, loading, refresh, getById, getByBranch, getByCollection, getBestsellers }}
     >
       {children}
     </ProductsCacheContext.Provider>

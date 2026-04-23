@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from "react"
@@ -9,7 +9,7 @@ interface FavoriteItem {
   name: string
   price: number
   image: string
-  category: string
+  branch: string
   collection?: string
   rating?: number
   isNew?: boolean
@@ -133,7 +133,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       name: item.name,
       price: item.price,
       image: item.image,
-      category: item.category,
+      branch: item.branch,
       rating: item.rating, // Always include rating, even if it's 0
       ...(item.isNew !== undefined && { isNew: item.isNew }),
       ...(item.isBestseller !== undefined && { isBestseller: item.isBestseller }),

@@ -58,7 +58,7 @@ interface Product {
     images: string[]
     rating: number
     reviews: number
-    category: string
+    branch: string
     isNew?: boolean
     isBestseller?: boolean
     isOutOfStock?: boolean
@@ -200,7 +200,7 @@ export function HomePageContent() {
         { slug: "sell-dresses", title: t("sellDressesCollection"), description: t("sellDressesDesc"), image: "/sell.jpg" },
     ]
 
-    const isRentCategory = (category: string) => category !== "sell-dresses"
+    const isRentBranch = (branch: string) => branch !== "sell-dresses"
 
     const openSizeSelector = (product: Product) => {
         if (product.isGiftPackage) {
@@ -269,7 +269,7 @@ export function HomePageContent() {
                 size: isCustomSizeMode ? "custom" : baseSize.size,
                 volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
                 image: selectedProduct.images[0],
-                category: selectedProduct.category,
+                branch: selectedProduct.branch,
                 quantity,
                 stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
                 customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
@@ -277,7 +277,7 @@ export function HomePageContent() {
         })
 
         try {
-            const isRent = isRentCategory(selectedProduct.category)
+            const isRent = isRentBranch(selectedProduct.branch)
             const actionVerb = isRent ? "rent" : "buy"
             const now = new Date()
             const requestDate = now.toLocaleString()
@@ -288,7 +288,7 @@ export function HomePageContent() {
             let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
             message += `Name: ${selectedProduct.name}\n`
             message += `Dress Code: ${selectedProduct.id}\n`
-            message += `Category: ${selectedProduct.category}\n\n`
+            message += `branch: ${selectedProduct.branch}\n\n`
 
             if (isCustomSizeMode) {
                 message += `Size Mode: Custom (${measurementUnit})\n`
@@ -336,8 +336,8 @@ export function HomePageContent() {
 
     const getMinPrice = (product: Product) => getSmallestPrice(product.sizes)
 
-    const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.category !== "sell-dresses"), [bestSellers])
-    const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.category === "sell-dresses"), [bestSellers])
+    const bestSellersRent = useMemo(() => bestSellers.filter((p) => p.branch !== "sell-dresses"), [bestSellers])
+    const bestSellersSell = useMemo(() => bestSellers.filter((p) => p.branch === "sell-dresses"), [bestSellers])
 
     const handleFavoriteClick = (e: React.MouseEvent, product: Product) => {
         e.preventDefault()
@@ -348,7 +348,7 @@ export function HomePageContent() {
             if (product.isGiftPackage) {
                 addToFavorites({
                     id: product.id, name: product.name, price: product.packagePrice || 0,
-                    image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
+                    image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller,
                     sizes: product.giftPackageSizes || [], isGiftPackage: true,
                     packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
@@ -358,7 +358,7 @@ export function HomePageContent() {
                 const minPrice = getMinPrice(product)
                 addToFavorites({
                     id: product.id, name: product.name, price: minPrice,
-                    image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
+                    image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller, sizes: product.sizes,
                 })
             }
@@ -394,7 +394,7 @@ export function HomePageContent() {
                                 } else {
                                     addToFavorites({
                                         id: product.id, name: product.name, price: product.packagePrice || 0,
-                                        image: product.images[0], category: product.category, collection: product.collection, rating: product.rating,
+                                        image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
                                         isNew: product.isNew, isBestseller: product.isBestseller,
                                         sizes: product.giftPackageSizes || [], isGiftPackage: true,
                                         packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
@@ -435,7 +435,7 @@ export function HomePageContent() {
                                                         addToFavorites({
                                                             id: selectedProduct.id, name: selectedProduct.name,
                                                             price: getSmallestPrice(selectedProduct.sizes),
-                                                            image: selectedProduct.images[0], category: selectedProduct.category,
+                                                            image: selectedProduct.images[0], branch: selectedProduct.branch,
                                                             collection: selectedProduct.collection,
                                                             rating: selectedProduct.rating, isNew: selectedProduct.isNew || false,
                                                             isBestseller: selectedProduct.isBestseller || false, sizes: selectedProduct.sizes || [],
@@ -478,7 +478,7 @@ export function HomePageContent() {
                                             onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }}
                                             formatPrice={formatPrice}
                                         />
-                                        {isCustomSizeMode && selectedProduct && isRentCategory(selectedProduct.category) && (
+                                        {isCustomSizeMode && selectedProduct && isRentBranch(selectedProduct.branch) && (
                                             <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                                                 <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
                                                 <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
@@ -522,7 +522,7 @@ export function HomePageContent() {
                                             <ShoppingCart className="h-4 w-4 mr-2 text-rose-400" />
                                             {selectedProduct?.isOutOfStock || (!isCustomSizeMode && selectedSize && selectedSize.stockCount !== undefined && selectedSize.stockCount === 0)
                                                 ? t("outOfStock")
-                                                : selectedProduct?.category === "sell-dresses" ? "Buy Now" : "Rent Now"}
+                                                : selectedProduct?.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}
                                         </Button>
                                     </div>
                                 </div>
@@ -670,7 +670,7 @@ export function HomePageContent() {
                                     <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
                                         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                                             <CardContent className="p-0 h-full">
-                                                <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
+                                                <Link href={`/products/${product.branch}/${product.id}`} className="block relative w-full h-full">
                                                     <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                                                         <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                                                         <button onClick={(e) => handleFavoriteClick(e as any, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200" aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}>
@@ -686,7 +686,7 @@ export function HomePageContent() {
                                                             {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                                                             {(() => {
                                                                 const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
-                                                                const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                                                                const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
                                                                 return (
                                                                     <>
                                                                         {showProductPrice ? (
@@ -704,7 +704,7 @@ export function HomePageContent() {
                                                                                     {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
                                                                                 </div>
                                                                             )}
-                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}>
                                                                                 <ShoppingCart className="h-4 w-4 text-rose-500" />
                                                                             </Button>
                                                                         </div>
@@ -746,7 +746,7 @@ export function HomePageContent() {
                                     <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
                                         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                                             <CardContent className="p-0 h-full">
-                                                <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
+                                                <Link href={`/products/${product.branch}/${product.id}`} className="block relative w-full h-full">
                                                     <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                                                         <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                                                         <button onClick={(e) => handleFavoriteClick(e as any, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200" aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}>
@@ -762,7 +762,7 @@ export function HomePageContent() {
                                                             {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                                                             {(() => {
                                                                 const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
-                                                                const showProductPrice = showPrices || (product.category === "sell-dresses" && isWeddingOrSoiree)
+                                                                const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
                                                                 return (
                                                                     <>
                                                                         {showProductPrice ? (
@@ -780,7 +780,7 @@ export function HomePageContent() {
                                                                                     {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
                                                                                 </div>
                                                                             )}
-                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.category === "sell-dresses" ? "Buy Now" : "Rent Now"}>
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}>
                                                                                 <ShoppingCart className="h-4 w-4 text-rose-500" />
                                                                             </Button>
                                                                         </div>

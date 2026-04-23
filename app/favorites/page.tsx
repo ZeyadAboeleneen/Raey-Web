@@ -25,7 +25,7 @@ interface FavoriteItem {
   name: string
   price: number
   image: string
-  category: string
+  branch: string
   collection?: string
   rating?: number
   isNew?: boolean
@@ -118,9 +118,9 @@ export default function FavoritesPage() {
 
   const openWhatsAppOrder = () => {
     if (!selectedProduct) return
-    const isRent = selectedProduct.category !== "sell-dresses"
+    const isRent = selectedProduct.branch !== "sell-dresses"
     const actionVerb = isRent ? "rent" : "buy"
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nCategory: ${selectedProduct.category}\n\n`
+    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nBranch: ${selectedProduct.branch}\n\n`
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\nMeasurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
@@ -163,7 +163,7 @@ export default function FavoritesPage() {
         size: isCustomSizeMode ? "custom" : baseSize.size,
         volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
         image: selectedProduct.image,
-        category: selectedProduct.category,
+        branch: selectedProduct.branch,
         quantity,
         customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
       }
@@ -218,7 +218,7 @@ export default function FavoritesPage() {
                   <span className="text-gray-600">{t("total")}:</span>
                   {(() => {
                     const isWeddingOrSoiree = selectedProduct.collection?.toLowerCase().includes("wedding") || selectedProduct.collection?.toLowerCase().includes("soiree") || selectedProduct.name?.toLowerCase().includes("wedding") || selectedProduct.name?.toLowerCase().includes("soiree")
-                    const showProductPrice = showPrices || (selectedProduct.category === "sell-dresses" && isWeddingOrSoiree)
+                    const showProductPrice = showPrices || (selectedProduct.branch === "sell-dresses" && isWeddingOrSoiree)
                     if (!showProductPrice) return null
                     return (
                       <div className="text-xl font-medium ml-2">
@@ -235,7 +235,7 @@ export default function FavoritesPage() {
                   })()}
                 </div>
                 <Button onClick={() => { if (selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCartWithSize(); return }; if (!isMeasurementsValid) { alert("Please complete your measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`rounded-full px-6 py-5 ${selectedProduct.isOutOfStock ? 'bg-gray-400 opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
-                  <ShoppingCart className="h-4 w-4 mr-2" />{selectedProduct.isOutOfStock ? t("outOfStock") : selectedProduct.category !== "sell-dresses" ? t("rentNow") : t("buyNow")}
+                  <ShoppingCart className="h-4 w-4 mr-2" />{selectedProduct.isOutOfStock ? t("outOfStock") : selectedProduct.branch !== "sell-dresses" ? t("rentNow") : t("buyNow")}
                 </Button>
               </div>
             </div>
@@ -318,7 +318,7 @@ export default function FavoritesPage() {
                 <motion.div key={item.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: index * 0.1 }} className="relative h-full">
                   <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                     <CardContent className="p-0 h-full">
-                      <Link href={`/products/${item.category}/${item.id}`} className="block relative w-full h-full">
+                      <Link href={`/products/${item.branch}/${item.id}`} className="block relative w-full h-full">
                         <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromFavorites(item.id) }} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200"><Heart className="h-4 w-4 text-red-500 fill-red-500" /></button>
@@ -332,7 +332,7 @@ export default function FavoritesPage() {
                             {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                             {(() => {
                               const isWeddingOrSoiree = item.collection?.toLowerCase().includes("wedding") || item.collection?.toLowerCase().includes("soiree") || item.name?.toLowerCase().includes("wedding") || item.name?.toLowerCase().includes("soiree")
-                              const showProductPrice = showPrices || (item.category === "sell-dresses" && isWeddingOrSoiree)
+                              const showProductPrice = showPrices || (item.branch === "sell-dresses" && isWeddingOrSoiree)
                               return (
                                 <>
                                   {showProductPrice ? (

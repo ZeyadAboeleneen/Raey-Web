@@ -28,7 +28,7 @@ export default function HomePage() {
     router.prefetch(href)
     router.push(href)
   }
-  
+
   // Prefetch on hover for instant navigation
   const handleMouseEnter = (href: string) => {
     router.prefetch(href)
@@ -51,13 +51,13 @@ export default function HomePage() {
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           <Image
-            src="/wedding.jpg"
+            src="/wedding.jpg?v=2"
             alt="Wedding collection"
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={85}
-            className="absolute inset-0 z-0 object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+            className="absolute inset-0 z-0 object-cover object-[center_12%] transition-transform duration-[1200ms] ease-out group-hover:scale-110"
             onLoad={() => setWeddingLoaded(true)}
           />
           {/* Dark gradient overlay */}

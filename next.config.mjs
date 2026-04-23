@@ -15,6 +15,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '25mb',
     },
+    serverComponentsExternalPackages: ['mssql'],
   },
 
   images: {

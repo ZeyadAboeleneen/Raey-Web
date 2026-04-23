@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -29,7 +29,7 @@ interface Product {
   description: string
   images: string[]
   rating: number
-  category: string
+  branch: string
   collection?: string
   isGiftPackage?: boolean
   packagePrice?: number
@@ -119,7 +119,7 @@ export function GiftPackageSelector({
         size: "Gift Package",
         volume: `${selectedProductsList.length} sizes`,
         image: product.images[0],
-        category: product.category,
+        branch: product.branch,
         quantity: quantity,
         isGiftPackage: true,
         selectedProducts: selectedProductsList,
@@ -138,7 +138,7 @@ export function GiftPackageSelector({
       })
 
       try {
-        const isRent = product.category !== "sell-dresses"
+        const isRent = product.branch !== "sell-dresses"
         const actionVerb = isRent ? "rent" : "buy"
         const now = new Date()
         const requestDate = now.toLocaleString()
@@ -154,7 +154,7 @@ export function GiftPackageSelector({
         let message = `Hello, I'd like to ${actionVerb} this gift package.\n\n`
         message += `Name: ${product.name}\n`
         message += `Package Code: ${product.id}\n`
-        message += `Category: ${product.category}\n\n`
+        message += `branch: ${product.branch}\n\n`
 
         message += `Selected Items:\n`
         selectedProductsList.forEach((item) => {

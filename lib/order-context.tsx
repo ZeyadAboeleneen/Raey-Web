@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { createContext, useContext, useReducer, type ReactNode } from "react"
@@ -10,7 +10,7 @@ interface OrderItem {
   size: string
   volume: string
   image: string
-  category: string
+  branch: string
   quantity: number
 }
 
@@ -61,7 +61,7 @@ const mockOrders: Order[] = [
         size: "Standard",
         volume: "50ml",
         image: "/placeholder.svg",
-        category: "men",
+        branch: "men",
         quantity: 1,
       },
     ],
@@ -87,7 +87,7 @@ const mockOrders: Order[] = [
         size: "Standard",
         volume: "50ml",
         image: "/placeholder.svg",
-        category: "women",
+        branch: "women",
         quantity: 2,
       },
     ],

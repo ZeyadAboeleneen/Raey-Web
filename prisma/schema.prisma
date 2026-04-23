@@ -28,7 +28,6 @@ model User {
 model Product {
   productId            String   @id @map("product_id")
   code                 String?
-  branch               String?
   name                 String
   description          String?  @db.Text
   longDescription      String?  @map("long_description") @db.LongText
@@ -41,7 +40,7 @@ model Product {
   rating               Float    @default(0)
   reviewCount          Int      @default(0) @map("reviews")
   notes                Json     @default("{\"top\":[],\"middle\":[],\"base\":[]}")
-  category             String?
+  branch               String?  @map("category")
   collection           String?
   isNew                Boolean  @default(false) @map("is_new")
   isBestseller         Boolean  @default(false) @map("is_bestseller")

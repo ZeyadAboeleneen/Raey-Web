@@ -50,7 +50,7 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -202,7 +202,7 @@ export default function SoireePage() {
   const getProductPrice = (product: Product) =>
     product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
 
-  const isRentCategory = (cat: string) => cat !== "sell-dresses"
+  const isRentBranch = (branchSlug: string) => branchSlug !== "sell-dresses"
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery), 250)
@@ -271,7 +271,7 @@ export default function SoireePage() {
 
   const filteredProducts = useMemo(() => {
     let result = allProducts
-    if (selectedCollection) result = result.filter(p => p.category === selectedCollection)
+    if (selectedCollection) result = result.filter(p => p.branch === selectedCollection)
     if (selectedPriceRanges.length > 0) {
       result = result.filter(p => {
         const price = getProductPrice(p)
@@ -337,9 +337,9 @@ export default function SoireePage() {
 
   const openWhatsAppOrder = () => {
     if (!selectedProduct) return
-    const isRent = isRentCategory(selectedProduct.category)
+    const isRent = isRentBranch(selectedProduct.branch)
     const actionVerb = isRent ? "rent" : "buy"
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nCategory: ${selectedProduct.category}\n\n`
+    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nBranch: ${selectedProduct.branch}\n\n`
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\nMeasurements:\n`
       Object.entries(measurements || {}).forEach(([key, value]) => {
@@ -396,7 +396,7 @@ export default function SoireePage() {
         size: isCustomSizeMode ? "custom" : baseSize.size,
         volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
         image: selectedProduct.images[0],
-        category: selectedProduct.category,
+        branch: selectedProduct.branch,
         quantity: 1,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
         customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined
@@ -425,7 +425,7 @@ export default function SoireePage() {
         name: product.name,
         price,
         image: product.images[0],
-        category: product.category,
+        branch: product.branch,
         collection: product.collection,
         rating: product.rating,
         isNew: product.isNew,
@@ -446,13 +446,13 @@ export default function SoireePage() {
     const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
     
     // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
-    const showProductPrice = showPrices || product.category === "sell-dresses"
+    const showProductPrice = showPrices || product.branch === "sell-dresses"
 
     return (
       <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="p-0 h-full">
-            <Link href={`/products/${product.category}/${product.id}`} className="block relative w-full h-full">
+            <Link href={`/products/${product.branch}/${product.id}`} className="block relative w-full h-full">
               <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                 <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                 <button onClick={(e) => handleFavoriteClick(e, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200">
@@ -563,7 +563,7 @@ export default function SoireePage() {
                   onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }} 
                   formatPrice={formatPrice} 
                 />
-                {isCustomSizeMode && isRentCategory(selectedProduct.category) && (
+                {isCustomSizeMode && isRentBranch(selectedProduct.branch) && (
                   <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                     <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
                     <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
@@ -597,7 +597,7 @@ export default function SoireePage() {
                   </div>
                 </div>
                 <Button onClick={() => { if (!selectedProduct || selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCart(); return }; if (!isMeasurementsValid) { alert("Please complete your custom measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`flex items-center rounded-full px-6 py-5 ${selectedProduct?.isOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct?.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
-                  <ShoppingCart className="h-4 w-4" />{selectedProduct?.isOutOfStock ? t("outOfStock") : isRentCategory(selectedProduct.category) ? t("rentNow") : t("buyNow")}
+                  <ShoppingCart className="h-4 w-4" />{selectedProduct?.isOutOfStock ? t("outOfStock") : isRentBranch(selectedProduct.branch) ? t("rentNow") : t("buyNow")}
                 </Button>
               </div>
             </div>
@@ -638,7 +638,7 @@ export default function SoireePage() {
 
       {showGiftPackageSelector && selectedProduct && (
         <GiftPackageSelector product={selectedProduct} isOpen={showGiftPackageSelector} onClose={() => setShowGiftPackageSelector(false)}
-          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], category: product.category, collection: product.collection, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
+          onToggleFavorite={(product) => { if (isFavorite(product.id)) { removeFromFavorites(product.id) } else { addToFavorites({ id: product.id, name: product.name, price: product.packagePrice || 0, image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating, isNew: product.isNew || false, isBestseller: product.isBestseller || false, sizes: product.giftPackageSizes || [], isGiftPackage: product.isGiftPackage, packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice, giftPackageSizes: product.giftPackageSizes }) } }}
           isFavorite={isFavorite} />
       )}
 

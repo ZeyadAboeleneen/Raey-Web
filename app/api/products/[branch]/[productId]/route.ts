@@ -47,7 +47,7 @@ const transformProduct = (product: any): Product => {
     rating: product.rating || 0,
     reviews: product.reviewCount || 0,
     notes: product.notes || { top: [], middle: [], base: [] },
-    category: product.category,
+    branch: product.branch,
     isNew: product.isNew || false,
     isBestseller: product.isBestseller || false,
     isActive: product.isActive !== false,
@@ -63,11 +63,11 @@ const transformProduct = (product: any): Product => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ category: string; productId: string }> }
+  { params }: { params: Promise<{ branch: string; productId: string }> }
 ) {
   try {
-    const { category, productId } = await params
-    const cacheKey = `${category}/${productId}`
+    const { branch, productId } = await params
+    const cacheKey = `${branch}/${productId}`
 
     // Check in-memory cache first
     const cached = detailCache.get(cacheKey)
@@ -82,7 +82,7 @@ export async function GET(
     }
 
     const product = await prisma.product.findFirst({
-      where: { productId, category, isActive: true },
+      where: { productId, branch, isActive: true },
     })
 
     if (!product) {

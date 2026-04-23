@@ -24,7 +24,7 @@ interface CartItem {
   size: string
   volume?: string
   image: string
-  category: string
+  branch: string | null
   productId: string 
   originalPrice?: number 
   isGiftPackage?: boolean
@@ -145,7 +145,7 @@ function saveCartToStorage(key: string, items: CartItem[]) {
       size: item.size,
       volume: item.volume,
       image: item.image,
-      category: item.category,
+      branch: item.branch,
       productId: item.productId,
       originalPrice: item.originalPrice,
       isGiftPackage: item.isGiftPackage,

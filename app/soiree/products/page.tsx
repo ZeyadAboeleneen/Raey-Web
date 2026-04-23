@@ -49,7 +49,7 @@ interface Product {
   images: string[]
   rating: number
   reviews: number
-  category: string
+  branch: string
   collection?: string
   sizes: ProductSize[]
   isActive?: boolean
@@ -294,11 +294,11 @@ export default function SoireeProductsPage() {
 
   const categorizedProducts = useMemo(
     () => ({
-      winter: products.filter((p) => p.category === "mona-saleh" && p.isActive),
-      summer: products.filter((p) => p.category === "el-raey-1" && p.isActive),
-      fall: products.filter((p) => p.category === "el-raey-2" && p.isActive),
-      yard: products.filter((p) => p.category === "el-raey-the-yard" && p.isActive),
-      sellDresses: products.filter((p) => p.category === "sell-dresses" && p.isActive),
+      winter: products.filter((p) => p.branch === "mona-saleh" && p.isActive),
+      summer: products.filter((p) => p.branch === "el-raey-1" && p.isActive),
+      fall: products.filter((p) => p.branch === "el-raey-2" && p.isActive),
+      yard: products.filter((p) => p.branch === "el-raey-the-yard" && p.isActive),
+      sellDresses: products.filter((p) => p.branch === "sell-dresses" && p.isActive),
     }),
     [products]
   )
@@ -332,7 +332,7 @@ export default function SoireeProductsPage() {
   const openWhatsAppOrder = () => {
     if (!selectedProduct) return
 
-    const isRent = selectedProduct.category !== "sell-dresses"
+    const isRent = selectedProduct.branch !== "sell-dresses"
     const actionVerb = isRent ? "rent" : "buy"
     const now = new Date()
     const requestDate = now.toLocaleString()
@@ -348,7 +348,7 @@ export default function SoireeProductsPage() {
     let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
     message += `Name: ${selectedProduct.name}\n`
     message += `Dress Code: ${selectedProduct.id}\n`
-    message += `Category: ${selectedProduct.category}\n\n`
+    message += `branch: ${selectedProduct.branch}\n\n`
 
     if (isCustomSizeMode) {
       message += `Size Mode: Custom (${measurementUnit})\n`
@@ -416,7 +416,7 @@ export default function SoireeProductsPage() {
         size: isCustomSizeMode ? "custom" : baseSize.size,
         volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
         image: selectedProduct.images[0],
-        category: selectedProduct.category,
+        branch: selectedProduct.branch,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
         quantity,
         customMeasurements: isCustomSizeMode
@@ -447,7 +447,7 @@ export default function SoireeProductsPage() {
           name: product.name,
           price: price,
           image: product.images[0],
-          category: product.category,
+          branch: product.branch,
           collection: product.collection,
           rating: product.rating,
           isNew: product.isNew,
@@ -532,7 +532,7 @@ export default function SoireeProductsPage() {
     const addToCartAriaLabel =
       layout === "desktop" && product.isGiftPackage
         ? "Customize Package"
-        : product.category !== "sell-dresses"
+        : product.branch !== "sell-dresses"
           ? "Rent Now"
           : "Buy Now"
 
@@ -580,7 +580,7 @@ export default function SoireeProductsPage() {
         >
           <CardContent className="p-0 h-full">
             <Link
-              href={`/products/${product.category}/${product.id}`}
+              href={`/products/${product.branch}/${product.id}`}
               className="block relative w-full h-full"
             >
               <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
@@ -600,7 +600,7 @@ export default function SoireeProductsPage() {
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
                   {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                   {(() => {
-                    const showProductPrice = showPrices || product.category === "sell-dresses"
+                    const showProductPrice = showPrices || product.branch === "sell-dresses"
                     return (
                       <>
                         {showProductPrice ? (
@@ -727,7 +727,7 @@ export default function SoireeProductsPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                      <p className="text-gray-600 text-sm">Select your size to {selectedProduct.category !== "sell-dresses" ? "rent" : "buy"}</p>
+                      <p className="text-gray-600 text-sm">Select your size to {selectedProduct.branch !== "sell-dresses" ? "rent" : "buy"}</p>
                     </div>
                     <div className="flex">
                       <button
@@ -871,7 +871,7 @@ export default function SoireeProductsPage() {
                       aria-label={
                         selectedProduct?.isOutOfStock
                           ? "Out of stock"
-                          : selectedProduct.category !== "sell-dresses"
+                          : selectedProduct.branch !== "sell-dresses"
                             ? "Rent Now"
                             : "Buy Now"
                       }
@@ -879,7 +879,7 @@ export default function SoireeProductsPage() {
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       {selectedProduct?.isOutOfStock
                         ? t("outOfStock")
-                        : selectedProduct.category !== "sell-dresses"
+                        : selectedProduct.branch !== "sell-dresses"
                           ? "Rent Now"
                           : "Buy Now"}
                     </Button>
@@ -925,7 +925,7 @@ export default function SoireeProductsPage() {
               }}
               className="bg-black hover:bg-gray-800"
             >
-              Confirm {selectedProduct && selectedProduct.category !== "sell-dresses" ? "Rent" : "Buy"}
+              Confirm {selectedProduct && selectedProduct.branch !== "sell-dresses" ? "Rent" : "Buy"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1369,7 +1369,7 @@ export default function SoireeProductsPage() {
                 name: product.name,
                 price: product.packagePrice || 0,
                 image: product.images[0],
-                category: product.category,
+                branch: product.branch,
                 collection: product.collection,
                 rating: product.rating,
                 isNew: product.isNew || false,
