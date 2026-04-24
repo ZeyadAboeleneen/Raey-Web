@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getMssqlPool, sql } from "@/lib/mssql";
 import { mapCollectionToLineId } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
+import { resolveStoreId } from "@/lib/erp-stores";
 
 const errorResponse = (status: number, message: string) =>
   NextResponse.json({ error: message, timestamp: new Date().toISOString() }, { status });
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
       typeof body.lineId === "number"
         ? body.lineId
         : mapCollectionToLineId(body.collection);
+    const branchCode = body.branch ? String(body.branch).trim() : null;
 
     if (!name) return errorResponse(400, "Product name is required");
     if (!Number.isFinite(price)) return errorResponse(400, "Valid price is required");
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
       .slice(0, 24);
     const itemCode = `${baseCode || "ITEM"}-${Date.now().toString().slice(-6)}`;
 
+    // ── Insert into MSSQL ERP (NO branch column) ────────────────
     const pool = await getMssqlPool();
     const result = await pool
       .request()
@@ -68,11 +71,30 @@ export async function POST(request: NextRequest) {
         )
       `);
 
+    const newId = result.recordset[0]?.id;
+
+    // ── Save branch to MSSQL via ItemStores ─────────────
+    if (newId && branchCode) {
+      const storeId = resolveStoreId(branchCode);
+      if (storeId) {
+        try {
+          await pool
+            .request()
+            .input("itemId", sql.Int, newId)
+            .input("storeId", sql.Int, storeId)
+            .query(`INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
+          console.log(`✅ [MSSQL] Saved branch for item ${newId} (StoreID: ${storeId})`);
+        } catch (mssqlErr: any) {
+          console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
+        }
+      }
+    }
+
     clearErpProductCaches();
 
     return NextResponse.json({
       success: true,
-      id: result.recordset[0]?.id ?? null,
+      id: newId ?? null,
       message: "Product created successfully in ERP",
     });
   } catch (error: any) {

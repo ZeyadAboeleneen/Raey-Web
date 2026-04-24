@@ -909,7 +909,12 @@ export default function AdminDashboard() {
                   Refresh
                 </Button>
 
-
+                <Link href="/admin/products/bulk-upload" prefetch={true}>
+                  <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
+                    <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Bulk Upload
+                  </Button>
+                </Link>
 
                 <Link href="/admin/products/add" prefetch={true}>
                   <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">

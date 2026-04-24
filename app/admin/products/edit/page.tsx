@@ -17,6 +17,7 @@ import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { uploadImage } from "@/lib/supabase-storage"
 import { useProductsCache } from "@/lib/products-cache"
+import { BRANCH_OPTIONS, slugToCode } from "@/lib/branch-map"
 
 interface ProductSize {
   originalPrice?: string
@@ -57,6 +58,7 @@ export default function EditProductPage() {
     description: "",
     longDescription: "",
     collection: "wedding",
+    branch: "E",
     sizes: [{
       originalPrice: "",
       discountedPrice: "",
@@ -96,11 +98,16 @@ export default function EditProductPage() {
 
         const product = await response.json()
 
+        // Resolve branch: product.branch is a slug, dropdown needs a code
+        const branchSlug = product.branch || ""
+        const branchCode = slugToCode[branchSlug] || branchSlug?.toUpperCase() || "E"
+
         setFormData({
           name: product.name || "",
           description: product.description || "",
           longDescription: product.longDescription || "",
           collection: product.collection || "wedding",
+          branch: branchCode,
           sizes: product.sizes?.map((size: any) => ({
             originalPrice: size.originalPrice?.toString() || "",
             discountedPrice: size.discountedPrice?.toString() || "",
@@ -188,6 +195,7 @@ export default function EditProductPage() {
       const productToSave = {
         name: formData.name,
         collection: formData.collection,
+        branch: formData.branch,
         image: uploadedImages[0] || "",
         price: Number(
           firstSize?.discountedPrice?.trim() ||
@@ -406,9 +414,26 @@ export default function EditProductPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-600 rounded-md border border-dashed border-gray-200 bg-gray-50 p-3">
-                      Branch shown on the site comes from ERP bookings and stores. To change it, update the booking or store link in ERP, not this form.
-                    </p>
+                    <div>
+                      <Label htmlFor="branch">Branch *</Label>
+                      <Select
+                        value={formData.branch}
+                        onValueChange={(value) => handleChange("branch", value)}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BRANCH_OPTIONS.map((b) => (
+                            <SelectItem key={b.code} value={b.code}>
+                              {b.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 mt-1">Branch is saved directly to ERP (ItemStores)</p>
+                    </div>
 
                     <div>
                       <Label htmlFor="description">Short Description</Label>

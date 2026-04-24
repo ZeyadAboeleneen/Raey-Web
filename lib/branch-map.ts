@@ -15,6 +15,17 @@ const slugToCode: Record<string, string> = Object.fromEntries(
   Object.entries(branchMap).map(([code, slug]) => [slug, code])
 );
 
+export { slugToCode };
+
+/** Admin-facing branch options for dropdowns. */
+export const BRANCH_OPTIONS = [
+  { code: "E",  label: "El-Raey 1" },
+  { code: "M",  label: "Mona Saleh" },
+  { code: "D",  label: "El-Raey 2" },
+  { code: "R",  label: "El-Raey The Yard" },
+  { code: "15", label: "Sell Dresses" },
+] as const;
+
 export function mapBranchCodeToSlug(raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) {
     console.warn("Unknown branch value:", raw);

@@ -17,6 +17,7 @@ import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { uploadImage } from "@/lib/supabase-storage"
 import { useProductsCache } from "@/lib/products-cache"
+import { BRANCH_OPTIONS } from "@/lib/branch-map"
 
 interface ProductSize {
   originalPrice?: string
@@ -40,6 +41,7 @@ export default function AddProductPage() {
     description: "",
     longDescription: "",
     collection: "wedding",
+    branch: "E",
     sizes: [{
       originalPrice: "",
       discountedPrice: "",
@@ -109,6 +111,7 @@ export default function AddProductPage() {
       const product: any = {
         name: formData.name,
         collection: formData.collection,
+        branch: formData.branch,
         image: uploadedImages[0] || "",
         price: Number(
           firstSize?.discountedPrice?.trim() ||
@@ -150,6 +153,7 @@ export default function AddProductPage() {
           description: "",
           longDescription: "",
           collection: "wedding",
+          branch: "E",
           sizes: [{
             originalPrice: "",
             discountedPrice: "",
@@ -402,9 +406,26 @@ export default function AddProductPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-600 rounded-md border border-dashed border-gray-200 bg-gray-50 p-3">
-                      Branch is determined in ERP by linking the item to a booking and store (Booking → Stores). It is not stored on the item row.
-                    </p>
+                    <div>
+                      <Label htmlFor="branch">Branch *</Label>
+                      <Select
+                        value={formData.branch}
+                        onValueChange={(value) => handleChange("branch", value)}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BRANCH_OPTIONS.map((b) => (
+                            <SelectItem key={b.code} value={b.code}>
+                              {b.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 mt-1">Branch is saved directly to ERP (ItemStores)</p>
+                    </div>
 
                     <div>
                       <Label htmlFor="description">Short Description</Label>

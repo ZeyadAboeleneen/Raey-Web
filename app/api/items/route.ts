@@ -95,11 +95,18 @@ export async function GET(request: NextRequest) {
         b.ReceivedDate,
         b.ReturnDate,
         b.BranchID,
-        s.Store_name  AS StoreName
+        s.Store_name  AS StoreName,
+        istore.Branch_ID AS ItemStoreBranchID,
+        istore.Store_name AS ItemStoreName
       FROM Items i
       LEFT JOIN Category c ON i.Category_id = c.ID
       LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
+      LEFT JOIN (
+          SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
+          FROM ItemStores itemst 
+          JOIN Stores st ON itemst.StoreID = st.ID
+      ) istore ON istore.ItemID = i.ID
       WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
     `;
 
@@ -126,7 +133,7 @@ export async function GET(request: NextRequest) {
     const result = await req.query<ErpItemRow>(query);
     const erpProducts = transformErpRows(result.recordset as ErpItemRow[]);
 
-    // If branch filter requested, filter post-query (since branch comes from Booking→Stores join)
+    // If branch filter requested, filter post-query
     let finalProducts = erpProducts;
     if (branch) {
       finalProducts = erpProducts.filter((p) => p.branch === branch);

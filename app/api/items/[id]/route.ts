@@ -8,6 +8,7 @@ import {
   mapCollectionToLineId,
 } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
+import { resolveStoreId } from "@/lib/erp-stores";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
@@ -58,11 +59,17 @@ export async function GET(
           b.ReceivedDate,
           b.ReturnDate,
           b.BranchID,
-          s.Store_name  AS StoreName
+          s.Store_name  AS StoreName,
+          istore.Store_name AS ItemStoreName
         FROM Items i
         LEFT JOIN Category c ON i.Category_id = c.ID
         LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
         LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
+        LEFT JOIN (
+            SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
+            FROM ItemStores itemst 
+            JOIN Stores st ON itemst.StoreID = st.ID
+        ) istore ON istore.ItemID = i.ID
         WHERE i.ID = @itemId
           AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
           ${includeInactive ? "" : "AND i.Item_Isdisabled = 0"}
@@ -79,6 +86,7 @@ export async function GET(
     }
 
     const product = erpProducts[0];
+
     const output = format === "erp" ? product : erpProductToCachedShape(product);
 
     console.log(
@@ -121,11 +129,13 @@ export async function PUT(
         ? body.lineId
         : mapCollectionToLineId(body.collection);
     const isActive = body.isActive !== false;
+    const branchCode = body.branch ? String(body.branch).trim() : null;
 
     if (!name) return errorResponse(400, "Product name is required");
     if (!Number.isFinite(price)) return errorResponse(400, "Valid price is required");
     if (!lineId) return errorResponse(400, "Valid collection is required");
 
+    // ── Update MSSQL ERP (NO branch column) ─────────────────────
     const pool = await getMssqlPool();
     await pool
       .request()
@@ -145,6 +155,28 @@ export async function PUT(
           Item_Isdisabled = @isDisabled
         WHERE ID = @itemId
       `);
+
+    // ── Save branch to MSSQL via ItemStores ─────────────
+    if (branchCode) {
+      const storeId = resolveStoreId(branchCode);
+      if (storeId) {
+        try {
+          await pool
+            .request()
+            .input("itemId", sql.Int, itemId)
+            .input("storeId", sql.Int, storeId)
+            .query(`
+              IF EXISTS (SELECT 1 FROM ItemStores WHERE ItemID = @itemId)
+                UPDATE ItemStores SET StoreID = @storeId WHERE ItemID = @itemId
+              ELSE
+                INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)
+            `);
+          console.log(`✅ [MSSQL] Updated branch for item ${itemId} (StoreID: ${storeId})`);
+        } catch (mssqlErr: any) {
+          console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
+        }
+      }
+    }
 
     clearErpProductCaches();
 

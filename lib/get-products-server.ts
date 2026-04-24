@@ -39,11 +39,18 @@ async function fetchProductsFromDB(): Promise<any[]> {
         b.ReceivedDate,
         b.ReturnDate,
         b.BranchID,
-        s.Store_name  AS StoreName
+        s.Store_name  AS StoreName,
+        istore.Branch_ID AS ItemStoreBranchID,
+        istore.Store_name AS ItemStoreName
       FROM Items i
       LEFT JOIN Category c ON i.Category_id = c.ID
       LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
+      LEFT JOIN (
+          SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
+          FROM ItemStores itemst 
+          JOIN Stores st ON itemst.StoreID = st.ID
+      ) istore ON istore.ItemID = i.ID
       WHERE i.Item_Isdisabled = 0
         AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
       ORDER BY i.ID DESC

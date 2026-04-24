@@ -58,11 +58,18 @@ interface PreviewSummary {
 }
 
 interface UploadReport {
-  created: number
-  updated: number
-  linkedImages: number
+  mode?: string
+  created?: number
+  updated?: number
+  linkedImages?: number
   unmatchedImages?: string[]
-  errors: { row: number; reason: string }[]
+  errors: { row?: number; file?: string; reason: string }[]
+
+  // Image-only fields
+  total?: number
+  matched?: number
+  failed?: number
+  details?: { file: string; matchedTo: string; imageUrl: string }[]
 }
 
 type Step = "upload" | "preview" | "processing" | "report"
@@ -263,6 +270,57 @@ export default function BulkUploadPage() {
   }
 
   // ==========================
+  // Image-Only Upload (Direct)
+  // ==========================
+  const handleImageOnlyUpload = async () => {
+    if (!imagesFile) return
+
+    setStep("processing")
+    setProgress(10)
+    setProgressMessage("Match processing and uploading to Cloudinary...")
+
+    try {
+      const formData = new FormData()
+      formData.append("imagesFile", imagesFile)
+      formData.append("mode", "image-only")
+
+      setProgress(30)
+
+      const progressInterval = setInterval(() => {
+        setProgress((p) => Math.min(p + 5, 85))
+      }, 2000)
+
+      const response = await fetch("/api/products/bulk", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        body: formData,
+      })
+
+      clearInterval(progressInterval)
+      setProgress(95)
+      setProgressMessage("Finalizing...")
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || "Image matching failed")
+        toast.error(result.error || "Image matching failed")
+        setStep("upload")
+        return
+      }
+
+      setProgress(100)
+      setReport(result)
+      setStep("report")
+      toast.success(result.message || "Image match complete!")
+    } catch (err: any) {
+      setError(err.message || "Upload failed")
+      toast.error(err.message || "Upload failed")
+      setStep("upload")
+    }
+  }
+
+  // ==========================
   // Reset
   // ==========================
   const handleReset = () => {
@@ -326,13 +384,12 @@ export default function BulkUploadPage() {
                     )}
                     <div className="flex flex-col items-center gap-1">
                       <div
-                        className={`rounded-full p-2.5 transition-all ${
-                          isActive
+                        className={`rounded-full p-2.5 transition-all ${isActive
                             ? "bg-black text-white shadow-lg scale-110"
                             : isPast
-                            ? "bg-black text-white"
-                            : "bg-gray-200 text-gray-500"
-                        }`}
+                              ? "bg-black text-white"
+                              : "bg-gray-200 text-gray-500"
+                          }`}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
@@ -368,7 +425,6 @@ export default function BulkUploadPage() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <FileSpreadsheet className="h-5 w-5" /> Data File
-                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">Required</Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -422,7 +478,7 @@ export default function BulkUploadPage() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ImageIcon className="h-5 w-5" /> Images ZIP
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">Optional</Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5"></Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -490,22 +546,40 @@ export default function BulkUploadPage() {
                 </Card>
 
                 {/* Action Button */}
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handlePreview}
-                    disabled={!dataFile || loading}
-                    className="bg-black text-white hover:bg-gray-800 gap-2 px-8 py-5 text-base"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Processing...
-                      </>
-                    ) : (
-                      <>
-                        Preview Products <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
+                <div className="flex justify-end mt-4">
+                  {!dataFile && imagesFile ? (
+                    <Button
+                      onClick={handleImageOnlyUpload}
+                      disabled={loading}
+                      className="bg-black text-white hover:bg-gray-800 gap-2 px-8 py-5 text-base"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Processing...
+                        </>
+                      ) : (
+                        <>
+                          Auto-Match Images <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handlePreview}
+                      disabled={!dataFile || loading}
+                      className="bg-black text-white hover:bg-gray-800 gap-2 px-8 py-5 text-base"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Processing...
+                        </>
+                      ) : (
+                        <>
+                          Preview Products <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {loading && (
@@ -609,9 +683,8 @@ export default function BulkUploadPage() {
                           {previewData.products.map((product) => (
                             <tr
                               key={product.rowIndex}
-                              className={`border-b hover:bg-gray-50 transition-colors ${
-                                product.errors.length > 0 ? "bg-red-50" : ""
-                              }`}
+                              className={`border-b hover:bg-gray-50 transition-colors ${product.errors.length > 0 ? "bg-red-50" : ""
+                                }`}
                             >
                               <td className="p-3 text-gray-500">{product.rowIndex}</td>
                               <td className="p-3">
@@ -724,49 +797,82 @@ export default function BulkUploadPage() {
                 </Alert>
 
                 {/* Report Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                  <Card className="bg-green-50 border-green-200">
-                    <CardContent className="pt-5 pb-4 text-center">
-                      <p className="text-3xl font-bold text-green-700">{report.created}</p>
-                      <p className="text-sm text-green-600 mt-1">✅ Created</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-blue-50 border-blue-200">
-                    <CardContent className="pt-5 pb-4 text-center">
-                      <p className="text-3xl font-bold text-blue-700">{report.updated}</p>
-                      <p className="text-sm text-blue-600 mt-1">🔄 Updated</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-purple-50 border-purple-200">
-                    <CardContent className="pt-5 pb-4 text-center">
-                      <p className="text-3xl font-bold text-purple-700">{report.linkedImages}</p>
-                      <p className="text-sm text-purple-600 mt-1">🖼️ Images Linked</p>
-                    </CardContent>
-                  </Card>
-                  <Card className={`${(report.unmatchedImages?.length || 0) > 0 ? "bg-amber-50 border-amber-200" : "bg-gray-50"}`}>
-                    <CardContent className="pt-5 pb-4 text-center">
-                      <p className={`text-3xl font-bold ${(report.unmatchedImages?.length || 0) > 0 ? "text-amber-700" : "text-gray-700"}`}>
-                        {report.unmatchedImages?.length || 0}
-                      </p>
-                      <p className={`text-sm mt-1 ${(report.unmatchedImages?.length || 0) > 0 ? "text-amber-600" : "text-gray-500"}`}>
-                        ⚠️ Unmatched
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card className={`${report.errors.length > 0 ? "bg-red-50 border-red-200" : "bg-gray-50"}`}>
-                    <CardContent className="pt-5 pb-4 text-center">
-                      <p className={`text-3xl font-bold ${report.errors.length > 0 ? "text-red-700" : "text-gray-700"}`}>
-                        {report.errors.length}
-                      </p>
-                      <p className={`text-sm mt-1 ${report.errors.length > 0 ? "text-red-600" : "text-gray-500"}`}>
-                        ❌ Errors
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+                {report.mode === "image-only" ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card className="bg-gray-50 border-gray-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-gray-700">{report.total}</p>
+                        <p className="text-sm text-gray-600 mt-1">Total Images</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-blue-50 border-blue-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-blue-700">{report.matched}</p>
+                        <p className="text-sm text-blue-600 mt-1">🎯 Matched</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-green-50 border-green-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-green-700">{report.updated}</p>
+                        <p className="text-sm text-green-600 mt-1">✅ Uploaded/Updated</p>
+                      </CardContent>
+                    </Card>
+                    <Card className={`${(report.failed || 0) > 0 ? "bg-red-50 border-red-200" : "bg-gray-50"}`}>
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className={`text-3xl font-bold ${(report.failed || 0) > 0 ? "text-red-700" : "text-gray-700"}`}>
+                          {report.failed}
+                        </p>
+                        <p className={`text-sm mt-1 ${(report.failed || 0) > 0 ? "text-red-600" : "text-gray-500"}`}>
+                          ❌ Failed
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <Card className="bg-green-50 border-green-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-green-700">{report.created}</p>
+                        <p className="text-sm text-green-600 mt-1">✅ Created</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-blue-50 border-blue-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-blue-700">{report.updated}</p>
+                        <p className="text-sm text-blue-600 mt-1">🔄 Updated</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-purple-50 border-purple-200">
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className="text-3xl font-bold text-purple-700">{report.linkedImages}</p>
+                        <p className="text-sm text-purple-600 mt-1">🖼️ Images Linked</p>
+                      </CardContent>
+                    </Card>
+                    <Card className={`${(report.unmatchedImages?.length || 0) > 0 ? "bg-amber-50 border-amber-200" : "bg-gray-50"}`}>
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className={`text-3xl font-bold ${(report.unmatchedImages?.length || 0) > 0 ? "text-amber-700" : "text-gray-700"}`}>
+                          {report.unmatchedImages?.length || 0}
+                        </p>
+                        <p className={`text-sm mt-1 ${(report.unmatchedImages?.length || 0) > 0 ? "text-amber-600" : "text-gray-500"}`}>
+                          ⚠️ Unmatched
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className={`${report.errors.length > 0 ? "bg-red-50 border-red-200" : "bg-gray-50"}`}>
+                      <CardContent className="pt-5 pb-4 text-center">
+                        <p className={`text-3xl font-bold ${report.errors.length > 0 ? "text-red-700" : "text-gray-700"}`}>
+                          {report.errors.length}
+                        </p>
+                        <p className={`text-sm mt-1 ${report.errors.length > 0 ? "text-red-600" : "text-gray-500"}`}>
+                          ❌ Errors
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
 
-                {/* Unmatched Images List */}
-                {(report.unmatchedImages?.length || 0) > 0 && (
+                {/* Unmatched Images List (Standard Upload) */}
+                {report.mode !== "image-only" && (report.unmatchedImages?.length || 0) > 0 && (
                   <Card className="mb-6">
                     <CardHeader className="pb-3 border-b">
                       <CardTitle className="text-lg text-amber-700 flex items-center gap-2">
@@ -796,14 +902,18 @@ export default function BulkUploadPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b bg-red-50">
-                              <th className="text-left p-3 font-medium text-red-700">Row</th>
+                              <th className="text-left p-3 font-medium text-red-700">
+                                {report.mode === "image-only" ? "File" : "Row"}
+                              </th>
                               <th className="text-left p-3 font-medium text-red-700">Reason</th>
                             </tr>
                           </thead>
                           <tbody>
                             {report.errors.map((err, i) => (
                               <tr key={i} className="border-b">
-                                <td className="p-3 text-gray-600">{err.row}</td>
+                                <td className="p-3 text-gray-600">
+                                  {report.mode === "image-only" ? err.file : err.row}
+                                </td>
                                 <td className="p-3 text-red-600">{err.reason}</td>
                               </tr>
                             ))}
