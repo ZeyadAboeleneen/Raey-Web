@@ -16,7 +16,7 @@ interface Product {
   rating: number
   reviews: number
   notes: { top: string[]; middle: string[]; base: string[] }
-  branch: string | null
+  branch: string
   isNew?: boolean
   isBestseller?: boolean
   isActive: boolean

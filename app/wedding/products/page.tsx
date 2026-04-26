@@ -20,7 +20,7 @@ import type { SizeChartRow } from "@/components/custom-size-form"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useProductsCache } from "@/lib/products-cache"
+import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -32,41 +32,6 @@ const CustomSizeForm = dynamic(
   { ssr: false }
 )
 
-interface ProductSize {
-  size: string
-  volume: string
-  originalPrice?: number
-  discountedPrice?: number
-  stockCount?: number
-}
-
-interface Product {
-  _id: string
-  id: string
-  name: string
-  description: string
-  longDescription?: string
-  images: string[]
-  rating: number
-  reviews: number
-  branch: string
-  collection?: string
-  sizes: ProductSize[]
-  isActive?: boolean
-  isNew?: boolean
-  isBestseller?: boolean
-  isOutOfStock?: boolean
-  // Gift package fields
-  isGiftPackage?: boolean
-  packagePrice?: number
-  packageOriginalPrice?: number
-  giftPackageSizes?: any[]
-  notes?: {
-    top: string[]
-    middle: string[]
-    base: string[]
-  }
-}
 
 // WhatsApp ordering removed — using cart-based checkout
 

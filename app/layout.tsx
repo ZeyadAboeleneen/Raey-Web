@@ -9,6 +9,8 @@ import { FavoritesProvider } from "@/lib/favorites-context"
 import { CartProvider } from "@/lib/cart-context"
 import { LocaleProvider } from "@/lib/locale-context"
 import { ScrollProvider } from "@/lib/scroll-context"
+import { SiteSettingsProvider, DEFAULT_SETTINGS, SiteSettings } from "@/lib/site-settings-context"
+import { prisma } from "@/lib/prisma"
 import { CartSuccessNotification } from "@/components/cart-success-notification"
 import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
@@ -46,7 +48,30 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+async function getSiteSettings(): Promise<SiteSettings> {
+  try {
+    const setting = await prisma.siteSetting.findUnique({
+      where: { key: "site_settings" }
+    })
+    
+    if (!setting || !setting.value) {
+      return DEFAULT_SETTINGS
+    }
+    
+    const value = setting.value as any
+    return {
+      heroImages: {
+        wedding: value.heroImages?.wedding || DEFAULT_SETTINGS.heroImages.wedding,
+        soiree: value.heroImages?.soiree || DEFAULT_SETTINGS.heroImages.soiree,
+      }
+    }
+  } catch (error) {
+    console.error("Failed to fetch settings:", error)
+    return DEFAULT_SETTINGS
+  }
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
@@ -55,6 +80,8 @@ export default function RootLayout({
   if (typeof window === 'undefined') {
     warmProductsServerCache()
   }
+
+  const initialSettings = await getSiteSettings()
 
   return (
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
@@ -72,9 +99,11 @@ export default function RootLayout({
                     <FavoritesProvider>
                       <CartProvider>
                         <ScrollProvider>
-                          {children}
-                          <CartSuccessNotification />
-                          <Toaster />
+                          <SiteSettingsProvider initialSettings={initialSettings}>
+                            {children}
+                            <CartSuccessNotification />
+                            <Toaster />
+                          </SiteSettingsProvider>
                         </ScrollProvider>
                       </CartProvider>
                     </FavoritesProvider>

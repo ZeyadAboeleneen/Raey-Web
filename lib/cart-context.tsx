@@ -24,7 +24,7 @@ interface CartItem {
   size: string
   volume?: string
   image: string
-  branch: string | null
+  branch: string
   productId: string 
   originalPrice?: number 
   isGiftPackage?: boolean

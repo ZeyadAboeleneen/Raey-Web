@@ -29,6 +29,7 @@ import {
   FileSpreadsheet,
   LogOut,
   X,
+  Settings,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { Navigation } from "@/components/navigation"
@@ -104,14 +105,14 @@ const PRODUCTS_PER_PAGE = 10
 // Branch display helper (expects storefront slug from API)
 const formatBranchName = (branch: string | null | undefined) => {
   if (!branch) return ""
-  if (branch === "el-raey-1") return "Raey 1"
-  if (branch === "el-raey-2") return "Raey 2"
-  if (branch === "el-raey-the-yard") return "Raey The Yard"
-  if (branch === "mona-saleh") return "Mona Saleh"
+  if (branch === "el-raey-1") return "El Mashaya 1"
+  if (branch === "el-raey-2") return "El Mashaya 2"
+  if (branch === "el-raey-the-yard") return "The yard cairo"
+  if (branch === "mona-saleh") return "Hay El-Gamaa"
   if (branch === "sell-dresses") return "Sell Dresses"
-  
+
   // fallback capitalize
-  return branch.split('-').map(word => 
+  return branch.split('-').map(word =>
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ')
 }
@@ -844,7 +845,7 @@ export default function AdminDashboard() {
 
     // Active products fallback (may be inaccurate if pagination is > 10, but good enough for initial flash)
     if (activeProducts === 0) {
-       activeProducts = products.filter((p) => p.isActive).length;
+      activeProducts = products.filter((p) => p.isActive).length;
     }
 
     return { totalProducts, activeProducts }
@@ -897,6 +898,13 @@ export default function AdminDashboard() {
                   <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   Sign Out
                 </Button>
+
+                <Link href="/admin/settings" prefetch={true}>
+                  <Button variant="outline" className="bg-transparent text-xs sm:text-sm border-gray-200 text-gray-700 hover:bg-gray-50" size="sm">
+                    <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Settings
+                  </Button>
+                </Link>
 
                 <Button
                   onClick={handleRefresh}
@@ -1046,11 +1054,11 @@ export default function AdminDashboard() {
                             <SelectValue placeholder="Branch" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All branches</SelectItem>
-                            <SelectItem value="mona-saleh">Mona Saleh</SelectItem>
-                            <SelectItem value="el-raey-1">Raey 1</SelectItem>
-                            <SelectItem value="el-raey-2">Raey 2</SelectItem>
-                            <SelectItem value="el-raey-the-yard">Raey The Yard</SelectItem>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="mona-saleh">Mona Saleh -Hay El-Gamaa</SelectItem>
+                            <SelectItem value="el-raey-1">Raey1 -mashaya 1</SelectItem>
+                            <SelectItem value="el-raey-2">Raey 2- mashaya 2</SelectItem>
+                            <SelectItem value="el-raey-the-yard">raey the yard-The yard cairo</SelectItem>
                             <SelectItem value="sell-dresses">Sell Dresses</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1381,7 +1389,7 @@ export default function AdminDashboard() {
                         <nav aria-label="Page navigation example" className="flex flex-col sm:flex-row items-center justify-between sm:justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-6">
                           <ul className="flex items-center -space-x-px text-sm">
                             <li>
-                              <button 
+                              <button
                                 onClick={() => {
                                   const targetPage = Math.max(productPage - 1, 1)
                                   if (targetPage !== productPage) {
@@ -1408,11 +1416,10 @@ export default function AdminDashboard() {
                                   <button
                                     onClick={() => setProductPage(page)}
                                     aria-current={productPage === page ? "page" : undefined}
-                                    className={`flex items-center justify-center shadow-xs font-medium text-sm w-9 h-9 focus:outline-none ${
-                                      productPage === page
-                                        ? "bg-black text-white border border-black hover:bg-gray-800"
-                                        : "text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 leading-5"
-                                    }`}
+                                    className={`flex items-center justify-center shadow-xs font-medium text-sm w-9 h-9 focus:outline-none ${productPage === page
+                                      ? "bg-black text-white border border-black hover:bg-gray-800"
+                                      : "text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 leading-5"
+                                      }`}
                                   >
                                     {page}
                                   </button>
@@ -1420,7 +1427,7 @@ export default function AdminDashboard() {
                               );
                             })}
                             <li>
-                              <button 
+                              <button
                                 onClick={() => {
                                   const targetPage = Math.min(productPage + 1, totalProductPages)
                                   if (targetPage !== productPage) {
@@ -1434,8 +1441,8 @@ export default function AdminDashboard() {
                               </button>
                             </li>
                           </ul>
-                          <form 
-                            className="mx-auto sm:mx-0" 
+                          <form
+                            className="mx-auto sm:mx-0"
                             onSubmit={(e) => {
                               e.preventDefault();
                               const target = (e.currentTarget.elements.namedItem('visitors') as HTMLInputElement).value;
@@ -1447,15 +1454,15 @@ export default function AdminDashboard() {
                             }}
                           >
                             <div className="flex items-center space-x-2">
-                                <label htmlFor="visitors" className="text-sm font-medium text-gray-700 shrink-0">Go to</label>
-                                <input 
-                                  type="text" 
-                                  id="visitors" 
-                                  name="visitors"
-                                  className="bg-white w-12 border border-gray-200 text-gray-900 text-sm rounded-md focus:ring-black focus:border-black block px-2.5 py-1.5 shadow-sm placeholder:text-gray-400" 
-                                  placeholder={productPage.toString()} 
-                                />
-                                <span className="text-sm font-medium text-gray-700">page</span>
+                              <label htmlFor="visitors" className="text-sm font-medium text-gray-700 shrink-0">Go to</label>
+                              <input
+                                type="text"
+                                id="visitors"
+                                name="visitors"
+                                className="bg-white w-12 border border-gray-200 text-gray-900 text-sm rounded-md focus:ring-black focus:border-black block px-2.5 py-1.5 shadow-sm placeholder:text-gray-400"
+                                placeholder={productPage.toString()}
+                              />
+                              <span className="text-sm font-medium text-gray-700">page</span>
                             </div>
                           </form>
                         </nav>

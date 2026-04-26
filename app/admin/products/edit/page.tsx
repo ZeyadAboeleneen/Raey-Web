@@ -199,8 +199,8 @@ export default function EditProductPage() {
         image: uploadedImages[0] || "",
         price: Number(
           firstSize?.discountedPrice?.trim() ||
-            firstSize?.originalPrice?.trim() ||
-            "0"
+          firstSize?.originalPrice?.trim() ||
+          "0"
         ),
         isActive: formData.isActive,
       }

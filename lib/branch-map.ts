@@ -19,10 +19,10 @@ export { slugToCode };
 
 /** Admin-facing branch options for dropdowns. */
 export const BRANCH_OPTIONS = [
-  { code: "E",  label: "El-Raey 1" },
-  { code: "M",  label: "Mona Saleh" },
-  { code: "D",  label: "El-Raey 2" },
-  { code: "R",  label: "El-Raey The Yard" },
+  { code: "E", label: "El Mashaya 1" },
+  { code: "M", label: "Hay El-Gamaa" },
+  { code: "D", label: "El Mashaya 2" },
+  { code: "R", label: "The yard cairo" },
   { code: "15", label: "Sell Dresses" },
 ] as const;
 

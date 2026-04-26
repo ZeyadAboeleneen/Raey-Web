@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 
 import type React from "react"
 import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from "react"
 import { useAuth } from "@/lib/auth-context"
 
-interface FavoriteItem {
+export interface FavoriteItem {
   id: string
   name: string
   price: number
@@ -14,6 +14,7 @@ interface FavoriteItem {
   rating?: number
   isNew?: boolean
   isBestseller?: boolean
+  isOutOfStock?: boolean
   // Gift package fields
   isGiftPackage?: boolean
   packagePrice?: number

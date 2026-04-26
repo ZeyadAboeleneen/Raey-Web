@@ -87,10 +87,10 @@ export const translations = {
     fallDesc: "Rich textures and warm tones for autumn gatherings.",
 
     // Named Collections
-    monaSalehCollection: "Mona Saleh",
-    elRaey1Collection: "Raey 1",
-    elRaey2Collection: "Raey 2",
-    elRaeyTheYardCollection: "Raey The Yard",
+    monaSalehCollection: "Hay El-Gamaa",
+    elRaey1Collection: "El Mashaya 1",
+    elRaey2Collection: "El Mashaya 2",
+    elRaeyTheYardCollection: "The yard cairo",
     sellDressesCollection: "Sell Dresses",
     monaSalehDesc: "El Mansoura – Hay El Gamea",
     elRaey1Desc: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
@@ -374,10 +374,10 @@ export const translations = {
     fallDesc: "أنسجة غنية وألوان دافئة لتجمعات الخريف.",
 
     // Named Collections
-    monaSalehCollection: "مجموعة منى صالح",
-    elRaey1Collection: "مجموعة الراعي 1",
-    elRaey2Collection: "مجموعة الراعي 2",
-    elRaeyTheYardCollection: "مجموعة الراعي ذا يارد",
+    monaSalehCollection: "Mona Saleh -Hay El-Gamaa",
+    elRaey1Collection: "Raey1 -mashaya 1",
+    elRaey2Collection: "Raey 2- mashaya 2",
+    elRaeyTheYardCollection: "raey the yard-The yard cairo",
     sellDressesCollection: "مجموعة فساتين للبيع",
     monaSalehDesc: "المنصورة – حي الجامعة",
     elRaey1Desc: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
@@ -582,7 +582,7 @@ export const useTranslation = (language: "en" | "ar") => {
     const lang = (language === "ar" || language === "en") ? language : "en"
     const section = (translations as any)[lang]
     let text = section[key] || (translations.en as any)[key] || key
-    
+
     if (params && typeof text === 'string') {
       Object.entries(params).forEach(([k, v]) => {
         text = text.replace(`{${k}}`, String(v))

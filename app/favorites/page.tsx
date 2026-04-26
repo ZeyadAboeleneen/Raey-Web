@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Heart, ShoppingCart, Trash2, ArrowLeft, Star, X, Sparkles, Package, AlertCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import { useFavorites } from "@/lib/favorites-context"
+import { useFavorites, type FavoriteItem } from "@/lib/favorites-context"
 import { useCart } from "@/lib/cart-context"
 import { GiftPackageSelector } from "@/components/gift-package-selector"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
@@ -20,28 +20,6 @@ import { useLocale } from "@/lib/locale-context"
 import { CustomSizeForm } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
-interface FavoriteItem {
-  id: string
-  name: string
-  price: number
-  image: string
-  branch: string
-  collection?: string
-  rating?: number
-  isNew?: boolean
-  isBestseller?: boolean
-  isOutOfStock?: boolean
-  isGiftPackage?: boolean
-  packagePrice?: number
-  packageOriginalPrice?: number
-  giftPackageSizes?: any[]
-  sizes?: Array<{
-    size: string
-    volume: string
-    originalPrice?: number
-    discountedPrice?: number
-  }>
-}
 
 // WhatsApp ordering removed — using cart-based checkout
 

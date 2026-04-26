@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 
-interface ProductSize {
+export interface ProductSize {
   size: string
   volume: string
   originalPrice?: number
@@ -10,7 +10,7 @@ interface ProductSize {
   stockCount?: number
 }
 
-interface CachedProduct {
+export interface CachedProduct {
   _id: string
   id: string
   name: string
@@ -19,7 +19,7 @@ interface CachedProduct {
   rating: number
   reviews: number
   /** Storefront branch slug from Booking→Stores; null if none / unmapped. */
-  branch: string | null
+  branch: string
   collection?: string
   isNew?: boolean
   isBestseller?: boolean
@@ -64,7 +64,7 @@ const STORAGE_TS_KEY = "raey_products_cache_ts_v4"
 const STORAGE_MAX_AGE_MS = 5 * 60 * 1000
 
 function normalizeCachedProduct(raw: Record<string, unknown>): CachedProduct {
-  return raw as CachedProduct
+  return raw as unknown as CachedProduct
 }
 
 function readFromStorage(): CachedProduct[] | null {

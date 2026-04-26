@@ -29,38 +29,13 @@ import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
 import { useTranslation } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
+import { useSiteSettings } from "@/lib/site-settings-context"
 import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useProductsCache } from "@/lib/products-cache"
+import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useToast } from "@/hooks/use-toast"
 
-interface ProductSize {
-  size: string
-  volume: string
-  originalPrice?: number
-  discountedPrice?: number
-  stockCount?: number
-}
 
-interface Product {
-  _id: string
-  id: string
-  name: string
-  description: string
-  images: string[]
-  rating: number
-  reviews: number
-  branch: string
-  collection?: string
-  isNew?: boolean
-  isBestseller?: boolean
-  isOutOfStock?: boolean
-  sizes: ProductSize[]
-  isGiftPackage?: boolean
-  packagePrice?: number
-  packageOriginalPrice?: number
-  giftPackageSizes?: any[]
-}
 
 const PAGE_SIZE = 12
 // WhatsApp ordering removed — using cart-based checkout
@@ -74,13 +49,12 @@ const PRICE_RANGES = [
 ]
 
 const COLLECTIONS_FILTER = [
-  { slug: "mona-saleh", label: "Mona Saleh" },
-  { slug: "el-raey-1", label: "Raey 1" },
-  { slug: "el-raey-2", label: "Raey 2" },
-  { slug: "el-raey-the-yard", label: "Raey The Yard" },
+  { slug: "mona-saleh", label: "Hay El-Gamaa" },
+  { slug: "el-raey-1", label: "El Mashaya 1" },
+  { slug: "el-raey-2", label: "El Mashaya 2" },
+  { slug: "el-raey-the-yard", label: "The yard cairo" },
   { slug: "sell-dresses", label: "Sell Dresses" },
 ]
-
 export default function WeddingPage() {
   const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
   const allProducts = useMemo(() => {
@@ -177,6 +151,7 @@ export default function WeddingPage() {
   const router = useRouter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+  const { heroImages } = useSiteSettings()
   const { formatPrice, showPrices } = useCurrencyFormatter()
 
   const sizeChart: SizeChartRow[] = [
@@ -202,7 +177,7 @@ export default function WeddingPage() {
   const getProductPrice = (product: Product) =>
     product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
 
-  const isRentBranch = (branchSlug: string) => branchSlug !== "sell-dresses"
+  const isRentBranch = (branchSlug: string | null) => branchSlug !== "sell-dresses"
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery), 250)
@@ -612,7 +587,7 @@ export default function WeddingPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => { addToCart(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">
-              {t("confirmAndAddToCart")}
+              {t("confirmAddToCart")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -627,7 +602,7 @@ export default function WeddingPage() {
       {/* ─── Hero ─── */}
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
-          <Image src="/wedding.jpg?v=2" alt="Wedding background" fill priority sizes="100vw" className="object-cover object-[center_30%]" />
+          <Image src={heroImages.wedding} alt="Wedding background" fill priority sizes="100vw" className="object-cover object-[center_35%]" />
           <div className="absolute inset-0 bg-black/45" />
         </motion.div>
         <motion.div className="relative z-10 max-w-3xl mx-auto px-4 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

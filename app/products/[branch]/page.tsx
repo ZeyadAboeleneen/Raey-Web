@@ -22,36 +22,8 @@ import { useTranslation } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
 import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useProductsCache } from "@/lib/products-cache"
+import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 
-interface ProductSize {
-  size: string
-  volume: string
-  originalPrice?: number
-  discountedPrice?: number
-  stockCount?: number
-}
-
-interface Product {
-  _id: string
-  id: string
-  name: string
-  description: string
-  images: string[]
-  rating: number
-  reviews: number
-  branch: string
-  isNew?: boolean
-  isBestseller?: boolean
-  isOutOfStock?: boolean
-  sizes: ProductSize[]
-  // Gift package fields
-  isGiftPackage?: boolean
-  packagePrice?: number
-  packageOriginalPrice?: number
-  giftPackageSizes?: any[]
-  collection?: string
-}
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
   "mona-saleh": { titleKey: "monaSalehCollection", descKey: "monaSalehDesc" },

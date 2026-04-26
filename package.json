@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "latest",
@@ -50,7 +51,7 @@
     "bcryptjs": "latest",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
-    "cloudinary": "^2.9.0",
+    "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
@@ -93,6 +94,7 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mssql": "^12.3.0",
     "@types/node": "^22.17.0",
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^18.3.23",

@@ -7,6 +7,7 @@ import { useMemo, useState } from "react"
 import dynamic from "next/dynamic"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
+import { useSiteSettings } from "@/lib/site-settings-context"
 
 // Lazy load Navigation to improve initial page load
 const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
@@ -20,6 +21,8 @@ export default function HomePage() {
 
   const [weddingLoaded, setWeddingLoaded] = useState(false)
   const [soireeLoaded, setSoireeLoaded] = useState(false)
+  const { heroImages } = useSiteSettings()
+
   const imagesReady = useMemo(() => weddingLoaded && soireeLoaded, [soireeLoaded, weddingLoaded])
 
   // Pre-navigation handler with prefetching
@@ -51,13 +54,13 @@ export default function HomePage() {
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           <Image
-            src="/wedding.jpg?v=2"
+            src={heroImages.wedding}
             alt="Wedding collection"
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={85}
-            className="absolute inset-0 z-0 object-cover object-[center_12%] transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+            className="absolute inset-0 z-0 object-cover object-[center_50%] transition-transform duration-[1200ms] ease-out group-hover:scale-110"
             onLoad={() => setWeddingLoaded(true)}
           />
           {/* Dark gradient overlay */}
@@ -77,7 +80,7 @@ export default function HomePage() {
           className="relative h-1/2 md:h-full md:w-1/2 group overflow-hidden block cursor-pointer"
         >
           <Image
-            src="/elraey-bg.PNG"
+            src={heroImages.soiree}
             alt="Soiree collection"
             fill
             priority
