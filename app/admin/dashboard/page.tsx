@@ -26,6 +26,7 @@ import {
   Percent,
   Gift,
   Upload,
+  ImageIcon,
   FileSpreadsheet,
   LogOut,
   X,
@@ -940,6 +941,17 @@ export default function AdminDashboard() {
                   >
                     <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     Bulk Upload
+                  </Button>
+                </Link>
+
+                <Link href="/admin/products/bulk-images">
+                  <Button
+                    variant="outline"
+                    className="bg-transparent text-xs sm:text-sm"
+                    size="sm"
+                  >
+                    <ImageIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Bulk Images
                   </Button>
                 </Link>
 
