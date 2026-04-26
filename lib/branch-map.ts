@@ -47,6 +47,19 @@ export function mapBranchSlugToCode(slug: string | null | undefined): string | n
   return slugToCode[normalized] ?? null;
 }
 
+/** Map storefront slug → ERP BranchID (integer) for Booking / ItemStores tables */
+export function mapBranchSlugToBranchId(slug: string | null | undefined): number | null {
+  const code = mapBranchSlugToCode(slug);
+  switch (code) {
+    case "E": return 3;
+    case "M": return 9;
+    case "D": return 7;
+    case "R": return 5;
+    case "15": return 1;
+    default: return null;
+  }
+}
+
 /** Numeric Branch_ID from Booking (ERP) — only 15 is defined here; rest use store name. */
 export function mapBookingBranchIdToSlug(branchId: number | null | undefined): string | null {
   if (branchId === null || branchId === undefined) return null;

@@ -63,7 +63,7 @@ interface Product {
 }
 
 const PAGE_SIZE = 12
-const WHATSAPP_NUMBER = "201094448044"
+// WhatsApp ordering removed — using cart-based checkout
 
 const PRICE_RANGES = [
   { label: "4,000 – 6,000", min: 4000, max: 6000 },
@@ -335,32 +335,8 @@ export default function WeddingPage() {
     }, 300)
   }
 
-  const openWhatsAppOrder = () => {
-    if (!selectedProduct) return
-    const isRent = isRentBranch(selectedProduct.branch)
-    const actionVerb = isRent ? "rent" : "buy"
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nBranch: ${selectedProduct.branch}\n\n`
-    if (isCustomSizeMode) {
-      message += `Size Mode: Custom (${measurementUnit})\nMeasurements:\n`
-      Object.entries(measurements || {}).forEach(([key, value]) => {
-        if (value == null || value === "") return
-        message += `- ${key}: ${value} ${measurementUnit}\n`
-      })
-      message += `\n`
-    } else if (selectedSize) {
-      message += `Selected Size:\n`
-      if (selectedSize.size) message += `- Size: ${selectedSize.size}\n`
-      if (selectedSize.volume) message += `- Volume: ${selectedSize.volume}\n`
-      message += `\n`
-    }
-    if (occasionDate) {
-      try { message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n` } catch { }
-    }
-    message += `Quantity: 1\nRequest Date: ${new Date().toLocaleString()}\n`
-    if (typeof window !== "undefined") {
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank")
-    }
-  }
+  // WhatsApp ordering removed — using cart-based checkout
+
 
   const addToCart = () => {
     if (!selectedProduct) return
@@ -376,6 +352,11 @@ export default function WeddingPage() {
         return
       }
     }
+    if (selectedProduct.branch !== "sell-dresses") {
+      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
+      return
+    }
+
     const firstSize = selectedProduct.sizes?.[0] || null
     const fallbackSize: ProductSize = {
       size: "custom",
@@ -399,10 +380,11 @@ export default function WeddingPage() {
         branch: selectedProduct.branch,
         quantity: 1,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
+        type: "buy",
+        collection: selectedProduct.collection || "",
         customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined
       }
     })
-    openWhatsAppOrder()
     closeSizeSelector()
   }
 
@@ -630,7 +612,7 @@ export default function WeddingPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => { addToCart(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">
-              {t("confirmAndSendWhatsApp")}
+              {t("confirmAndAddToCart")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

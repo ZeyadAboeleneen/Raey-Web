@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Menu, X, Heart, LogOut, Settings, ChevronDown, Search, ChevronRight, Facebook, Globe } from "lucide-react"
+import { Menu, X, Heart, LogOut, Settings, ChevronDown, Search, ChevronRight, Facebook, Globe, ShoppingCart } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useFavorites } from "@/lib/favorites-context"
+import { useCart } from "@/lib/cart-context"
 import { useScroll } from "@/lib/scroll-context"
 import { OffersBanner } from "@/components/offers-banner"
 import { useLocale } from "@/lib/locale-context"
@@ -26,6 +27,7 @@ export function Navigation() {
   const { isScrolled } = useScroll()
   const { state: authState, logout } = useAuth()
   const { state: favoritesState } = useFavorites()
+  const { state: cartState } = useCart()
   const pathname = usePathname()
   const router = useRouter()
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
@@ -335,16 +337,31 @@ export function Navigation() {
             >
               <Heart className="h-4 w-4 md:h-5 md:w-5" />
               {favoritesState.count > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs border-0">
                   {favoritesState.count}
                 </Badge>
               )}
               {isActiveLink("/favorites") && (
-                <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/3' : 'bg-white/20'
+                <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/5' : 'bg-white/20'
                   }`} />
               )}
             </Link>
 
+            {/* Shopping Cart */}
+            <Link
+              href="/checkout"
+              className={`relative p-2 transition-colors ${getIconColors(isActiveLink("/checkout"))}`}
+            >
+              <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
+              {cartState.items.length > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs border-0">
+                  {cartState.items.length}
+                </Badge>
+              )}
+              {isActiveLink("/checkout") && (
+                <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/5' : 'bg-white/20'}`} />
+              )}
+            </Link>
           </div>
         </div>
 
@@ -420,6 +437,14 @@ export function Navigation() {
                         {favoritesState.count > 0 && (
                           <span className="absolute -top-2 -right-2 h-4 w-4 bg-black text-white text-xs rounded-full flex items-center justify-center">
                             {favoritesState.count}
+                          </span>
+                        )}
+                      </Link>
+                      <Link href="/checkout" onClick={() => setIsOpen(false)} className="relative p-1">
+                        <ShoppingCart className="h-5 w-5 text-black" />
+                        {cartState.items.length > 0 && (
+                          <span className="absolute -top-2 -right-2 h-4 w-4 bg-black text-white text-xs rounded-full flex items-center justify-center">
+                            {cartState.items.length}
                           </span>
                         )}
                       </Link>

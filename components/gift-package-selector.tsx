@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -40,7 +40,7 @@ interface Product {
   isOutOfStock?: boolean
 }
 
-const WHATSAPP_NUMBER = "201024285771"
+// WhatsApp ordering removed — using cart-based checkout
 
 interface GiftPackageSelectorProps {
   product: Product
@@ -137,42 +137,6 @@ export function GiftPackageSelector({
         payload: cartItem
       })
 
-      try {
-        const isRent = product.branch !== "sell-dresses"
-        const actionVerb = isRent ? "rent" : "buy"
-        const now = new Date()
-        const requestDate = now.toLocaleString()
-
-        const baseImage = product.images?.[0]
-        const origin = typeof window !== "undefined" ? window.location.origin : ""
-        const imageUrl = baseImage
-          ? baseImage.startsWith("http")
-            ? baseImage
-            : `${origin}${baseImage}`
-          : ""
-
-        let message = `Hello, I'd like to ${actionVerb} this gift package.\n\n`
-        message += `Name: ${product.name}\n`
-        message += `Package Code: ${product.id}\n`
-        message += `branch: ${product.branch}\n\n`
-
-        message += `Selected Items:\n`
-        selectedProductsList.forEach((item) => {
-          const selected = item.selectedProduct
-          message += `- ${item.size} (${item.volume}): ${selected.productName}\n`
-        })
-        message += `\n`
-
-        message += `Quantity: ${quantity}\n`
-        message += `Request Date: ${requestDate}\n`
-
-        const encoded = encodeURIComponent(message)
-        if (typeof window !== "undefined") {
-          window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, "_blank")
-        }
-      } catch (err) {
-        console.error("Error opening WhatsApp order", err)
-      }
     }
 
     onClose()

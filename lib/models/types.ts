@@ -48,6 +48,10 @@ export interface OrderItem {
   image: string
   branch: string
   quantity: number
+  type?: "buy" | "rent"
+  rentStart?: string
+  rentEnd?: string
+  collection?: string
   isGiftPackage?: boolean
   selectedProducts?: any[]
   packageDetails?: any
@@ -103,4 +107,8 @@ export interface CartItem {
   image: string
   branch: string
   quantity: number
+  type?: "buy" | "rent"
+  rentStart?: string
+  rentEnd?: string
+  collection?: string
 }

@@ -30,6 +30,10 @@ interface CartItem {
   isGiftPackage?: boolean
   customMeasurements?: CustomMeasurements
   stockCount?: number // Available stock for this size
+  type?: "buy" | "rent"
+  rentStart?: string
+  rentEnd?: string
+  collection?: string
   selectedProduct?: {
     productId: string
     productName: string
@@ -149,7 +153,11 @@ function saveCartToStorage(key: string, items: CartItem[]) {
       productId: item.productId,
       originalPrice: item.originalPrice,
       isGiftPackage: item.isGiftPackage,
-      customMeasurements: item.customMeasurements
+      customMeasurements: item.customMeasurements,
+      type: item.type,
+      rentStart: item.rentStart,
+      rentEnd: item.rentEnd,
+      collection: item.collection,
     }))
     
     const serialized = JSON.stringify(minimalItems)

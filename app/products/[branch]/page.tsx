@@ -50,6 +50,7 @@ interface Product {
   packagePrice?: number
   packageOriginalPrice?: number
   giftPackageSizes?: any[]
+  collection?: string
 }
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
@@ -62,7 +63,7 @@ const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
 
 const CATEGORY_PAGE_SIZE = 10
 
-const WHATSAPP_NUMBER = "201094448044"
+// WhatsApp ordering removed — using cart-based checkout
 
 export default function BranchProductsPage() {
   const { branch } = useParams() as { branch: string }
@@ -241,62 +242,8 @@ export default function BranchProductsPage() {
     }, 300)
   }
 
-  const openWhatsAppOrder = () => {
-    if (!selectedProduct) return
+  // WhatsApp ordering removed — using cart-based checkout
 
-    const isRent = isRentBranch
-    const actionVerb = isRent ? "rent" : "buy"
-    const now = new Date()
-    const requestDate = now.toLocaleString()
-
-    const baseImage = selectedProduct.images?.[0]
-    const origin = typeof window !== "undefined" ? window.location.origin : ""
-    const imageUrl = baseImage
-      ? baseImage.startsWith("http")
-        ? baseImage
-        : `${origin}${baseImage}`
-      : ""
-
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
-    message += `Name: ${selectedProduct.name}\n`
-    message += `Dress Code: ${selectedProduct.id}\n`
-    message += `branch: ${selectedProduct.branch}\n\n`
-
-    if (isCustomSizeMode) {
-      message += `Size Mode: Custom (${measurementUnit})\n`
-      message += `Measurements:\n`
-      Object.entries(measurements || {}).forEach(([key, value]) => {
-        if (value == null || value === "") return
-        message += `- ${key}: ${value} ${measurementUnit}\n`
-      })
-      message += `\n`
-    } else if (selectedSize) {
-      message += `Selected Size:\n`
-      if (selectedSize.size) {
-        message += `- Size: ${selectedSize.size}\n`
-      }
-      if (selectedSize.volume) {
-        message += `- Volume: ${selectedSize.volume}\n`
-      }
-      message += `\n`
-    }
-
-    if (occasionDate) {
-      try {
-        message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n`
-      } catch {
-        // ignore formatting errors
-      }
-    }
-
-    message += `Quantity: ${quantity}\n`
-    message += `Request Date: ${requestDate}\n`
-
-    const encoded = encodeURIComponent(message)
-    if (typeof window !== "undefined") {
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, "_blank")
-    }
-  }
 
   const addToCart = () => {
     if (!selectedProduct) return
@@ -329,6 +276,14 @@ export default function BranchProductsPage() {
 
     const computedPrice = baseSize.discountedPrice || baseSize.originalPrice || selectedProduct.packagePrice || 0
 
+    // For rent items, we require exact dates and availability check.
+    // Instead of duplicating that complex UI in the quick view modal,
+    // redirect them to the full product page.
+    if (isRentBranch) {
+      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
+      return
+    }
+
     cartDispatch({
       type: "ADD_ITEM",
       payload: {
@@ -343,6 +298,8 @@ export default function BranchProductsPage() {
         branch: selectedProduct.branch,
         quantity,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
+        type: "buy",
+        collection: selectedProduct.collection || "",
         customMeasurements: isCustomSizeMode
           ? {
             unit: measurementUnit,
@@ -352,7 +309,6 @@ export default function BranchProductsPage() {
       }
     })
 
-    openWhatsAppOrder()
     closeSizeSelector()
   }
 
@@ -473,7 +429,7 @@ export default function BranchProductsPage() {
                           price: selectedSize ? (selectedSize.discountedPrice || selectedSize.originalPrice || 0) : getSmallestPrice(selectedProduct.sizes),
                           image: selectedProduct.images[0],
                           branch: selectedProduct.branch,
-                          collection: (selectedProduct as any).collection,
+                          collection: selectedProduct.collection,
                           rating: selectedProduct.rating,
                           isNew: selectedProduct.isNew,
                           isBestseller: selectedProduct.isBestseller,
@@ -556,16 +512,7 @@ export default function BranchProductsPage() {
                   }}
                   formatPrice={formatPrice}
                 />
-                {isCustomSizeMode && isRentBranch && (
-                  <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <p className="mb-2 font-medium">Select your occasion date</p>
-                    <Calendar
-                      mode="single"
-                      selected={occasionDate}
-                      onSelect={setOccasionDate}
-                    />
-                  </div>
-                )}
+                {/* Occasion Date hidden for rent items in quick-view since we redirect to detail page for the full availability check */}
               </div>
 
               <div className="flex justify-between items-center py-4 border-t border-gray-100">
@@ -806,7 +753,7 @@ export default function BranchProductsPage() {
                                   price,
                                   image: product.images[0],
                                   branch: product.branch,
-                                  collection: (product as any).collection,
+                                  collection: product.collection,
                                   rating: product.rating,
                                   isNew: product.isNew,
                                   isBestseller: product.isBestseller,

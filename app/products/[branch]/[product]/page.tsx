@@ -86,7 +86,7 @@ const collectionDetails: { [key: string]: { titleKey: any } } = {
   "sell-dresses": { titleKey: "sellDressesCollection" },
 }
 
-const WHATSAPP_NUMBER = "201094448044"
+// WhatsApp ordering removed — using cart-based checkout
 
 const getValidImages = (images?: string[] | null) => {
   if (!images || images.length === 0) return []
@@ -107,7 +107,10 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<number>(0)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
+  const [rentEventDate, setRentEventDate] = useState<Date | undefined>(undefined)
+  const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message?: string } | null>(null)
 
   const { dispatch } = useCart()
   const { state: favoritesState, addToFavorites, removeFromFavorites } = useFavorites()
@@ -308,74 +311,94 @@ export default function ProductDetailPage() {
     return selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
   }
 
-  const openWhatsAppOrder = () => {
+  // Fetch all bookings for this product to disable dates on calendar
+  const fetchBookings = async () => {
     if (!product) return
-
-    const isRent = isRentBranch
-    const actionVerb = isRent ? "rent" : "buy"
-    const now = new Date()
-    const requestDate = now.toLocaleString()
-
-    const imagesForMessage = validImages.length ? validImages : (product.images || [])
-    const baseImage = imagesForMessage[0]
-
-    const origin = typeof window !== "undefined" ? window.location.origin : ""
-    const imageUrl = baseImage
-      ? baseImage.startsWith("http")
-        ? baseImage
-        : `${origin}${baseImage}`
-      : ""
-
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
-    message += `Name: ${product.name}\n`
-    message += `Dress Code: ${product.id}\n`
-    message += `branch: ${product.branch}\n\n`
-
-    if (isCustomSizeMode) {
-      message += `Size Mode: Custom (${measurementUnit})\n`
-      message += `Measurements:\n`
-      Object.entries(measurements || {}).forEach(([key, value]) => {
-        if (value == null || value === "") return
-        message += `- ${key}: ${value} ${measurementUnit}\n`
-      })
-      message += `\n`
-    } else if (product.sizes && product.sizes.length > 0 && selectedSize >= 0) {
-      const selectedSizeObj: any = product.sizes[selectedSize] as any
-      if (selectedSizeObj) {
-        message += `Selected Size:\n`
-        if (selectedSizeObj.size) {
-          message += `- Size: ${selectedSizeObj.size}\n`
-        }
-        if (selectedSizeObj.volume) {
-          message += `- Volume: ${selectedSizeObj.volume}\n`
-        }
-        message += `\n`
+    setCheckingAvailability(true)
+    try {
+      const res = await fetch(`/api/items/${product.id}/availability`)
+      const data = await res.json()
+      if (data.bookings) {
+        setBookedRanges(data.bookings.map((b: any) => ({
+          from: new Date(b.from),
+          to: new Date(b.to)
+        })))
       }
-    }
-
-    if (occasionDate) {
-      try {
-        message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n`
-      } catch {
-        // ignore formatting errors
-      }
-    }
-
-    message += `Quantity: ${quantity}\n`
-    message += `Request Date: ${requestDate}\n`
-
-    const encoded = encodeURIComponent(message)
-    if (typeof window !== "undefined") {
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, "_blank")
+    } catch (err) {
+      console.error('Failed to fetch bookings:', err)
+    } finally {
+      setCheckingAvailability(false)
     }
   }
+
+  // Fetch bookings whenever the product changes and it's a rental
+  useEffect(() => {
+    if (isRentBranch && product) {
+      fetchBookings()
+    }
+  }, [product?.id, isRentBranch])
 
   // Handle adding to cart with custom size support
   const handleAddToCart = async () => {
     if (!product || product.isOutOfStock) return
 
+    // For rent items, validate dates and availability
+    if (isRentBranch) {
+      if (!rentEventDate) {
+        toast({ variant: "destructive", title: "Select rental date", description: "Please select an event date for your rental." })
+        return
+      }
+      if (checkingAvailability) {
+        toast({ variant: "default", title: "Loading availability...", description: "Please wait while we fetch available dates." })
+        return
+      }
+    }
+
     const imagesForCart = validImages.length ? validImages : (product.images || [])
     const cartImage = imagesForCart[0] || "/placeholder.svg"
+    const itemType = isRentBranch ? "rent" : "buy"
+
+    let rentStartStr: string | undefined = undefined
+    let rentEndStr: string | undefined = undefined
+
+    if (isRentBranch && rentEventDate) {
+      const formatLocalDate = (d: Date) => {
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+
+      const start = new Date(rentEventDate)
+      start.setDate(start.getDate() - 1)
+      start.setHours(0, 0, 0, 0)
+      rentStartStr = formatLocalDate(start)
+
+      const end = new Date(rentEventDate)
+      end.setDate(end.getDate() + 1)
+      end.setHours(23, 59, 59, 999)
+      rentEndStr = formatLocalDate(end)
+
+      // Synchronous double-booking prevention check
+      let hasOverlap = false;
+      for (const booking of bookedRanges) {
+        const bStart = new Date(booking.from);
+        bStart.setHours(0, 0, 0, 0);
+        const bEnd = new Date(booking.to);
+        bEnd.setHours(23, 59, 59, 999);
+
+        // Same-day switchover allowable: start < bEnd && end >= bStart
+        if (start < bEnd && end >= bStart) {
+          hasOverlap = true;
+          break;
+        }
+      }
+
+      if (hasOverlap) {
+        toast({ variant: "destructive", title: "Date Conflict", description: "This dress is already rented during one or more days of your required reservation window. Please select another date." })
+        return
+      }
+    }
 
     if (isCustomSizeMode) {
       // Validate custom measurements
@@ -387,10 +410,14 @@ export default function ProductDetailPage() {
       const firstSize = product.sizes[0]
       const price = firstSize?.discountedPrice || firstSize?.originalPrice || 0
 
+      const cartId = isRentBranch
+        ? `${product.id}-custom-rent-${rentStartStr}-${rentEndStr}`
+        : `${product.id}-custom`
+
       dispatch({
         type: "ADD_ITEM",
         payload: {
-          id: `${product.id}-custom`,
+          id: cartId,
           productId: product.id,
           name: product.name,
           price,
@@ -399,8 +426,12 @@ export default function ProductDetailPage() {
           volume: measurementUnit,
           image: cartImage,
           branch: product.branch,
-          quantity,
+          quantity: isRentBranch ? 1 : quantity,
           stockCount: undefined,
+          type: itemType,
+          collection: product.collection || "",
+          rentStart: rentStartStr,
+          rentEnd: rentEndStr,
           customMeasurements: {
             unit: measurementUnit,
             values: measurements,
@@ -416,8 +447,8 @@ export default function ProductDetailPage() {
       const selectedSizeObj = product.sizes[selectedSize]
       if (!selectedSizeObj) return
 
-      // Check stock availability
-      if (selectedSizeObj.stockCount !== undefined && selectedSizeObj.stockCount < quantity) {
+      // Check stock availability (buy only)
+      if (!isRentBranch && selectedSizeObj.stockCount !== undefined && selectedSizeObj.stockCount < quantity) {
         toast({
           variant: "destructive",
           title: "Insufficient stock",
@@ -426,10 +457,14 @@ export default function ProductDetailPage() {
         return
       }
 
+      const cartId = isRentBranch
+        ? `${product.id}-rent-${rentStartStr}-${rentEndStr}`
+        : `${product.id}`
+
       dispatch({
         type: "ADD_ITEM",
         payload: {
-          id: `${product.id}`,
+          id: cartId,
           productId: product.id,
           name: product.name,
           price: getSelectedPrice(),
@@ -438,13 +473,22 @@ export default function ProductDetailPage() {
           volume: undefined,
           image: cartImage,
           branch: product.branch,
-          quantity,
+          quantity: isRentBranch ? 1 : quantity,
           stockCount: selectedSizeObj.stockCount,
+          type: itemType,
+          collection: product.collection || "",
+          rentStart: rentStartStr,
+          rentEnd: rentEndStr,
         },
       })
     }
 
-    openWhatsAppOrder()
+    toast({
+      title: isRentBranch ? "Added to cart for rental" : "Added to cart",
+      description: isRentBranch
+        ? `${product.name} rental (Event: ${rentEventDate?.toLocaleDateString()}) added to cart.`
+        : `${product.name} added to cart.`,
+    })
     setShowMainProductSizeSelector(false)
   }
 
@@ -667,7 +711,7 @@ export default function ProductDetailPage() {
                     priority
                   />
                   {/* Zoom Icon Overlay */}
-                  <div 
+                  <div
                     className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   >
                     <Maximize2 className="h-5 w-5 text-gray-700" />
@@ -818,17 +862,55 @@ export default function ProductDetailPage() {
                     }}
                     formatPrice={formatPrice}
                   />
-                  {isCustomSizeMode && isRentBranch && (
-                    <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                      <p className="mb-2 font-medium">Select your occasion date</p>
-                      <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
+                  {isRentBranch && (
+                    <div className="mt-4 space-y-3">
+                      <p className="font-medium text-gray-900">Select Event Date</p>
+                      <div className="w-full max-w-sm">
+                        <div className="border rounded-lg overflow-hidden place-items-center p-2 bg-white flex justify-center">
+                          <Calendar
+                            mode="single"
+                            selected={rentEventDate}
+                            onSelect={(date) => setRentEventDate(date ?? undefined)}
+                            disabled={(date) => {
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              if (date < today) return true;
+
+                              for (const booking of bookedRanges) {
+                                const bStart = new Date(booking.from);
+                                bStart.setHours(0, 0, 0, 0);
+                                const bEnd = new Date(booking.to);
+                                bEnd.setHours(23, 59, 59, 999);
+
+                                // Strictly disable ONLY the specific calendar days the dress is physically out for the reservation.
+                                if (date >= bStart && date <= bEnd) return true;
+                              }
+                              return false;
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+
+                      </div>
+
+                      {checkingAvailability && (
+                        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                          Loading available dates...
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="mt-4 flex justify-center">
                     <Button
-                      className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-full flex items-center"
+                      className={`px-6 py-3 rounded-full flex items-center ${isRentBranch && availabilityResult && !availabilityResult.available
+                          ? "bg-red-500 hover:bg-red-600 text-white cursor-not-allowed"
+                          : "bg-black hover:bg-gray-800 text-white"
+                        }`}
                       disabled={
                         product.isOutOfStock ||
+                        checkingAvailability ||
+                        (isRentBranch && !rentEventDate) ||
                         (!isCustomSizeMode &&
                           (selectedSize < 0 ||
                             (product.sizes[selectedSize]?.stockCount !== undefined &&
@@ -860,8 +942,12 @@ export default function ProductDetailPage() {
                       {product.isOutOfStock
                         ? "Out of Stock"
                         : isRentBranch
-                          ? "Rent Now"
-                          : "Buy Now"}
+                          ? (checkingAvailability
+                            ? "Loading..."
+                            : !rentEventDate
+                              ? "Select Event Date"
+                              : "Add Rental to Cart")
+                          : "Add to Cart"}
                     </Button>
                   </div>
                 </div>

@@ -215,7 +215,7 @@ export default function AdminDashboard() {
         return
       }
 
-      let url = `/api/items?includeInactive=true&page=${page}&limit=${PRODUCTS_PER_PAGE}`
+      let url = `/api/items?page=${page}&limit=${PRODUCTS_PER_PAGE}`
       if (debouncedProductSearchQuery) {
         url += `&search=${encodeURIComponent(debouncedProductSearchQuery)}`
       }
@@ -273,8 +273,8 @@ export default function AdminDashboard() {
       const [discountCodesRes, offersRes, totalProdsRes, activeProdsRes] = await Promise.all([
         fetch("/api/discount-codes", fetchOptions),
         fetch("/api/offers", fetchOptions),
-        fetch("/api/items?includeInactive=true&page=1&limit=1", fetchOptions),
-        fetch("/api/items?page=1&limit=1", fetchOptions),
+        fetch("/api/items?page=1&limit=1", fetchOptions), // Used to get total products
+        fetch("/api/items?page=1&limit=1", fetchOptions), // Used to get active products
       ])
 
       if (totalProdsRes.ok && activeProdsRes.ok) {
@@ -950,6 +950,25 @@ export default function AdminDashboard() {
                   <div className="text-2xl font-bold">{totalProducts}</div>
                   <p className="text-xs text-muted-foreground">
                     {activeProducts} active
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/admin/orders')}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Orders</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">Manage Orders</div>
+                  <p className="text-xs text-muted-foreground">
+                    View list and details
                   </p>
                 </CardContent>
               </Card>

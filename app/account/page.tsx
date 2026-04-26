@@ -33,12 +33,7 @@ const getAuthToken = (): string | null => {
 export default function MyAccountPage() {
   const router = useRouter()
 
-  // Page disabled: immediately redirect to home
-  useEffect(() => {
-    router.replace("/")
-  }, [router])
 
-  return null
 
   const { state: authState } = useAuth()
   const [userOrders, setUserOrders] = useState<any[]>([])
@@ -95,8 +90,8 @@ export default function MyAccountPage() {
       })
 
       if (response.ok) {
-        const orders = await response.json()
-        setUserOrders(orders)
+        const data = await response.json()
+        setUserOrders(data.orders || [])
       } else if (response.status === 401) {
         // Token might be expired, redirect to login
         console.error("Authentication failed, redirecting to login")
@@ -514,8 +509,16 @@ export default function MyAccountPage() {
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium truncate">{item.name}</p>
                                         <p className="text-xs text-gray-600">
+                                          <span className="font-semibold text-amber-600 mr-1 capitalize">
+                                            {item.collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") ? "Rent" : "Buy")}:
+                                          </span>
                                           {item.size} ({item.volume}) × {item.quantity}
                                         </p>
+                                        {(item.type === "rent" || (item.branch && item.branch !== "sell-dresses")) && (
+                                          <p className="text-xs text-gray-500 mt-0.5">
+                                            {item.rentStart && item.rentEnd ? `${new Date(item.rentStart).toLocaleDateString()} - ${new Date(item.rentEnd).toLocaleDateString()}` : "Not Selected/Legacy Order"}
+                                          </p>
+                                        )}
                                         {order.status === "delivered" && !item.review && (
                                           <p className="mt-1 text-xs text-green-600">
                                             Delivered  you can now rate this product
@@ -797,8 +800,16 @@ export default function MyAccountPage() {
                       <div className="flex-1">
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-gray-600">
+                          <span className="font-semibold text-amber-600 mr-1 capitalize">
+                            {item.collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") ? "Rent" : "Buy")}:
+                          </span>
                           {item.size} ({item.volume}) × {item.quantity}
                         </p>
+                        {(item.type === "rent" || (item.branch && item.branch !== "sell-dresses")) && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.rentStart && item.rentEnd ? `${new Date(item.rentStart).toLocaleDateString()} - ${new Date(item.rentEnd).toLocaleDateString()}` : "Not Selected/Legacy Order"}
+                          </p>
+                        )}
                         
                         {/* Gift Package Details */}
                         {item.isGiftPackage && item.packageDetails && (

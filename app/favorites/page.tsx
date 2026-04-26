@@ -43,7 +43,7 @@ interface FavoriteItem {
   }>
 }
 
-const WHATSAPP_NUMBER = "201094448044"
+// WhatsApp ordering removed — using cart-based checkout
 
 export default function FavoritesPage() {
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
@@ -116,33 +116,18 @@ export default function FavoritesPage() {
     return () => { document.body.style.overflow = '' }
   }, [showSizeSelector, showGiftPackageSelector, showCustomSizeConfirmation])
 
-  const openWhatsAppOrder = () => {
-    if (!selectedProduct) return
-    const isRent = selectedProduct.branch !== "sell-dresses"
-    const actionVerb = isRent ? "rent" : "buy"
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\nName: ${selectedProduct.name}\nDress Code: ${selectedProduct.id}\nBranch: ${selectedProduct.branch}\n\n`
-    if (isCustomSizeMode) {
-      message += `Size Mode: Custom (${measurementUnit})\nMeasurements:\n`
-      Object.entries(measurements || {}).forEach(([key, value]) => {
-        if (value == null || value === "") return
-        message += `- ${key}: ${value} ${measurementUnit}\n`
-      })
-      message += `\n`
-    } else if (selectedSize) {
-      message += `Selected Size:\n`
-      if (selectedSize.size) message += `- Size: ${selectedSize.size}\n`
-      if (selectedSize.volume) message += `- Volume: ${selectedSize.volume}\n`
-      message += `\n`
-    }
-    message += `Quantity: ${quantity}\nRequest Date: ${new Date().toLocaleString()}\n`
-    const encoded = encodeURIComponent(message)
-    if (typeof window !== "undefined") window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, "_blank")
-  }
+  // WhatsApp ordering removed — using cart-based checkout
+
 
   const addToCartWithSize = () => {
     if (!selectedProduct) return
     if (!isCustomSizeMode && !selectedSize) return
     if (isCustomSizeMode && !isMeasurementsValid) return
+    if (selectedProduct.branch !== "sell-dresses") {
+      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
+      return
+    }
+
     const firstSize = selectedProduct.sizes?.[0] || null
     const fallbackSize: any = {
       size: "custom",
@@ -165,10 +150,11 @@ export default function FavoritesPage() {
         image: selectedProduct.image,
         branch: selectedProduct.branch,
         quantity,
+        type: "buy",
+        collection: selectedProduct.collection || "",
         customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
       }
     })
-    openWhatsAppOrder()
     closeSizeSelector()
   }
 
@@ -265,7 +251,7 @@ export default function FavoritesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { addToCartWithSize(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">{t("confirmAndSendWhatsApp")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => { addToCartWithSize(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">Confirm {selectedProduct?.branch !== "sell-dresses" ? "Rent" : "Buy"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

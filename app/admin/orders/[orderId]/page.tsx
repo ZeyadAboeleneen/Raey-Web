@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 
@@ -28,6 +28,9 @@ interface OrderDetails {
     image: string
     branch: string
     quantity: number
+    type?: string
+    rentStart?: string
+    rentEnd?: string
     isGiftPackage?: boolean
     customMeasurements?: {
       unit: "cm" | "inch"
@@ -172,6 +175,37 @@ export default function AdminOrderDetailsPage() {
     }
   }
 
+  const handleDeleteOrder = async () => {
+    if (!confirm("Are you sure you want to delete this order? This action cannot be undone and will release any reserved dates for these items.")) {
+      return
+    }
+    
+    setUpdating(true)
+    setError("")
+    
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authState.token}`,
+        },
+      })
+      
+      if (response.ok) {
+        alert("Order deleted successfully.");
+        router.push("/admin/dashboard");
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || "Failed to delete order")
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error)
+      setError("An error occurred while deleting order")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   if (authState.isLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -227,9 +261,15 @@ export default function AdminOrderDetailsPage() {
                 <h1 className="text-3xl font-light tracking-wider mb-2">Order Details</h1>
                 <p className="text-gray-600">Order #{order.id}</p>
               </div>
-              <Badge className={`px-3 py-1 text-sm font-medium ${statusColors[order.status]}`}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-              </Badge>
+              <div className="flex items-center gap-4">
+                <Badge className={`px-3 py-1 text-sm font-medium ${statusColors[order.status]}`}>
+                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                </Badge>
+                <Button variant="destructive" size="sm" onClick={handleDeleteOrder} disabled={updating}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Order
+                </Button>
+              </div>
             </div>
           </motion.div>
 
@@ -265,8 +305,16 @@ export default function AdminOrderDetailsPage() {
                         <div className="flex-1">
                           <h3 className="font-medium text-lg">{item.name}</h3>
                           <p className="text-gray-600">
+                            <span className="font-semibold text-amber-600 mr-1 capitalize">
+                              {(item as any).collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch ? "Rent" : "Buy")}:
+                            </span>
                             {item.size === "custom" ? "Custom Size" : item.size} ({item.volume}) • Quantity: {item.quantity}
                           </p>
+                          {(item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch) && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Duration: {item.rentStart && item.rentEnd ? `${new Date(item.rentStart).toLocaleDateString()} - ${new Date(item.rentEnd).toLocaleDateString()}` : "Not Selected/Legacy Order"}
+                            </p>
+                          )}
                           {item.customMeasurements && (
                             <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                               <div className="flex items-center space-x-2 mb-2">

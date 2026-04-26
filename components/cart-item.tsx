@@ -20,6 +20,10 @@ interface CartItemProps {
     image?: string
     stockCount?: number
     isGiftPackage?: boolean
+    type?: "rent" | "buy"
+    rentStart?: string
+    rentEnd?: string
+    collection?: string
     selectedProduct?: {
       productId: string
       productName: string
@@ -134,7 +138,16 @@ export function CartItem({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm mb-1 truncate">{item.name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-medium text-sm truncate">{item.name}</h3>
+                  {item.type && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      item.type === 'rent' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {item.type === 'rent' ? 'Rent' : 'Buy'}
+                    </span>
+                  )}
+                </div>
                 {item.isGiftPackage && item.packageDetails ? (
                   <div className="text-gray-600 text-xs mb-1">
                     <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
@@ -151,6 +164,11 @@ export function CartItem({
                 ) : (
                   <p className="text-gray-600 text-xs mb-1">
                     {item.size} ({item.volume})
+                  </p>
+                )}
+                {item.type === "rent" && item.rentStart && item.rentEnd && (
+                  <p className="text-gray-500 text-xs mb-1">
+                    Dates: {new Date(item.rentStart).toLocaleDateString()} - {new Date(item.rentEnd).toLocaleDateString()}
                   </p>
                 )}
                 {showPrices ? (
@@ -234,7 +252,16 @@ export function CartItem({
             </div>
 
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-lg mb-1">{item.name}</h3>
+              <div className="flex items-center gap-3 mb-1">
+                <h3 className="font-medium text-lg">{item.name}</h3>
+                {item.type && (
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full ${
+                    item.type === 'rent' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {item.type === 'rent' ? 'Rent' : 'Buy'}
+                  </span>
+                )}
+              </div>
               {item.isGiftPackage && item.packageDetails ? (
                 <div className="text-gray-600 text-sm mb-2">
                   <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
@@ -251,6 +278,11 @@ export function CartItem({
               ) : (
                 <p className="text-gray-600 text-sm mb-2">
                   {item.size} ({item.volume})
+                </p>
+              )}
+              {item.type === "rent" && item.rentStart && item.rentEnd && (
+                <p className="text-gray-500 text-xs mb-2">
+                  Rental Period: {new Date(item.rentStart).toLocaleDateString()} to {new Date(item.rentEnd).toLocaleDateString()}
                 </p>
               )}
               {showPrices ? (

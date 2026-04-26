@@ -103,12 +103,7 @@ const getShippingCost = (countryCode: string): number => {
 export default function CheckoutPage() {
   const router = useRouter()
 
-  // Page disabled: immediately redirect to home
-  useEffect(() => {
-    router.replace("/")
-  }, [router])
 
-  return null
 
   const { state: cartState, dispatch: cartDispatch } = useCart()
   const { state: authState } = useAuth()

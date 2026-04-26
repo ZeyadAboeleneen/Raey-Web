@@ -68,7 +68,7 @@ interface Product {
   }
 }
 
-const WHATSAPP_NUMBER = "201094448044"
+// WhatsApp ordering removed — using cart-based checkout
 
 export default function SoireeProductsPage() {
   const { products: cachedProducts, loading, refresh } = useProductsCache()
@@ -329,57 +329,8 @@ export default function SoireeProductsPage() {
     }, 300)
   }
 
-  const openWhatsAppOrder = () => {
-    if (!selectedProduct) return
+  // WhatsApp ordering removed — using cart-based checkout
 
-    const isRent = selectedProduct.branch !== "sell-dresses"
-    const actionVerb = isRent ? "rent" : "buy"
-    const now = new Date()
-    const requestDate = now.toLocaleString()
-
-    const baseImage = selectedProduct.images?.[0]
-    const origin = typeof window !== "undefined" ? window.location.origin : ""
-    const imageUrl = baseImage
-      ? baseImage.startsWith("http")
-        ? baseImage
-        : `${origin}${baseImage}`
-      : ""
-
-    let message = `Hello, I'd like to ${actionVerb} this dress.\n\n`
-    message += `Name: ${selectedProduct.name}\n`
-    message += `Dress Code: ${selectedProduct.id}\n`
-    message += `branch: ${selectedProduct.branch}\n\n`
-
-    if (isCustomSizeMode) {
-      message += `Size Mode: Custom (${measurementUnit})\n`
-      message += `Measurements:\n`
-      Object.entries(measurements || {}).forEach(([key, value]) => {
-        if (value == null || value === "") return
-        message += `- ${key}: ${value} ${measurementUnit}\n`
-      })
-      message += `\n`
-    } else {
-      const baseSize = selectedSize || (selectedProduct.sizes && selectedProduct.sizes[0])
-      if (baseSize) {
-        message += `Selected Size:\n`
-        if (baseSize.size) {
-          message += `- Size: ${baseSize.size}\n`
-        }
-        if (baseSize.volume) {
-          message += `- Volume: ${baseSize.volume}\n`
-        }
-        message += `\n`
-      }
-    }
-
-    message += `Quantity: ${quantity}\n`
-    message += `Request Date: ${requestDate}\n`
-
-    const encoded = encodeURIComponent(message)
-    if (typeof window !== "undefined") {
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, "_blank")
-    }
-  }
 
   const addToCart = () => {
     if (!selectedProduct) return
@@ -405,6 +356,11 @@ export default function SoireeProductsPage() {
       originalPrice: (selectedProduct.sizes?.[0] as ProductSize | undefined)?.originalPrice,
     }
 
+    if (selectedProduct.branch !== "sell-dresses") {
+      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
+      return
+    }
+
     cartDispatch({
       type: "ADD_ITEM",
       payload: {
@@ -419,6 +375,7 @@ export default function SoireeProductsPage() {
         branch: selectedProduct.branch,
         stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
         quantity,
+        type: "buy",
         customMeasurements: isCustomSizeMode
           ? {
             unit: measurementUnit,
@@ -428,7 +385,6 @@ export default function SoireeProductsPage() {
       }
     })
 
-    openWhatsAppOrder()
     closeSizeSelector()
   }
 

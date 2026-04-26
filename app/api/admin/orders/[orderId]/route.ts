@@ -128,3 +128,57 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { orderId: string } }
+) {
+  try {
+    // Note: requireAdmin is synchronous and expects a NextRequest type cast
+    const authResult = requireAdmin(req as any)
+    if (authResult.error) return NextResponse.json({ error: authResult.error }, { status: authResult.status })
+
+    const { orderId } = params
+
+    // 1. Fetch order to verify existence
+    let order = await prisma.order.findFirst({
+      where: { orderId }
+    })
+    
+    if (!order) {
+      order = await prisma.order.findFirst({
+        where: { id: orderId }
+      })
+    }
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    // 2. Delete MSSQL Bookings associated with this order
+    try {
+      const { getMssqlPool, sql } = await import('@/lib/mssql')
+      const pool = await getMssqlPool()
+      const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`
+      
+      await pool.request()
+        .input('invoice_code', sql.NVarChar, invoiceCode)
+        .query(`DELETE FROM Booking WHERE invoice_code = @invoice_code`)
+
+      console.log(`✅ Deleted MSSQL Bookings for invoice_code: ${invoiceCode}`)
+    } catch (mssqlError) {
+      console.error("❌ Failed to delete from MSSQL Booking table:", mssqlError)
+      // Continue locally even if MSSQL fails to keep systems somewhat clean or let admin retry manually
+    }
+
+    // 3. Delete local Prisma Order (Cascade will delete items)
+    await prisma.order.delete({
+      where: { id: order.id },
+    })
+
+    return NextResponse.json({ success: true, message: "Order and bookings deleted successfully" })
+  } catch (error) {
+    console.error("Delete admin order error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
