@@ -28,7 +28,6 @@ model User {
 model Product {
   productId            String   @id @map("product_id")
   code                 String?
-  branch               String?
   name                 String
   description          String?  @db.Text
   longDescription      String?  @map("long_description") @db.LongText

@@ -135,7 +135,6 @@ const transformProduct = (product: any): ApiProduct => {
 const listSelect = {
   productId: true,
   code: true,
-  branch: true,
   name: true,
   description: true,
   price: true,
@@ -184,7 +183,6 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get("id")
     const category = searchParams.get("category")
     const collection = searchParams.get("collection")
-    const branch = searchParams.get("branch")
     const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
     const searchWords = search.split(/\s+/).filter(Boolean)
     const isBestsellerParam = searchParams.get("isBestseller")
@@ -201,7 +199,6 @@ export async function GET(request: NextRequest) {
     if (!includeInactive || !isAdmin) where.isActive = true
     if (category) where.category = category
     if (collection) where.collection = collection
-    if (branch) where.branch = branch
     if (searchWords.length > 0) {
       where.AND = searchWords.map(word => ({
         name: { contains: word }
