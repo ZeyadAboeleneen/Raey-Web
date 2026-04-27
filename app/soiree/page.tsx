@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useSiteSettings } from "@/lib/site-settings-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
@@ -74,10 +75,10 @@ const PRICE_RANGES = [
 ]
 
 const COLLECTIONS_FILTER = [
-  { slug: "mona-saleh", label: "Mona Saleh" },
-  { slug: "el-raey-1", label: "Raey 1" },
-  { slug: "el-raey-2", label: "Raey 2" },
-  { slug: "el-raey-the-yard", label: "Raey The Yard" },
+  { slug: "mona-saleh", label: "Hay El-Gamaa" },
+  { slug: "el-raey-1", label: "El Mashaya 1" },
+  { slug: "el-raey-2", label: "El Mashaya 2" },
+  { slug: "el-raey-the-yard", label: "The yard cairo" },
   { slug: "sell-dresses", label: "Sell Dresses" },
 ]
 
@@ -90,7 +91,7 @@ export default function SoireePage() {
       return pColl === target
     })
   }, [cachedProducts])
-  
+
   // Show loading state only if we have NO products at all
   const isLoading = cacheLoading && cachedProducts.length === 0
   const bestSellers = useMemo(() => {
@@ -164,6 +165,9 @@ export default function SoireePage() {
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
 
+  const { heroImages } = useSiteSettings()
+  const heroImage = heroImages.soiree
+
   const {
     isCustomSizeMode, setIsCustomSizeMode,
     measurementUnit, setMeasurementUnit,
@@ -212,7 +216,7 @@ export default function SoireePage() {
   useEffect(() => {
     setPage(1)
   }, [debouncedQuery, selectedCollection, selectedPriceRanges])
-  
+
   useEffect(() => {
     if (showSizeSelector || showGiftPackageSelector || showCustomSizeConfirmation) {
       document.body.style.overflow = 'hidden'
@@ -354,7 +358,7 @@ export default function SoireePage() {
       message += `\n`
     }
     if (occasionDate) {
-      try { message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n` } catch {}
+      try { message += `Occasion Date: ${occasionDate.toLocaleDateString()}\n` } catch { }
     }
     message += `Quantity: 1\nRequest Date: ${new Date().toLocaleString()}\n`
     if (typeof window !== "undefined") {
@@ -444,7 +448,7 @@ export default function SoireePage() {
     const price = isGift ? product.packagePrice || 0 : getSmallestPrice(product.sizes)
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
-    
+
     // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
     const showProductPrice = showPrices || product.category === "sell-dresses"
 
@@ -555,13 +559,13 @@ export default function SoireePage() {
                 </div>
               </div>
               <div className="mb-6">
-                <CustomSizeForm 
-                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }} 
-                  sizeChart={sizeChart} 
-                  sizes={selectedProduct.sizes} 
-                  selectedSize={selectedSize} 
-                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }} 
-                  formatPrice={formatPrice} 
+                <CustomSizeForm
+                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }}
+                  sizeChart={sizeChart}
+                  sizes={selectedProduct.sizes}
+                  selectedSize={selectedSize}
+                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }}
+                  formatPrice={formatPrice}
                 />
                 {isCustomSizeMode && isRentCategory(selectedProduct.category) && (
                   <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
@@ -645,7 +649,7 @@ export default function SoireePage() {
       {/* ─── Hero ─── */}
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 15, ease: "easeInOut", repeat: Infinity }}>
-          <Image src="/elraey-bg.PNG" alt="Soiree background" fill priority sizes="100vw" className="object-cover" />
+          <Image src={heroImage} alt="Soiree background" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-black/45" />
         </motion.div>
         <motion.div className="relative z-10 max-w-3xl mx-auto px-4 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -689,30 +693,30 @@ export default function SoireePage() {
       {/* ─── Best Rental ─── */}
       <motion.section ref={bestSellersRef} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true, amount: 0.3 }} className="py-16 bg-white overflow-hidden">
         <div className="container mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
-            </motion.div>
-            {bestSellersRent.length === 0 && !cacheLoading ? (<div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>) : (
-              <div className="relative group/carousel">
-                <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
-                  <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollPrevBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollPrev()} disabled={!canScrollPrevBest}><ChevronLeft className="h-6 w-6" /></Button>
-                </div>
-                <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
-                  <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollNextBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollNext()} disabled={!canScrollNextBest}><ChevronRight className="h-6 w-6" /></Button>
-                </div>
-                <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefBest}>
-                  <div className="flex -ml-4">
-                    {displayedBestProducts.map((product, index) => (<div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">{renderProductCard(product as Product, index)}</div>))}
-                    {bestSellersRent.length > visibleBestCount && (
-                      <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setVisibleBestCount(prev => prev + 10)} className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"><div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors"><Plus className="h-6 w-6" /></div><span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span><span className="text-xs text-gray-500 mt-1">{bestSellersRent.length - visibleBestCount} more</span></motion.button>
-                      </div>
-                    )}
-                  </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} viewport={{ once: true }} className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.35em] uppercase bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent mb-4 font-serif">{t("bestRental")}</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("bestRentalDesc")}</p>
+          </motion.div>
+          {bestSellersRent.length === 0 && !cacheLoading ? (<div className="flex justify-center py-10 text-gray-500 text-sm">{t("noBestRentals")}</div>) : (
+            <div className="relative group/carousel">
+              <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 z-10">
+                <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollPrevBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollPrev()} disabled={!canScrollPrevBest}><ChevronLeft className="h-6 w-6" /></Button>
+              </div>
+              <div className="absolute top-1/2 -right-4 sm:-right-6 -translate-y-1/2 z-10">
+                <Button variant="outline" size="icon" className={`rounded-full h-10 w-10 border-rose-500 bg-rose-500 text-white shadow-md transition-all ${!canScrollNextBest ? 'opacity-0 scale-90 pointer-events-none' : 'hover:bg-rose-600 hover:text-white hover:border-rose-600 group-hover/carousel:opacity-100'}`} onClick={() => emblaApiBest?.scrollNext()} disabled={!canScrollNextBest}><ChevronRight className="h-6 w-6" /></Button>
+              </div>
+              <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRefBest}>
+                <div className="flex -ml-4">
+                  {displayedBestProducts.map((product, index) => (<div key={product._id} className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full">{renderProductCard(product as Product, index)}</div>))}
+                  {bestSellersRent.length > visibleBestCount && (
+                    <div className="flex-[0_0_45%] sm:flex-[0_0_30%] md:flex-[0_0_25%] lg:flex-[0_0_20%] xl:flex-[0_0_18%] min-w-0 pl-4 h-full self-stretch">
+                      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setVisibleBestCount(prev => prev + 10)} className="w-full h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white/50 hover:bg-white hover:border-black transition-all group"><div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors"><Plus className="h-6 w-6" /></div><span className="text-sm font-medium tracking-wide uppercase">{t("viewAll")}</span><span className="text-xs text-gray-500 mt-1">{bestSellersRent.length - visibleBestCount} more</span></motion.button>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </motion.section>
 
@@ -724,10 +728,10 @@ export default function SoireePage() {
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">{t("allProductsDesc")}</p>
           </motion.div>
           <div className="mb-8 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-4xl mx-auto">
-                <div className="relative flex-1"><div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchProducts")} className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" /></div>
-                <div className="relative sm:w-56"><select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full appearance-none rounded-full border border-gray-200 bg-white/90 py-3 pl-5 pr-10 text-sm tracking-wide focus:outline-none focus:border-black transition-colors cursor-pointer"><option value="">{t("allCollections")}</option>{COLLECTIONS_FILTER.map(c => (<option key={c.slug} value={c.slug}>{c.label}</option>))}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /></div>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-3 max-w-4xl mx-auto">
+              <div className="relative flex-1"><div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><Search className="h-4 w-4" /></div><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchProducts")} className="w-full rounded-full border border-gray-200 bg-white/90 py-3 pl-11 pr-5 text-sm tracking-wide focus-visible:ring-0 focus-visible:border-black placeholder:text-gray-400 transition-colors" /></div>
+              <div className="relative sm:w-56"><select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full appearance-none rounded-full border border-gray-200 bg-white/90 py-3 pl-5 pr-10 text-sm tracking-wide focus:outline-none focus:border-black transition-colors cursor-pointer"><option value="">{t("allCollections")}</option>{COLLECTIONS_FILTER.map(c => (<option key={c.slug} value={c.slug}>{c.label}</option>))}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /></div>
+            </div>
             <div className="max-w-4xl mx-auto">
               <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <motion.button type="button" onClick={() => setSelectedPriceRanges([])} whileTap={{ scale: 0.97 }} className={`inline-flex items-center justify-center h-[38px] sm:h-[40px] px-4 sm:px-5 rounded-full text-[11px] sm:text-xs tracking-wide uppercase font-medium border transition-all duration-300 cursor-pointer select-none ${selectedPriceRanges.length === 0 ? "bg-rose-400 text-white border-rose-400 shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:bg-rose-50 hover:border-rose-200"}`}>{t("allPrices")}</motion.button>
@@ -735,8 +739,8 @@ export default function SoireePage() {
               </div>
             </div>
             <div className="text-center text-sm text-gray-500">
-              {debouncedQuery || selectedCollection || selectedPriceRanges.length > 0 
-                ? t("showingProducts", { count: filteredProducts.length, total: allProducts.length }) 
+              {debouncedQuery || selectedCollection || selectedPriceRanges.length > 0
+                ? t("showingProducts", { count: filteredProducts.length, total: allProducts.length })
                 : t("showingAllProducts", { total: allProducts.length })}
             </div>
           </div>

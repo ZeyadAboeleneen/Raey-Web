@@ -156,8 +156,8 @@ export default function BulkUploadPage() {
   // Preview (Step 1 → 2)
   // ==========================
   const handlePreview = async () => {
-    if (!dataFile) {
-      toast.error("Please select an Excel/CSV file")
+    if (!dataFile && !imagesFile) {
+      toast.error("Please select an Excel/CSV file or a ZIP of images")
       return
     }
 
@@ -168,7 +168,7 @@ export default function BulkUploadPage() {
 
     try {
       const formData = new FormData()
-      formData.append("dataFile", dataFile)
+      if (dataFile) formData.append("dataFile", dataFile)
       if (imagesFile) formData.append("imagesFile", imagesFile)
       formData.append("mode", "preview")
 
@@ -189,6 +189,19 @@ export default function BulkUploadPage() {
       if (!response.ok) {
         setError(result.error || "Failed to process files")
         toast.error(result.error || "Failed to process files")
+        return
+      }
+
+      if (result.mode === "image-only") {
+        setReport({
+          created: 0,
+          updated: result.updated,
+          linkedImages: result.matched,
+          errors: result.errors.map((e: any, i: number) => ({ row: i + 1, reason: `${e.file}: ${e.reason}` })),
+          unmatchedImages: [],
+        })
+        setStep("report")
+        toast.success(`Image-only upload complete: ${result.updated} images updated`)
         return
       }
 
@@ -326,13 +339,12 @@ export default function BulkUploadPage() {
                     )}
                     <div className="flex flex-col items-center gap-1">
                       <div
-                        className={`rounded-full p-2.5 transition-all ${
-                          isActive
+                        className={`rounded-full p-2.5 transition-all ${isActive
                             ? "bg-black text-white shadow-lg scale-110"
                             : isPast
-                            ? "bg-black text-white"
-                            : "bg-gray-200 text-gray-500"
-                        }`}
+                              ? "bg-black text-white"
+                              : "bg-gray-200 text-gray-500"
+                          }`}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
@@ -368,7 +380,6 @@ export default function BulkUploadPage() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <FileSpreadsheet className="h-5 w-5" /> Data File
-                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">Required</Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -422,7 +433,6 @@ export default function BulkUploadPage() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ImageIcon className="h-5 w-5" /> Images ZIP
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">Optional</Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -493,7 +503,7 @@ export default function BulkUploadPage() {
                 <div className="flex justify-end">
                   <Button
                     onClick={handlePreview}
-                    disabled={!dataFile || loading}
+                    disabled={(!dataFile && !imagesFile) || loading}
                     className="bg-black text-white hover:bg-gray-800 gap-2 px-8 py-5 text-base"
                   >
                     {loading ? (
@@ -502,7 +512,7 @@ export default function BulkUploadPage() {
                       </>
                     ) : (
                       <>
-                        Preview Products <ArrowRight className="h-4 w-4" />
+                        {dataFile ? "Preview Products" : "Upload Images"} <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </Button>
@@ -609,9 +619,8 @@ export default function BulkUploadPage() {
                           {previewData.products.map((product) => (
                             <tr
                               key={product.rowIndex}
-                              className={`border-b hover:bg-gray-50 transition-colors ${
-                                product.errors.length > 0 ? "bg-red-50" : ""
-                              }`}
+                              className={`border-b hover:bg-gray-50 transition-colors ${product.errors.length > 0 ? "bg-red-50" : ""
+                                }`}
                             >
                               <td className="p-3 text-gray-500">{product.rowIndex}</td>
                               <td className="p-3">

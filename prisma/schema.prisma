@@ -55,7 +55,7 @@ model Product {
   updatedAt            DateTime @updatedAt @map("updated_at")
   reviewsList          Review[]
 
-  @@unique([name, collection], name: "name_collection_unique")
+  // @@unique([name, collection], name: "name_collection_unique")
   @@map("products")
 }
 
@@ -139,4 +139,14 @@ model NewsletterSubscriber {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("newsletter_subscribers")
+}
+
+model SiteSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
 }

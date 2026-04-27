@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client"
 
 const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined
+    prisma_v3: PrismaClient | undefined
 }
 
 /**
@@ -22,7 +22,7 @@ function buildDatasourceUrl(): string {
 }
 
 export const prisma =
-    globalForPrisma.prisma ??
+    globalForPrisma.prisma_v3 ??
     new PrismaClient({
         log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
         datasources: {
@@ -32,4 +32,4 @@ export const prisma =
         },
     })
 
-globalForPrisma.prisma = prisma
+globalForPrisma.prisma_v3 = prisma

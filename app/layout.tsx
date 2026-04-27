@@ -14,6 +14,8 @@ import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
+import { SiteSettingsProvider } from "@/lib/site-settings-context"
+import { prisma } from "@/lib/prisma"
 
 // Configure fonts with optimized loading
 const playfairDisplay = Playfair_Display({
@@ -46,7 +48,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
@@ -56,6 +58,27 @@ export default function RootLayout({
     warmProductsServerCache()
   }
 
+  // Fetch global site settings
+  let siteSettings = {
+    heroImages: {
+      wedding: "/wedding.jpg?v=2",
+      soiree: "/elraey-bg.PNG",
+    }
+  }
+
+  try {
+    const setting = await prisma.siteSetting.findUnique({
+      where: { key: "site_settings" }
+    })
+    if (setting && setting.value) {
+      const value = setting.value as any
+      if (value.heroImages?.wedding) siteSettings.heroImages.wedding = value.heroImages.wedding
+      if (value.heroImages?.soiree) siteSettings.heroImages.soiree = value.heroImages.soiree
+    }
+  } catch (error) {
+    console.error("Error fetching site settings in layout:", error)
+  }
+
   return (
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
       <head>
@@ -63,29 +86,30 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         <GoogleAnalytics gaId="G-F487HSDE42" />
-        <LocaleProvider>
-          <HtmlLangWrapper>
-            <AuthProvider>
-              <ProductProvider>
-                <ProductsCacheProvider>
-                  <OrderProvider>
-                    <FavoritesProvider>
-                      <CartProvider>
-                        <ScrollProvider>
-                          {children}
-                          <CartSuccessNotification />
-                          <Toaster />
-                        </ScrollProvider>
-                      </CartProvider>
-                    </FavoritesProvider>
-                  </OrderProvider>
-                </ProductsCacheProvider>
-              </ProductProvider>
-            </AuthProvider>
-          </HtmlLangWrapper>
-        </LocaleProvider>
+        <SiteSettingsProvider initialSettings={siteSettings}>
+          <LocaleProvider>
+            <HtmlLangWrapper>
+              <AuthProvider>
+                <ProductProvider>
+                  <ProductsCacheProvider>
+                    <OrderProvider>
+                      <FavoritesProvider>
+                        <CartProvider>
+                          <ScrollProvider>
+                            {children}
+                            <CartSuccessNotification />
+                            <Toaster />
+                          </ScrollProvider>
+                        </CartProvider>
+                      </FavoritesProvider>
+                    </OrderProvider>
+                  </ProductsCacheProvider>
+                </ProductProvider>
+              </AuthProvider>
+            </HtmlLangWrapper>
+          </LocaleProvider>
+        </SiteSettingsProvider>
       </body>
     </html>
   )
 }
-

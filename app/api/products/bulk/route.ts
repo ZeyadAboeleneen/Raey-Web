@@ -50,6 +50,20 @@ async function uploadBufferToCloudinary(buffer: Buffer, publicId?: string): Prom
   })
 }
 
+// Extract public ID from Cloudinary URL and delete it
+async function deleteFromCloudinary(url: string) {
+  if (!url || !url.includes("cloudinary.com")) return;
+  try {
+    const matches = url.match(/\/upload\/(?:v\d+\/)?([^.]+)/);
+    if (matches && matches[1]) {
+      // If the folder is included in the URL, it will be captured in matches[1]
+      await cloudinary.uploader.destroy(matches[1]);
+    }
+  } catch (err) {
+    console.error("Failed to delete old image from Cloudinary:", err);
+  }
+}
+
 // ------------------------------------------------------------------
 // Auth helper
 // ------------------------------------------------------------------
@@ -79,15 +93,140 @@ export async function POST(request: NextRequest) {
 
     // Parse multipart form data
     const formData = await request.formData()
-    const mode = (formData.get("mode") as string) || "preview"
-    const dataFile = formData.get("dataFile") as File | null
+    const reqMode = formData.get("mode") as string
+    let dataFile = formData.get("dataFile") as File | null
+    if (typeof dataFile === "string" && dataFile === "null") {
+      dataFile = null
+    }
     const imagesFile = formData.get("imagesFile") as File | null
 
+    const isImageOnly = !dataFile && imagesFile
+    const mode = isImageOnly ? "image-only" : (reqMode || "preview")
+
+    if (!dataFile && !imagesFile) {
+      return NextResponse.json({ error: "Data file or Images file is required" }, { status: 400 })
+    }
+
+    if (mode === "image-only") {
+      if (!imagesFile) {
+        return NextResponse.json({ error: "Images file is required" }, { status: 400 })
+      }
+      configureCloudinary()
+
+      let zipMap = new Map<string, Buffer>()
+      if (imagesFile.name.toLowerCase().endsWith(".zip")) {
+        const zipBuffer = Buffer.from(await imagesFile.arrayBuffer())
+        zipMap = await extractZipImages(zipBuffer)
+      } else {
+        // Fallback if frontend sends a direct image (though UI currently forces .zip)
+        zipMap.set(imagesFile.name, Buffer.from(await imagesFile.arrayBuffer()))
+      }
+
+      const report = {
+        mode: "image-only",
+        matched: 0,
+        updated: 0,
+        failed: 0,
+        errors: [] as { file: string; reason: string }[],
+      }
+
+      const clearedProductIds = new Set<string>()
+
+      for (const [fileName, buffer] of zipMap.entries()) {
+        const extMatch = fileName.match(/\.[^/.]+$/)
+        if (!extMatch) {
+          report.failed++
+          continue // Ignore files without extension
+        }
+
+        const baseName = fileName
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[-_]/g, " ")
+          .trim()
+
+        if (!baseName) {
+          report.failed++
+          continue // Ignore empty filenames
+        }
+
+        // Match product in MySQL
+        let product = await prisma.product.findFirst({
+          where: { name: { equals: baseName } },
+        })
+
+        if (!product) {
+          product = await prisma.product.findFirst({
+            where: { code: { equals: baseName } },
+          })
+        }
+
+        if (!product) {
+          product = await prisma.product.findFirst({
+            where: { name: { contains: baseName } },
+          })
+        }
+
+        if (product) {
+          try {
+            const publicId = `img-only-${product.productId}-${Date.now()}`.toLowerCase()
+            const imageUrl = await uploadBufferToCloudinary(buffer, publicId)
+
+            let existingImages = Array.isArray(product.images)
+              ? product.images
+              : typeof product.images === "string"
+              ? JSON.parse(product.images)
+              : []
+            
+            // If this is the first image for this product in this upload session, clear the old images
+            if (!clearedProductIds.has(product.productId)) {
+              for (const oldImg of existingImages) {
+                if (oldImg && oldImg !== "/placeholder.svg") {
+                  await deleteFromCloudinary(oldImg);
+                }
+              }
+              existingImages = []
+              clearedProductIds.add(product.productId)
+            } else {
+              // Otherwise filter out placeholder just in case
+              existingImages = existingImages.filter((img: string) => img !== "/placeholder.svg")
+            }
+            
+            const newImages = [...existingImages, imageUrl]
+
+            await prisma.product.update({
+              where: { productId: product.productId },
+              data: {
+                images: newImages,
+                imageUrl: newImages[0],
+              },
+            })
+
+            report.matched++
+            report.updated++
+          } catch (e: any) {
+            report.failed++
+            report.errors.push({ file: fileName, reason: e.message || "Upload failed" })
+          }
+        } else {
+          report.failed++
+          report.errors.push({ file: fileName, reason: "No matching product found in MySQL" })
+        }
+      }
+
+      // Clear server-side product cache
+      const g = globalThis as any
+      if (g._productsCache) g._productsCache.clear()
+      if (g._ssrProductsCache) g._ssrProductsCache = undefined
+      if (g._ssrProductsPromise) g._ssrProductsPromise = undefined
+
+      return NextResponse.json(report)
+    }
+
+    // Read data file
     if (!dataFile) {
       return NextResponse.json({ error: "Data file (Excel/CSV) is required" }, { status: 400 })
     }
 
-    // Read data file
     const dataBuffer = Buffer.from(await dataFile.arrayBuffer())
     const { rows: rawRows, errors: parseErrors } = parseDataFile(dataBuffer, dataFile.name)
 
@@ -256,6 +395,30 @@ export async function POST(request: NextRequest) {
             }
 
             if (isUpdate && existingId) {
+              // If we are replacing images, delete the old ones from Cloudinary first
+              if (imageUrls.length > 0) {
+                try {
+                  const oldProduct = await prisma.product.findUnique({
+                    where: { productId: existingId },
+                    select: { images: true }
+                  });
+                  if (oldProduct && oldProduct.images) {
+                    const oldImages = Array.isArray(oldProduct.images) 
+                      ? oldProduct.images 
+                      : typeof oldProduct.images === "string" 
+                      ? JSON.parse(oldProduct.images) 
+                      : [];
+                    for (const oldImg of oldImages) {
+                      if (oldImg && oldImg !== "/placeholder.svg") {
+                        await deleteFromCloudinary(oldImg);
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to fetch old images for deletion:", e);
+                }
+              }
+
               await prisma.product.update({
                 where: { productId: existingId },
                 data,
@@ -293,6 +456,12 @@ export async function POST(request: NextRequest) {
           reason: skipped.errors.map((e) => `${e.field}: ${e.message}`).join("; "),
         })
       }
+
+      // Clear server-side product cache
+      const g = globalThis as any
+      if (g._productsCache) g._productsCache.clear()
+      if (g._ssrProductsCache) g._ssrProductsCache = undefined
+      if (g._ssrProductsPromise) g._ssrProductsPromise = undefined
 
       return NextResponse.json({
         mode: "confirm",
