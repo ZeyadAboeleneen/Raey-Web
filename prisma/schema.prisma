@@ -61,7 +61,7 @@ model Product {
 model Order {
   id              String   @id @default(uuid())
   orderId         String   @unique @map("order_id")
-  userId          String   @map("user_id")
+  userId          String?  @map("user_id")
   items           Json
   total           Float
   status          String   @default("pending")
@@ -72,7 +72,7 @@ model Order {
   discountAmount  Float    @default(0) @map("discount_amount")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
-  user            User     @relation(fields: [userId], references: [id])
+  user            User?    @relation(fields: [userId], references: [id])
 
   @@map("orders")
 }

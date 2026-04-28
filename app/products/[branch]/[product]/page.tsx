@@ -111,6 +111,9 @@ export default function ProductDetailPage() {
   const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message?: string } | null>(null)
+  const [isExclusive, setIsExclusive] = useState(false)
+  const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
+  const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
 
   const { dispatch } = useCart()
   const { state: favoritesState, addToFavorites, removeFromFavorites } = useFavorites()
@@ -338,6 +341,54 @@ export default function ProductDetailPage() {
     }
   }, [product?.id, isRentBranch])
 
+  // Fetch rental price whenever date or exclusive option changes
+  useEffect(() => {
+    if (!isRentBranch || !product || !rentEventDate) {
+      setRentalPrice(null)
+      return
+    }
+
+    const controller = new AbortController()
+    const fetchPrice = async () => {
+      setRentalPriceLoading(true)
+      try {
+        // Build the same rentStart/rentEnd the cart uses
+        const start = new Date(rentEventDate)
+        start.setDate(start.getDate() - 1)
+        const end = new Date(rentEventDate)
+        end.setDate(end.getDate() + 1)
+
+        const res = await fetch('/api/rental/pricing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            rentStart: start.toISOString(),
+            rentEnd: end.toISOString(),
+            isExclusive,
+          }),
+          signal: controller.signal,
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setRentalPrice({ total: data.total, category: data.category })
+        } else {
+          setRentalPrice(null)
+        }
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.error('Failed to fetch rental price:', err)
+          setRentalPrice(null)
+        }
+      } finally {
+        setRentalPriceLoading(false)
+      }
+    }
+
+    fetchPrice()
+    return () => controller.abort()
+  }, [isRentBranch, product?.id, rentEventDate, isExclusive])
+
   // Handle adding to cart with custom size support
   const handleAddToCart = async () => {
     if (!product || product.isOutOfStock) return
@@ -432,6 +483,7 @@ export default function ProductDetailPage() {
           collection: product.collection || "",
           rentStart: rentStartStr,
           rentEnd: rentEndStr,
+          isExclusive: isRentBranch ? isExclusive : undefined,
           customMeasurements: {
             unit: measurementUnit,
             values: measurements,
@@ -479,6 +531,7 @@ export default function ProductDetailPage() {
           collection: product.collection || "",
           rentStart: rentStartStr,
           rentEnd: rentEndStr,
+          isExclusive: isRentBranch ? isExclusive : undefined,
         },
       })
     }
@@ -897,6 +950,59 @@ export default function ProductDetailPage() {
                         <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
                           Loading available dates...
+                        </div>
+                      )}
+
+                      {/* Exclusive Hold Option */}
+                      <div
+                        className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
+                          isExclusive
+                            ? 'border-black bg-gray-50 shadow-sm'
+                            : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                        onClick={() => setIsExclusive(!isExclusive)}
+                      >
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isExclusive}
+                            onChange={(e) => setIsExclusive(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 text-sm">Exclusive Hold</p>
+                            <div className="mt-1.5 space-y-1">
+                              <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                <span className="text-gray-400">✦</span>
+                                The dress is reserved only for you
+                              </p>
+                              <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                <span className="text-gray-400">✦</span>
+                                No one else can rent it before your pickup
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                      {/* Rental Price Display */}
+                      {rentEventDate && (
+                        <div className="border rounded-lg p-4 bg-white">
+                          {rentalPriceLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                              Calculating rental price...
+                            </div>
+                          ) : rentalPrice ? (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Rental Price</p>
+                                <p className="text-2xl font-light text-gray-900">{formatPrice(rentalPrice.total)}</p>
+                              </div>
+                              {isExclusive && (
+                                <span className="text-xs bg-black text-white px-2 py-1 rounded-full">Exclusive</span>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       )}
                     </div>

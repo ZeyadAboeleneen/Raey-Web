@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
+import { calculateRentalPrice } from "@/lib/rental-pricing"
 
 export const dynamic = "force-dynamic"
 
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       order = await prisma.order.create({ data: orderData })
     } else {
       // Guest orders don't have a userId relation
-      order = await prisma.order.create({ data: { ...orderData, userId: undefined } as any })
+      order = await prisma.order.create({ data: { ...orderData, userId: null } as any })
     }
 
     // Update stock for each item
@@ -144,21 +145,88 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sync rental bookings to MSSQL ERP
+    // ── Sync rental bookings to MSSQL ERP with TRANSACTIONAL PRICING ──
+    // Race-condition safe: pricing read + booking insert happen inside a transaction.
+    // Server-calculated price ALWAYS overrides frontend price.
+    const serverCalculatedPrices: Array<{
+      productId: string
+      serverPrice: number
+      category: string
+      formula: string
+    }> = []
+
     try {
       const pool = await getMssqlPool()
+
       for (const item of items) {
         if (item.type === "rent" && item.rentStart && item.rentEnd) {
-          const branchId = mapBranchSlugToBranchId(item.branch) || 15 // Fallback to 15 if unknown
+          const branchId = mapBranchSlugToBranchId(item.branch) || 15
           const modelTypeId = parseInt(item.productId, 10)
-          
-          if (!isNaN(modelTypeId)) {
-            await pool.request()
+
+          if (isNaN(modelTypeId)) continue
+
+          // ── Validate dates ────────────────────────────────────
+          const rentStartDate = new Date(item.rentStart)
+          const rentEndDate = new Date(item.rentEnd)
+
+          if (isNaN(rentStartDate.getTime()) || isNaN(rentEndDate.getTime())) {
+            console.error(`Invalid rental dates for item ${item.productId}`)
+            continue
+          }
+
+          if (rentEndDate <= rentStartDate) {
+            console.error(`rentEnd must be after rentStart for item ${item.productId}`)
+            continue
+          }
+
+          // ── BEGIN TRANSACTION: price calculation + booking insert ──
+          const txn = new sql.Transaction(pool)
+          await txn.begin(sql.ISOLATION_LEVEL.SERIALIZABLE)
+
+          try {
+            // 1. Calculate server-side price (reads Item_buypric + rental count inside txn)
+            const pricingResult = await calculateRentalPrice(
+              {
+                productId: item.productId,
+                rentStart: rentStartDate,
+                rentEnd: rentEndDate,
+                isExclusive: Boolean(item.isExclusive),
+              },
+              txn,
+            )
+
+            const serverPrice = pricingResult.total
+
+            // 2. Double-booking check inside transaction
+            const overlapCheck = await new sql.Request(txn)
+              .input('ModelTypeID', sql.Int, modelTypeId)
+              .input('requestedStart', sql.Date, item.rentStart)
+              .input('requestedEnd', sql.Date, item.rentEnd)
+              .query(`
+                SELECT COUNT(*) AS cnt
+                FROM Booking
+                WHERE ModelTypeID = @ModelTypeID
+                  AND @requestedStart < ReturnDate
+                  AND @requestedEnd >= ReceivedDate
+              `)
+
+            if (overlapCheck.recordset[0].cnt > 0) {
+              await txn.rollback()
+              console.error(`Double-booking detected for item ${item.productId}`)
+              continue
+            }
+
+            // 3. Build NoteItem with exclusive flag
+            const exclusivePrefix = item.isExclusive ? '[EXCLUSIVE] ' : ''
+            const noteItem = `${exclusivePrefix}Web Order: ${item.size} - Qty: ${item.quantity}`
+
+            // 4. INSERT booking with SERVER-CALCULATED price (never trust frontend)
+            await new sql.Request(txn)
               .input('invoice_code', sql.NVarChar, `WEB-${orderId.substring(orderId.length - 6)}`)
-              .input('Cust_Name', sql.NVarChar, `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim())
-              .input('Cust_Tel', sql.NVarChar, shippingAddress.phone || '')
-              .input('Cust_Mobile', sql.NVarChar, shippingAddress.altPhone || shippingAddress.phone || '')
-              .input('Cust_Address', sql.NVarChar, `${shippingAddress.address || ''}, ${shippingAddress.city || ''}`)
+              .input('Cust_Name', sql.NVarChar, shippingAddress.name || '')
+              .input('Cust_Tel', sql.NVarChar, shippingAddress.secondaryPhone || '')
+              .input('Cust_Mobile', sql.NVarChar, shippingAddress.phone || '')
+              .input('Cust_Address', sql.NVarChar, shippingAddress.address || '')
               .input('DeviceTypeID', sql.Int, 0)
               .input('ModelTypeID', sql.Int, modelTypeId)
               .input('Scarves', sql.Bit, 0)
@@ -166,15 +234,15 @@ export async function POST(request: NextRequest) {
               .input('Other', sql.Bit, 0)
               .input('OtheNote', sql.NVarChar, '')
               .input('BookingDate', sql.DateTime, new Date())
-              .input('ReceivedDate', sql.DateTime, new Date(item.rentStart))
-              .input('ReturnDate', sql.DateTime, new Date(item.rentEnd))
-              .input('Emp_ID', sql.Int, 1) // Using 1 for system/web user
+              .input('ReceivedDate', sql.DateTime, rentStartDate)
+              .input('ReturnDate', sql.DateTime, rentEndDate)
+              .input('Emp_ID', sql.Int, 1)
               .input('CurrencyID', sql.Int, 1)
               .input('ExRate', sql.Decimal(18, 2), 1.0)
-              .input('Total', sql.Decimal(18, 2), item.price * item.quantity)
+              .input('Total', sql.Decimal(18, 2), serverPrice)
               .input('Deposit', sql.Decimal(18, 2), 0)
-              .input('Remaining', sql.Decimal(18, 2), item.price * item.quantity)
-              .input('NoteItem', sql.NVarChar, `Web Order: ${item.size} - Qty: ${item.quantity}`)
+              .input('Remaining', sql.Decimal(18, 2), serverPrice)
+              .input('NoteItem', sql.NVarChar, noteItem)
               .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust) : '')
               .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist) : '')
               .input('ButtocksSize', sql.NVarChar, item.customMeasurements?.values?.hips ? String(item.customMeasurements.values.hips) : '')
@@ -193,7 +261,7 @@ export async function POST(request: NextRequest) {
               .input('ReturnNote', sql.NVarChar, '')
               .input('AdditionalCost', sql.Decimal(18, 2), 0)
               .input('First', sql.Bit, 1)
-              .input('OccasionDate', sql.DateTime, new Date(new Date(item.rentStart).getTime() + 24 * 60 * 60 * 1000))
+              .input('OccasionDate', sql.DateTime, new Date(rentStartDate.getTime() + 24 * 60 * 60 * 1000))
               .query(`
                 INSERT INTO Booking (
                   invoice_code, Cust_Name, Cust_Tel, Cust_Mobile, Cust_Address,
@@ -217,6 +285,21 @@ export async function POST(request: NextRequest) {
                   @First, @OccasionDate
                 )
               `)
+
+            await txn.commit()
+
+            console.log(`✅ [Pricing] Item ${item.productId}: ${pricingResult.category} = ${serverPrice} EGP (${pricingResult.formula})`)
+
+            serverCalculatedPrices.push({
+              productId: item.productId,
+              serverPrice,
+              category: pricingResult.category,
+              formula: pricingResult.formula,
+            })
+          } catch (txnError) {
+            // Rollback on any error inside the transaction
+            try { await txn.rollback() } catch { /* already rolled back */ }
+            console.error(`Failed to process rental booking for item ${item.productId}:`, txnError)
           }
         }
       }
@@ -225,7 +308,13 @@ export async function POST(request: NextRequest) {
       // Do not block the primary checkout success if the local order succeeded
     }
 
-    return NextResponse.json({ success: true, order: transformOrder(order), orderId: order.orderId })
+    return NextResponse.json({
+      success: true,
+      order: transformOrder(order),
+      orderId: order.orderId,
+      // Return server-calculated rental prices so frontend can display them
+      ...(serverCalculatedPrices.length > 0 && { serverCalculatedPrices }),
+    })
   } catch (error) {
     console.error("Create order error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

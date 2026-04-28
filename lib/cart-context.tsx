@@ -34,6 +34,7 @@ interface CartItem {
   rentStart?: string
   rentEnd?: string
   collection?: string
+  isExclusive?: boolean
   selectedProduct?: {
     productId: string
     productName: string
@@ -158,6 +159,7 @@ function saveCartToStorage(key: string, items: CartItem[]) {
       rentStart: item.rentStart,
       rentEnd: item.rentEnd,
       collection: item.collection,
+      isExclusive: item.isExclusive,
     }))
     
     const serialized = JSON.stringify(minimalItems)
