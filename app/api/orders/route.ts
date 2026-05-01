@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
-import fs from "fs"
 
 export const dynamic = "force-dynamic"
 
@@ -322,7 +321,6 @@ export async function POST(request: NextRequest) {
             // Rollback on any error inside the transaction
             try { await txn.rollback() } catch { /* already rolled back */ }
             console.error(`Failed to process rental booking for item ${item.productId}:`, txnError)
-            fs.writeFileSync("scratch_error.log", String(txnError.stack || txnError))
           }
         }
       }
