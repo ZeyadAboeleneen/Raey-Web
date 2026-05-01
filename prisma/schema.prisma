@@ -150,3 +150,37 @@ model SiteSetting {
   @@map("site_settings")
 }
 
+model Employee {
+  id                       String   @id @default(uuid())
+  fullName                 String   @map("full_name")
+  email                    String   @unique
+  username                 String   @unique
+  passwordHash             String   @map("password_hash")
+  phone                    String?
+  role                     String   @default("staff")
+  isActive                 Boolean  @default(true) @map("is_active")
+
+  // Products
+  canAddProducts           Boolean  @default(false) @map("can_add_products")
+  canEditProducts          Boolean  @default(false) @map("can_edit_products")
+  canDeleteProducts        Boolean  @default(false) @map("can_delete_products")
+  canViewProducts          Boolean  @default(false) @map("can_view_products")
+
+  // Orders
+  canViewOrders            Boolean  @default(false) @map("can_view_orders")
+  canUpdateOrders          Boolean  @default(false) @map("can_update_orders")
+  canDeleteOrders          Boolean  @default(false) @map("can_delete_orders")
+
+  // Pricing
+  canViewPricesInDashboard Boolean  @default(false) @map("can_view_prices_in_dashboard")
+  canViewPricesOnWebsite   Boolean  @default(false) @map("can_view_prices_on_website")
+
+  // Discounts & Offers
+  canManageDiscountCodes   Boolean  @default(false) @map("can_manage_discount_codes")
+  canManageOffers          Boolean  @default(false) @map("can_manage_offers")
+
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("employees")
+}

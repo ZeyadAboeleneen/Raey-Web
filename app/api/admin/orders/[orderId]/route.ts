@@ -4,13 +4,20 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-const requireAdmin = (request: NextRequest) => {
+const requireAdminOrPermission = async (request: NextRequest, permissionKey: string) => {
   const token = request.headers.get("authorization")?.replace("Bearer ", "")
   if (!token) return { error: "Authorization required", status: 401 }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    if (decoded.role !== "admin") return { error: "Admin access required", status: 403 }
-    return { decoded }
+    if (decoded.role === "admin") return { decoded }
+    
+    if (decoded.employeeId) {
+      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      if (!employee || !employee.isActive) return { error: "Unauthorized", status: 401 }
+      if (employee[permissionKey as keyof typeof employee]) return { decoded, employee }
+    }
+    
+    return { error: "Permission denied", status: 403 }
   } catch {
     return { error: "Invalid token", status: 401 }
   }
@@ -34,7 +41,7 @@ const transformOrder = (order: any) => ({
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request, "canViewOrders")
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { orderId } = await params
@@ -59,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request, "canUpdateOrders")
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { orderId } = await params
@@ -82,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request, "canUpdateOrders")
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { orderId } = await params
@@ -134,9 +141,8 @@ export async function DELETE(
   { params }: { params: { orderId: string } }
 ) {
   try {
-    // Note: requireAdmin is synchronous and expects a NextRequest type cast
-    const authResult = requireAdmin(req as any)
-    if (authResult.error) return NextResponse.json({ error: authResult.error }, { status: authResult.status })
+    const authResult = await requireAdminOrPermission(req as any, "canDeleteOrders")
+    if (authResult.error) return NextResponse.json({ error: authResult.error }, { status: authResult.status as number })
 
     const { orderId } = params
 

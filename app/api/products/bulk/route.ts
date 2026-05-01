@@ -108,8 +108,8 @@ function normalizeImageName(filename: string): string {
 /* ================================================================== */
 export async function POST(request: NextRequest) {
   try {
-    if (!isAdminRequest(request)) {
-      return errorResponse(403, "Admin access required");
+    if (!(await isAdminRequest(request, "canAddProducts"))) {
+      return errorResponse(403, "Admin access required or insufficient permissions");
     }
 
     const contentType = request.headers.get("content-type") || "";

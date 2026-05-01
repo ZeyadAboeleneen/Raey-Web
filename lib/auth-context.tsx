@@ -1,12 +1,28 @@
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from "react"
+
+export interface EmployeePermissions {
+  canAddProducts: boolean
+  canEditProducts: boolean
+  canDeleteProducts: boolean
+  canViewProducts: boolean
+  canViewOrders: boolean
+  canUpdateOrders: boolean
+  canDeleteOrders: boolean
+  canViewPricesInDashboard: boolean
+  canViewPricesOnWebsite: boolean
+  canManageDiscountCodes: boolean
+  canManageOffers: boolean
+}
 
 interface User {
   id: string
   email: string
   name: string
-  role: "admin" | "user"
+  role: string
+  isEmployee?: boolean
+  permissions?: EmployeePermissions
 }
 
 interface AuthState {
@@ -23,15 +39,17 @@ type AuthAction =
   | { type: "LOGOUT" }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "UPDATE_USER"; payload: User }
+  | { type: "SET_PERMISSIONS"; payload: EmployeePermissions }
 
 interface AuthContextType {
   state: AuthState
   dispatch: React.Dispatch<AuthAction>
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string, type?: "employee" | "customer") => Promise<boolean>
   logout: () => void
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   forgotPassword: (email: string) => Promise<boolean>
   updateUser: (user: User) => void
+  checkPermission: (key: keyof EmployeePermissions) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -68,6 +86,15 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         ...state,
         user: action.payload,
       }
+    case "SET_PERMISSIONS":
+      if (!state.user) return state
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          permissions: action.payload
+        }
+      }
     default:
       return state
   }
@@ -81,26 +108,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
   })
 
+  const fetchEmployeePermissions = async (token: string) => {
+    try {
+      const res = await fetch("/api/auth/employee/me", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        // API returns permissions directly at the top level (NOT nested under 'employee')
+        if (data.permissions) {
+          dispatch({ type: "SET_PERMISSIONS", payload: data.permissions })
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch employee permissions", err)
+    }
+  }
+
   const verifyToken = async (token: string): Promise<boolean> => {
-  try {
-    const response = await fetch("/api/auth/verify", {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    })
-    
-    if (!response.ok) {
+    try {
+      const response = await fetch("/api/auth/verify", {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        return false
+      }
+      
+      const data = await response.json()
+      return data.valid === true
+    } catch (error) {
+      console.error("Token verification failed:", error)
       return false
     }
-    
-    const data = await response.json()
-    return data.valid === true
-  } catch (error) {
-    console.error("Token verification failed:", error)
-    return false
   }
-}
 
   const refreshToken = async (oldToken: string): Promise<{ user: User; token: string } | null> => {
     try {
@@ -136,7 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           parsedData = JSON.parse(authData)
         } catch (parseError) {
-          console.error("Failed to parse auth data:", parseError)
           localStorage.removeItem("sense_auth")
           dispatch({ type: "SET_LOADING", payload: false })
           return
@@ -144,46 +189,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { user, token, expiresAt } = parsedData
         
-        // Validate that we have the required data
         if (!user || !token || !expiresAt) {
-          console.error("Invalid auth data structure")
           localStorage.removeItem("sense_auth")
           dispatch({ type: "SET_LOADING", payload: false })
           return
         }
         
-        // Check if token needs refresh (with 5 minute buffer)
         if (Date.now() > (expiresAt - 5 * 60 * 1000)) {
           const refreshed = await refreshToken(token)
           if (refreshed) {
             const newAuthData = {
               user: refreshed.user,
               token: refreshed.token,
-              expiresAt: Date.now() + 3600 * 1000, // 1 hour expiration
+              expiresAt: Date.now() + 3600 * 1000,
             }
             localStorage.setItem("sense_auth", JSON.stringify(newAuthData))
             dispatch({ type: "LOGIN_SUCCESS", payload: refreshed })
+            if (refreshed.user.isEmployee) {
+              await fetchEmployeePermissions(refreshed.token)
+            }
             dispatch({ type: "SET_LOADING", payload: false })
             return
           }
-          // If refresh failed, try to verify the existing token anyway
         }
 
-        // Verify existing token
         const isValid = await verifyToken(token)
         if (isValid) {
           dispatch({ type: "LOGIN_SUCCESS", payload: { user, token } })
+          if (user.isEmployee) {
+            await fetchEmployeePermissions(token)
+          }
         } else {
-          // Try one more refresh attempt before giving up
           const refreshed = await refreshToken(token)
           if (refreshed) {
             const newAuthData = {
               user: refreshed.user,
               token: refreshed.token,
-              expiresAt: Date.now() + 3600 * 1000, // 1 hour expiration
+              expiresAt: Date.now() + 3600 * 1000,
             }
             localStorage.setItem("sense_auth", JSON.stringify(newAuthData))
             dispatch({ type: "LOGIN_SUCCESS", payload: refreshed })
+            if (refreshed.user.isEmployee) {
+              await fetchEmployeePermissions(refreshed.token)
+            }
           } else {
             throw new Error("Invalid token")
           }
@@ -200,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, type?: "employee" | "customer"): Promise<boolean> => {
     dispatch({ type: "LOGIN_START" })
 
     try {
@@ -209,7 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, type }),
       })
 
       if (!response.ok) {
@@ -220,11 +268,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authData = {
         user: data.user,
         token: data.token,
-        expiresAt: Date.now() + 3600 * 1000, // 1 hour expiration
+        expiresAt: Date.now() + 3600 * 1000,
       }
 
       localStorage.setItem("sense_auth", JSON.stringify(authData))
       dispatch({ type: "LOGIN_SUCCESS", payload: { user: data.user, token: data.token } })
+      
+      // Always fetch fresh permissions for any employee (isEmployee=true means they are in the employees table)
+      if (data.user.isEmployee) {
+        await fetchEmployeePermissions(data.token)
+      }
+
       return true
     } catch (error) {
       console.error("Login error:", error)
@@ -256,12 +310,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authData = {
         user: data.user,
         token: data.token,
-        expiresAt: Date.now() + 3600 * 1000, // 1 hour expiration
+        expiresAt: Date.now() + 3600 * 1000,
       }
 
       localStorage.setItem("sense_auth", JSON.stringify(authData))
       
-      // Send welcome email (fire and forget)
       fetch("/api/send-welcome-email", {
         method: "POST",
         headers: {
@@ -300,6 +353,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "LOGOUT" })
   }
 
+  const checkPermission = useCallback((key: keyof EmployeePermissions) => {
+    if (!state.user) return false
+    // Admins bypass all permission checks (both admin users and admin employees)
+    // But ONLY if they are explicitly role="admin" from the server — never assume
+    if (state.user.role === "admin") return true
+    // For employees with role="staff" or any other role, check the permissions object
+    // If permissions haven't loaded yet, deny access (fail-safe)
+    if (!state.user.permissions) return false
+    return state.user.permissions[key] === true
+  }, [state.user])
+
   return (
     <AuthContext.Provider
       value={{
@@ -325,6 +389,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           dispatch({ type: "UPDATE_USER", payload: user })
         },
+        checkPermission,
       }}
     >
       {children}
@@ -338,4 +403,10 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
+}
+
+export function usePermission(key: keyof EmployeePermissions): boolean {
+  const context = useContext(AuthContext)
+  if (!context) return false
+  return context.checkPermission(key)
 }

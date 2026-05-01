@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 
 interface OrderDetails {
   _id: string
@@ -112,6 +112,9 @@ const statusOptions = [
 export default function AdminOrderDetailsPage() {
   const { orderId } = useParams() as { orderId: string }
   const { state: authState } = useAuth()
+  const canViewOrders = usePermission("canViewOrders")
+  const canUpdateOrders = usePermission("canUpdateOrders")
+  const canDeleteOrders = usePermission("canDeleteOrders")
   const router = useRouter()
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -120,14 +123,14 @@ export default function AdminOrderDetailsPage() {
   const [success, setSuccess] = useState("")
 
   useEffect(() => {
-    if (!authState.isLoading && (!authState.isAuthenticated || authState.user?.role !== "admin")) {
-      router.push("/auth/login")
+    if (!authState.isLoading && (!authState.isAuthenticated || !canViewOrders)) {
+      router.push("/admin/dashboard")
       return
     }
-    if (authState.isAuthenticated && authState.user?.role === "admin") {
+    if (authState.isAuthenticated && canViewOrders) {
       fetchOrderDetails()
     }
-  }, [authState, orderId, router])
+  }, [authState, orderId, router, canViewOrders])
 
   const fetchOrderDetails = async () => {
     try {
@@ -220,7 +223,7 @@ export default function AdminOrderDetailsPage() {
     )
   }
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") return null
+  if (!authState.isAuthenticated || !canViewOrders) return null
 
   if (!order) {
     return (
@@ -265,10 +268,12 @@ export default function AdminOrderDetailsPage() {
                 <Badge className={`px-3 py-1 text-sm font-medium ${statusColors[order.status]}`}>
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </Badge>
-                <Button variant="destructive" size="sm" onClick={handleDeleteOrder} disabled={updating}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Order
-                </Button>
+                {canDeleteOrders && (
+                  <Button variant="destructive" size="sm" onClick={handleDeleteOrder} disabled={updating}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Order
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -426,7 +431,7 @@ export default function AdminOrderDetailsPage() {
                   <CardTitle>Update Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating}>
+                  <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating || !canUpdateOrders}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

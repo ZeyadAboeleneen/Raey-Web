@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAdminRequest(request)) {
-      return errorResponse(403, "Admin access required");
+    if (!(await isAdminRequest(request, "canAddProducts"))) {
+      return errorResponse(403, "Admin access required or insufficient permissions");
     }
 
     const body = await request.json();

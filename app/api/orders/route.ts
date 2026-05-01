@@ -31,15 +31,36 @@ export async function GET(request: NextRequest) {
     let decoded: any
     try { decoded = jwt.verify(token, process.env.JWT_SECRET!) } catch { return NextResponse.json({ error: "Invalid token" }, { status: 401 }) }
 
-    const isAdmin = decoded.role === "admin"
+    let isEmployeeWithAccess = false
+    let isStandardUser = false
+
+    if (decoded.employeeId) {
+      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      if (!employee || !employee.isActive) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      
+      if (employee.role === "admin" || employee.canViewOrders) {
+        isEmployeeWithAccess = true
+      } else {
+        return NextResponse.json({ error: "Permission denied" }, { status: 403 })
+      }
+    } else if (decoded.userId) {
+      if (decoded.role === "admin") {
+        isEmployeeWithAccess = true
+      } else {
+        isStandardUser = true
+      }
+    } else {
+      return NextResponse.json({ error: "Invalid token payload" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get("userId")
     const status = searchParams.get("status")
 
     const where: any = {}
-    if (!isAdmin) {
+    if (isStandardUser) {
       where.userId = decoded.userId
-    } else if (userId) {
+    } else if (isEmployeeWithAccess && userId) {
       where.userId = userId
     }
     if (status) where.status = status

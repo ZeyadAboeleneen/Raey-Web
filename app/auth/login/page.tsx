@@ -61,7 +61,7 @@ export default function LoginPage() {
       }
       localStorage.setItem("sense_auth", JSON.stringify(authData))
 
-      // Update auth context
+      // Update auth context with user & token
       dispatch({
         type: "LOGIN_SUCCESS",
         payload: {
@@ -70,8 +70,24 @@ export default function LoginPage() {
         },
       })
 
-      // Redirect based on role
-      if (data.user.role === "admin") {
+      // If this is an employee, fetch their real permissions from DB before redirecting
+      if (data.user.isEmployee) {
+        try {
+          const permRes = await fetch("/api/auth/employee/me", {
+            headers: { Authorization: `Bearer ${data.token}` },
+          })
+          if (permRes.ok) {
+            const permData = await permRes.json()
+            if (permData.permissions) {
+              dispatch({ type: "SET_PERMISSIONS", payload: permData.permissions })
+            }
+          }
+        } catch (permErr) {
+          console.error("Failed to fetch employee permissions after login", permErr)
+        }
+        // Employees always go to admin dashboard
+        router.push("/admin/dashboard")
+      } else if (data.user.role?.toLowerCase() === "admin" || data.user.role?.toLowerCase() === "staff") {
         router.push("/admin/dashboard")
       } else {
         router.push("/")

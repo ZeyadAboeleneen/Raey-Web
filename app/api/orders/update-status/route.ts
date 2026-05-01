@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import jwt from "jsonwebtoken"
+import { isAdminRequest } from "@/lib/erp-items"
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    if (!token) return NextResponse.json({ error: "Authorization required" }, { status: 401 })
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    if (decoded.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    if (!(await isAdminRequest(request, "canUpdateOrders"))) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
+    }
 
     const { orderId, status } = await request.json()
     if (!orderId || !status) return NextResponse.json({ error: "Order ID and status are required" }, { status: 400 })

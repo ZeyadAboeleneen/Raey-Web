@@ -33,7 +33,7 @@ import {
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { Navigation } from "@/components/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 interface ProductSize {
@@ -140,6 +140,15 @@ export default function AdminDashboard() {
   const [productBranchFilter, setProductBranchFilter] = useState("all")
   const [productCollectionFilter, setProductCollectionFilter] = useState("all")
   const [absoluteStats, setAbsoluteStats] = useState({ totalProducts: 0, activeProducts: 0 })
+
+  const canViewProducts = usePermission("canViewProducts")
+  const canAddProducts = usePermission("canAddProducts")
+  const canEditProducts = usePermission("canEditProducts")
+  const canDeleteProducts = usePermission("canDeleteProducts")
+  const canManageDiscountCodes = usePermission("canManageDiscountCodes")
+  const canManageOffers = usePermission("canManageOffers")
+  const canViewOrders = usePermission("canViewOrders")
+  const isAdmin = authState.user?.role === "admin"
 
   const handleSignOut = () => {
     logout()
@@ -305,10 +314,10 @@ export default function AdminDashboard() {
   }, [authState.token, fetchProductsPage])
 
   useEffect(() => {
-    if (!authState.isLoading && authState.isAuthenticated && authState.user?.role === "admin") {
+    if (!authState.isLoading && authState.isAuthenticated && (authState.user?.role === "admin" || authState.user?.isEmployee)) {
       fetchProductsPage(productPage)
     }
-  }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, fetchProductsPage, productPage])
+  }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, authState.user?.isEmployee, fetchProductsPage, productPage])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -319,15 +328,15 @@ export default function AdminDashboard() {
     // Wait until auth state is resolved
     if (authState.isLoading) return
 
-    // Allow only signed-in admins to stay on the dashboard
-    if (authState.isAuthenticated && authState.user?.role === "admin") {
+    // Allow only signed-in admins/employees to stay on the dashboard
+    if (authState.isAuthenticated && (authState.user?.role === "admin" || authState.user?.isEmployee)) {
       fetchData()
       return
     }
 
     // For anyone else, send them to the login page so an admin can sign in
     router.push("/auth/login")
-  }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, fetchData, router])
+  }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, authState.user?.isEmployee, fetchData, router])
 
   const handleCreateDiscountCode = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -866,7 +875,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") {
+  if (!authState.isAuthenticated || !(authState.user?.role === "admin" || authState.user?.isEmployee)) {
     return null
   }
 
@@ -899,12 +908,14 @@ export default function AdminDashboard() {
                   Sign Out
                 </Button>
 
-                <Link href="/admin/settings" prefetch={true}>
-                  <Button variant="outline" className="bg-transparent text-xs sm:text-sm border-gray-200 text-gray-700 hover:bg-gray-50" size="sm">
-                    <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Settings
-                  </Button>
-                </Link>
+                {isAdmin && (
+                  <Link href="/admin/settings" prefetch={true}>
+                    <Button variant="outline" className="bg-transparent text-xs sm:text-sm border-gray-200 text-gray-700 hover:bg-gray-50" size="sm">
+                      <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Settings
+                    </Button>
+                  </Link>
+                )}
 
                 <Button
                   onClick={handleRefresh}
@@ -917,19 +928,23 @@ export default function AdminDashboard() {
                   Refresh
                 </Button>
 
-                <Link href="/admin/products/bulk-upload" prefetch={true}>
-                  <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
-                    <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Bulk Upload
-                  </Button>
-                </Link>
+                {(canAddProducts || canEditProducts) && (
+                  <Link href="/admin/products/bulk-upload" prefetch={true}>
+                    <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
+                      <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Bulk Upload
+                    </Button>
+                  </Link>
+                )}
 
-                <Link href="/admin/products/add" prefetch={true}>
-                  <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">
-                    <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Add Product
-                  </Button>
-                </Link>
+                {canAddProducts && (
+                  <Link href="/admin/products/add" prefetch={true}>
+                    <Button className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm" size="sm">
+                      <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Add Product
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>
@@ -963,24 +978,26 @@ export default function AdminDashboard() {
               </Card>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/admin/orders')}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Orders</CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">Manage Orders</div>
-                  <p className="text-xs text-muted-foreground">
-                    View list and details
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {canViewOrders && (
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/admin/orders')}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Orders</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">Manage Orders</div>
+                    <p className="text-xs text-muted-foreground">
+                      View list and details
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           {/* Main Content with tabs */}
@@ -995,23 +1012,25 @@ export default function AdminDashboard() {
               {/* Mobile-scrollable tabs */}
               <div className="overflow-x-auto">
                 <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground min-w-max">
-                  <TabsTrigger value="products" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Products</TabsTrigger>
-                  <TabsTrigger value="discounts" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Discounts</TabsTrigger>
-                  <TabsTrigger value="offers" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Offers</TabsTrigger>
+                  {canViewProducts && <TabsTrigger value="products" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Products</TabsTrigger>}
+                  {canManageDiscountCodes && <TabsTrigger value="discounts" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Discounts</TabsTrigger>}
+                  {canManageOffers && <TabsTrigger value="offers" className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5">Offers</TabsTrigger>}
                 </TabsList>
               </div>
 
-              <TabsContent value="products">
+              {canViewProducts && <TabsContent value="products">
                 <Card>
                   <CardHeader className="p-4 sm:p-6">
                     <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
                       <CardTitle className="text-lg sm:text-xl">Products Catalog ({productTotalCount || products.length})</CardTitle>
-                      <Link href="/admin/products/add" prefetch={true} className="w-full sm:w-auto">
-                        <Button size="sm" className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Product
-                        </Button>
-                      </Link>
+                      {canAddProducts && (
+                        <Link href="/admin/products/add" prefetch={true} className="w-full sm:w-auto">
+                          <Button size="sm" className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Product
+                          </Button>
+                        </Link>
+                      )}
                     </div>
 
                     <div className="mt-4 flex flex-col sm:flex-row gap-3">
@@ -1352,7 +1371,7 @@ export default function AdminDashboard() {
                                       </Button>
                                     </Link>
                                   </motion.div>
-                                  <motion.div
+                                  {canEditProducts && <motion.div
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     whileInView={{ opacity: 1, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.8 }}
@@ -1364,8 +1383,8 @@ export default function AdminDashboard() {
                                         <Edit className="h-5 w-5 sm:h-4 sm:w-4 text-green-600" />
                                       </Button>
                                     </Link>
-                                  </motion.div>
-                                  <motion.div
+                                  </motion.div>}
+                                  {canDeleteProducts && <motion.div
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     whileInView={{ opacity: 1, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.9 }}
@@ -1380,7 +1399,7 @@ export default function AdminDashboard() {
                                     >
                                       <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 text-red-600" />
                                     </Button>
-                                  </motion.div>
+                                  </motion.div>}
                                 </div>
                               </div>
                             </div>
@@ -1470,11 +1489,11 @@ export default function AdminDashboard() {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
+              </TabsContent>}
 
               {/* Orders tab removed */}
 
-              <TabsContent value="discounts">
+              {canManageDiscountCodes && <TabsContent value="discounts">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Discount Code Form */}
                   <Card>
@@ -1751,9 +1770,9 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
+              </TabsContent>}
 
-              <TabsContent value="offers">
+              {canManageOffers && <TabsContent value="offers">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Create/Edit Offer Form */}
                   <Card>
@@ -1918,7 +1937,7 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
+              </TabsContent>}
 
               {/* Analytics tab removed */}
             </Tabs>

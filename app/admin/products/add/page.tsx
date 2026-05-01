@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Plus, Trash2, Upload, X, Save } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 import { uploadImage } from "@/lib/supabase-storage"
 import { useProductsCache } from "@/lib/products-cache"
 import { BRANCH_OPTIONS } from "@/lib/branch-map"
@@ -27,6 +27,7 @@ interface ProductSize {
 
 export default function AddProductPage() {
   const { state: authState } = useAuth()
+  const canAddProducts = usePermission("canAddProducts")
   const { refresh } = useProductsCache()
   const router = useRouter()
   const [success, setSuccess] = useState(false)
@@ -53,10 +54,10 @@ export default function AddProductPage() {
   })
 
   useEffect(() => {
-    if (!authState.isLoading && (!authState.isAuthenticated || authState.user?.role !== "admin")) {
-      router.push("/auth/login")
+    if (!authState.isLoading && (!authState.isAuthenticated || !canAddProducts)) {
+      router.push("/admin/dashboard")
     }
-  }, [authState, router])
+  }, [authState, router, canAddProducts])
 
   const fileToBase64 = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -249,7 +250,7 @@ export default function AddProductPage() {
     )
   }
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") {
+  if (!authState.isAuthenticated || !canAddProducts) {
     return null
   }
 

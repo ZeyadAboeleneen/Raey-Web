@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { v2 as cloudinary } from "cloudinary"
+import { isAdminRequest } from "@/lib/erp-items"
 
 export const runtime = "nodejs"
 
@@ -62,8 +63,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    if (decoded.role !== "admin") {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    if (!(await isAdminRequest(request, "canAddProducts")) && !(await isAdminRequest(request, "canEditProducts"))) {
+      return NextResponse.json({ error: "Admin access required or insufficient permissions" }, { status: 403 })
     }
 
     const body = await request.json()

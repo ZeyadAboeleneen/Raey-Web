@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Package, User, MapPin, Eye } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 
 export default function AdminOrdersPage() {
   const router = useRouter()
   const { state: authState } = useAuth()
+  const canViewOrders = usePermission("canViewOrders")
   const { formatPrice } = useCurrencyFormatter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,8 +23,8 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     if (authState.isLoading) return
 
-    if (!authState.isAuthenticated || authState.user?.role !== "admin") {
-      router.push("/auth/login")
+    if (!authState.isAuthenticated || !canViewOrders) {
+      router.push("/admin/dashboard")
       return
     }
 
@@ -44,7 +45,7 @@ export default function AdminOrdersPage() {
     }
 
     fetchOrders()
-  }, [authState, router])
+  }, [authState, router, canViewOrders])
 
   const getStatusColor = (status: string) => {
     switch (status) {

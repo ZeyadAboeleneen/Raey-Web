@@ -6,13 +6,19 @@ import { sendEmail } from "@/lib/email"
 
 export const dynamic = "force-dynamic"
 
-const requireAdmin = (request: NextRequest) => {
+const requireAdminOrPermission = async (request: NextRequest) => {
   const token = request.headers.get("authorization")?.replace("Bearer ", "")
   if (!token) return { error: "Authorization required", status: 401 }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    if (decoded.role !== "admin") return { error: "Admin access required", status: 403 }
-    return { decoded }
+    if (decoded.role === "admin") return { decoded }
+    
+    if (decoded.employeeId) {
+      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      if (employee && employee.isActive && employee.canManageOffers) return { decoded, employee }
+    }
+    
+    return { error: "Permission denied", status: 403 }
   } catch {
     return { error: "Invalid token", status: 401 }
   }
@@ -88,7 +94,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request)
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { title, description, image_url, link_url, discount_code, is_active, display_order, send_email_notification } =
@@ -150,7 +156,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request)
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { searchParams } = new URL(request.url)
@@ -182,7 +188,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = requireAdmin(request)
+    const auth = await requireAdminOrPermission(request)
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { searchParams } = new URL(request.url)

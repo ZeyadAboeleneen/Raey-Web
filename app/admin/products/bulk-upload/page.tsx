@@ -25,7 +25,7 @@ import {
   Loader2,
 } from "lucide-react"
 import * as XLSX from "xlsx"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 // Types matching the API response
@@ -77,6 +77,8 @@ type Step = "upload" | "preview" | "processing" | "report"
 export default function BulkUploadPage() {
   const router = useRouter()
   const { state: authState } = useAuth()
+  const canAddProducts = usePermission("canAddProducts")
+  const canEditProducts = usePermission("canEditProducts")
   const [step, setStep] = useState<Step>("upload")
   const [dataFile, setDataFile] = useState<File | null>(null)
   const [imagesFile, setImagesFile] = useState<File | null>(null)
@@ -95,10 +97,10 @@ export default function BulkUploadPage() {
   const zipInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!authState.isLoading && (!authState.isAuthenticated || authState.user?.role !== "admin")) {
-      router.push("/auth/login")
+    if (!authState.isLoading && (!authState.isAuthenticated || (!canAddProducts && !canEditProducts))) {
+      router.push("/admin/dashboard")
     }
-  }, [authState, router])
+  }, [authState, router, canAddProducts, canEditProducts])
 
   const getAuthToken = () => {
     return authState.token || localStorage.getItem("token") || ""
@@ -344,7 +346,7 @@ export default function BulkUploadPage() {
     )
   }
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") return null
+  if (!authState.isAuthenticated || !canAddProducts) return null
 
   return (
     <div className="min-h-screen bg-gray-50">

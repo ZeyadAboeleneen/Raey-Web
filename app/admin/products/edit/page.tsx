@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Plus, Trash2, Upload, X, Save } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 import { uploadImage } from "@/lib/supabase-storage"
 import { useProductsCache } from "@/lib/products-cache"
 import { BRANCH_OPTIONS, slugToCode } from "@/lib/branch-map"
@@ -44,6 +44,7 @@ interface Product {
 
 export default function EditProductPage() {
   const { state: authState } = useAuth()
+  const canEditProducts = usePermission("canEditProducts")
   const { refresh } = useProductsCache()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -71,10 +72,10 @@ export default function EditProductPage() {
   })
 
   useEffect(() => {
-    if (!authState.isLoading && (!authState.isAuthenticated || authState.user?.role !== "admin")) {
-      router.push("/auth/login")
+    if (!authState.isLoading && (!authState.isAuthenticated || !canEditProducts)) {
+      router.push("/admin/dashboard")
     }
-  }, [authState, router])
+  }, [authState, router, canEditProducts])
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -283,7 +284,7 @@ export default function EditProductPage() {
     )
   }
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") {
+  if (!authState.isAuthenticated || !canEditProducts) {
     return null
   }
 

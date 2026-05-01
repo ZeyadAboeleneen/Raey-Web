@@ -22,6 +22,8 @@ import {
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { EmployeeManagement } from "@/components/admin/employee-management"
 
 interface HeroImages {
   wedding: string
@@ -36,6 +38,7 @@ const DEFAULT_HERO_IMAGES: HeroImages = {
 export default function AdminSettings() {
   const router = useRouter()
   const { state: authState } = useAuth()
+  const [activeTab, setActiveTab] = useState("appearance")
   const [heroImages, setHeroImages] = useState<HeroImages>(DEFAULT_HERO_IMAGES)
   const [weddingPreview, setWeddingPreview] = useState<string | null>(null)
   const [soireePreview, setSoireePreview] = useState<string | null>(null)
@@ -258,20 +261,27 @@ export default function AdminSettings() {
             </div>
           </motion.div>
 
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-600">{error}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-white border shadow-sm">
+              <TabsTrigger value="appearance">Site Appearance</TabsTrigger>
+              <TabsTrigger value="employees">Employee Management</TabsTrigger>
+            </TabsList>
 
-          {/* Hero Images Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
+            <TabsContent value="appearance" className="space-y-6 m-0">
+              {error && (
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-600">{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+
+              {/* Hero Images Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
             <Card className="mb-6">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -540,6 +550,12 @@ export default function AdminSettings() {
               </motion.div>
             )}
           </motion.div>
+            </TabsContent>
+
+            <TabsContent value="employees" className="m-0">
+              <EmployeeManagement />
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
     </div>

@@ -3,11 +3,16 @@
 import { useMemo } from "react"
 import { usePathname } from "next/navigation"
 import { useLocale } from "@/lib/locale-context"
+import { usePermission } from "@/lib/auth-context"
 
 export const useCurrencyFormatter = () => {
   const { settings } = useLocale()
   const pathname = usePathname()
-  const showPrices = useMemo(() => pathname?.startsWith("/admin") ?? false, [pathname])
+  const canViewPrices = usePermission("canViewPricesOnWebsite")
+  
+  const showPrices = useMemo(() => {
+    return (pathname?.startsWith("/admin") ?? false) || canViewPrices
+  }, [pathname, canViewPrices])
 
   const formatter = useMemo(() => {
     try {

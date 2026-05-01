@@ -1,14 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
+import { isAdminRequest } from "@/lib/erp-items"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    if (!token) return NextResponse.json({ error: "Authorization required" }, { status: 401 })
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    if (decoded.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    if (!(await isAdminRequest(request, "canUpdateOrders"))) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
+    }
 
     const { status } = await request.json()
     const { orderId } = await params

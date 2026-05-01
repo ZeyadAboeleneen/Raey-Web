@@ -40,7 +40,7 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format");
-    const includeInactive = searchParams.get("includeInactive") === "true" && isAdminRequest(request);
+    const includeInactive = searchParams.get("includeInactive") === "true" && (await isAdminRequest(request, "canViewProducts"));
 
     const pool = await getMssqlPool();
     const result = await pool
@@ -110,8 +110,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!isAdminRequest(request)) {
-      return errorResponse(403, "Admin access required");
+    if (!(await isAdminRequest(request, "canEditProducts"))) {
+      return errorResponse(403, "Admin access required or insufficient permissions");
     }
 
     const itemId = parseInt(params.id, 10);
@@ -203,8 +203,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!isAdminRequest(request)) {
-      return errorResponse(403, "Admin access required");
+    if (!(await isAdminRequest(request, "canDeleteProducts"))) {
+      return errorResponse(403, "Admin access required or insufficient permissions");
     }
 
     const itemId = parseInt(params.id, 10);

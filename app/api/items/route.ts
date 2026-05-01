@@ -7,6 +7,8 @@ import {
   VALID_ERP_LINE_IDS,
 } from "@/lib/erp-mappings";
 import { isAdminRequest } from "@/lib/erp-items";
+import { prisma } from "@/lib/prisma";
+import { decodeEmployeeJWT } from "@/lib/auth-helpers";
 
 // ── In-memory cache ─────────────────────────────────────────────────
 interface CacheEntry {
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
     const branch = searchParams.get("branch");
     const search = (searchParams.get("search") || searchParams.get("q") || "").trim();
     const format = searchParams.get("format"); // "erp" for raw ERP shape, default = cached shape
-    const includeInactive = searchParams.get("includeInactive") === "true" && isAdminRequest(request);
+    const includeInactive = searchParams.get("includeInactive") === "true" && (await isAdminRequest(request, "canViewProducts"));
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 500);
     const hasPagination = searchParams.has("page") || searchParams.has("limit");
@@ -145,10 +147,25 @@ export async function GET(request: NextRequest) {
       : finalProducts;
 
     // Transform to the shape the frontend expects
-    const output =
+    let output =
       format === "erp"
         ? pagedProducts
         : pagedProducts.map(erpProductToCachedShape);
+
+    // ── Strip prices based on permissions ──────────────────────────────
+    const canViewPrices = await isAdminRequest(request, "canViewPricesOnWebsite");
+
+    if (!canViewPrices) {
+      output = output.map((item: any) => {
+        const cleaned = { ...item };
+        delete cleaned.price;
+        delete cleaned.beforeSalePrice;
+        delete cleaned.afterSalePrice;
+        delete cleaned.packagePrice;
+        delete cleaned.packageOriginalPrice;
+        return cleaned;
+      });
+    }
 
     const body = JSON.stringify(output);
     setCache(cacheKey, body);
