@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
+import fs from "fs"
 
 export const dynamic = "force-dynamic"
 
@@ -221,8 +222,8 @@ export async function POST(request: NextRequest) {
             // 2. Double-booking check inside transaction
             const overlapCheck = await new sql.Request(txn)
               .input('ModelTypeID', sql.Int, modelTypeId)
-              .input('requestedStart', sql.Date, item.rentStart)
-              .input('requestedEnd', sql.Date, item.rentEnd)
+              .input('requestedStart', sql.DateTime, rentStartDate)
+              .input('requestedEnd', sql.DateTime, rentEndDate)
               .query(`
                 SELECT COUNT(*) AS cnt
                 FROM Booking
@@ -243,11 +244,11 @@ export async function POST(request: NextRequest) {
 
             // 4. INSERT booking with SERVER-CALCULATED price (never trust frontend)
             await new sql.Request(txn)
-              .input('invoice_code', sql.NVarChar, `WEB-${orderId.substring(orderId.length - 6)}`)
-              .input('Cust_Name', sql.NVarChar, shippingAddress.name || '')
-              .input('Cust_Tel', sql.NVarChar, shippingAddress.secondaryPhone || '')
-              .input('Cust_Mobile', sql.NVarChar, shippingAddress.phone || '')
-              .input('Cust_Address', sql.NVarChar, shippingAddress.address || '')
+              .input('invoice_code', sql.NVarChar, `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50))
+              .input('Cust_Name', sql.NVarChar, (shippingAddress.name || '').substring(0, 50))
+              .input('Cust_Tel', sql.NVarChar, (shippingAddress.secondaryPhone || '').substring(0, 50))
+              .input('Cust_Mobile', sql.NVarChar, (shippingAddress.phone || '').substring(0, 50))
+              .input('Cust_Address', sql.NVarChar, (shippingAddress.address || '').substring(0, 50))
               .input('DeviceTypeID', sql.Int, 0)
               .input('ModelTypeID', sql.Int, modelTypeId)
               .input('Scarves', sql.Bit, 0)
@@ -263,11 +264,11 @@ export async function POST(request: NextRequest) {
               .input('Total', sql.Decimal(18, 2), serverPrice)
               .input('Deposit', sql.Decimal(18, 2), 0)
               .input('Remaining', sql.Decimal(18, 2), serverPrice)
-              .input('NoteItem', sql.NVarChar, noteItem)
-              .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust) : '')
-              .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist) : '')
-              .input('ButtocksSize', sql.NVarChar, item.customMeasurements?.values?.hips ? String(item.customMeasurements.values.hips) : '')
-              .input('SleeveSize', sql.NVarChar, item.customMeasurements?.values?.sleeve ? String(item.customMeasurements.values.sleeve) : '')
+              .input('NoteItem', sql.NVarChar, noteItem.substring(0, 200))
+              .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust).substring(0, 20) : '')
+              .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist).substring(0, 20) : '')
+              .input('ButtocksSize', sql.NVarChar, item.customMeasurements?.values?.hips ? String(item.customMeasurements.values.hips).substring(0, 20) : '')
+              .input('SleeveSize', sql.NVarChar, item.customMeasurements?.values?.sleeve ? String(item.customMeasurements.values.sleeve).substring(0, 20) : '')
               .input('ApprovedID', sql.Int, 1)
               .input('Desc_Customer', sql.NVarChar, '')
               .input('BranchID', sql.Int, branchId)
@@ -317,10 +318,11 @@ export async function POST(request: NextRequest) {
               category: pricingResult.category,
               formula: pricingResult.formula,
             })
-          } catch (txnError) {
+          } catch (txnError: any) {
             // Rollback on any error inside the transaction
             try { await txn.rollback() } catch { /* already rolled back */ }
             console.error(`Failed to process rental booking for item ${item.productId}:`, txnError)
+            fs.writeFileSync("scratch_error.log", String(txnError.stack || txnError))
           }
         }
       }

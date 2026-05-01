@@ -56,6 +56,9 @@ export async function calculateRentalPrice(
 
   const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
+  // Format rentStart as YYYY-MM-DD string to prevent UTC timezone shifts in MSSQL
+  const rentStartStr = startDay.toLocaleDateString("en-CA") // "YYYY-MM-DD"
+
   // Use transaction request if available, otherwise pool request
   const makeRequest = () => {
     if (txn) return new sql.Request(txn)
@@ -79,11 +82,13 @@ export async function calculateRentalPrice(
   const countReq = await makeRequest()
   const rentalCountResult = await countReq
     .input("ModelTypeID", sql.Int, modelTypeId)
+    .input("RentStart", sql.VarChar, rentStartStr)
     .query(`
       SELECT COUNT(*) AS n
       FROM Booking
       WHERE ModelTypeID = @ModelTypeID
-        AND ReceivedDate IS NOT NULL
+        AND ReturnDate IS NOT NULL
+        AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
     `)
   const n: number = rentalCountResult.recordset[0].n
 
@@ -109,37 +114,30 @@ export async function calculateRentalPrice(
       formula = `cost(${cost}) × ${multiplier.toFixed(4)}`
     }
   } else {
-    // n >= 4: POST4 pricing — recalculate P_min dynamically from first 4 bookings
+    // n >= 4: POST4 pricing — P_min dynamically from ACTUAL totals of first 4 bookings
     const pMinReq = await makeRequest()
     const pMinResult = await pMinReq
       .input("ModelTypeID", sql.Int, modelTypeId)
+      .input("RentStart", sql.VarChar, rentStartStr)
       .query(`
         WITH First4 AS (
-          SELECT TOP 4 BookingDate, ReceivedDate
+          SELECT TOP 4 BookingDate, ReceivedDate, Total
           FROM Booking
           WHERE ModelTypeID = @ModelTypeID
-            AND ReceivedDate IS NOT NULL
-          ORDER BY BookingDate ASC
+            AND ReturnDate IS NOT NULL
+            AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
+          ORDER BY ReturnDate ASC
         )
-        SELECT BookingDate, ReceivedDate FROM First4
+        SELECT Total FROM First4
       `)
 
-    // Recalculate each of the first 4 rental prices using the same formula
-    // This is Option A from the critical fixes — don't trust stored Total values
     let pMin = round100(cost * 0.8) // fallback to Cat A
     if (pMinResult.recordset.length > 0) {
-      const recalculatedPrices = pMinResult.recordset.map((row: any) => {
-        const bookDate = new Date(row.BookingDate)
-        const recvDate = new Date(row.ReceivedDate)
-        const dPrev = Math.max(1, Math.round((recvDate.getTime() - bookDate.getTime()) / msPerDay))
-        if (dPrev <= 15) {
-          return round100(cost * 0.8)
-        } else {
-          const mult = 0.8 - (0.2 / 15) * (dPrev - 15)
-          return round100(cost * mult)
-        }
-      })
-      pMin = Math.min(...recalculatedPrices)
+      // Use the actual lowest Total it was previously rented for
+      const actualPrices = pMinResult.recordset.map((row: any) => row.Total).filter(t => t > 0);
+      if (actualPrices.length > 0) {
+        pMin = Math.min(...actualPrices);
+      }
     }
 
     total = pMin - 500 * (n - 3)
