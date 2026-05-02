@@ -362,7 +362,9 @@ export default function WeddingProductsPage() {
         // For gift packages, use package price; for regular products, use smallest size price
         const price = product.isGiftPackage && product.packagePrice
           ? product.packagePrice
-          : getSmallestPrice(product.sizes);
+          : (product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0)
+            ? product.rentalPriceA
+            : getSmallestPrice(product.sizes);
 
         await addToFavorites({
           id: product.id,
@@ -375,11 +377,11 @@ export default function WeddingProductsPage() {
           isNew: product.isNew,
           isBestseller: product.isBestseller,
           sizes: product.sizes,
-          // Add gift package fields
           isGiftPackage: product.isGiftPackage,
           packagePrice: product.packagePrice,
           packageOriginalPrice: product.packageOriginalPrice,
           giftPackageSizes: product.giftPackageSizes,
+          rentalPriceA: product.rentalPriceA,
         })
       }
     } catch (error) {
@@ -423,12 +425,14 @@ export default function WeddingProductsPage() {
         return { price, original }
       }
 
-      const price = getSmallestPrice(product.sizes)
+      const price = (product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0)
+        ? product.rentalPriceA
+        : getSmallestPrice(product.sizes)
       const original = getSmallestOriginalPrice(product.sizes)
       return { price, original }
     }, [product])
 
-    const hasDiscount = priceData.original > 0 && priceData.price < priceData.original
+    const hasDiscount = product.branch === "sell-dresses" && priceData.original > 0 && priceData.price < priceData.original
 
     const handleFavoriteClick = useCallback(
       async (e: any) => {
@@ -539,7 +543,12 @@ export default function WeddingProductsPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className={priceTextWrapperClassName}>
+                            <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
+                              {product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0 && (
+                                <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                  Starting at (Cat A)
+                                </span>
+                              )}
                               {hasDiscount ? (
                                 <>
                                   <span className="line-through text-gray-300 text-[10px] sm:text-xs block">

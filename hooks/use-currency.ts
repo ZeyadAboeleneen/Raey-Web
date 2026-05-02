@@ -11,7 +11,12 @@ export const useCurrencyFormatter = () => {
   const canViewPrices = usePermission("canViewPricesOnWebsite")
   
   const showPrices = useMemo(() => {
-    return (pathname?.startsWith("/admin") ?? false) || canViewPrices
+    return (
+      (pathname?.startsWith("/admin") ?? false) || 
+      (pathname?.startsWith("/checkout") ?? false) || 
+      (pathname?.startsWith("/cart") ?? false) || 
+      canViewPrices
+    )
   }, [pathname, canViewPrices])
 
   const formatter = useMemo(() => {

@@ -59,6 +59,8 @@ interface Product {
   isOutOfStock?: boolean
   createdAt: string
   sizes: ProductSize[]
+  /** Category A rental price (cost × 0.8, rounded to 100, floor 3000) from ERP */
+  rentalPriceA?: number | null
   // Gift package fields
   isGiftPackage?: boolean
   packagePrice?: number
@@ -1256,6 +1258,33 @@ export default function AdminDashboard() {
                                       }
 
                                       // Handle regular products
+                                      // Prefer rentalPriceA (Category A = cost × 0.8) when available
+                                      const rentalA = product.rentalPriceA;
+                                      if (rentalA && rentalA > 0) {
+                                        return (
+                                          <motion.div
+                                            className="flex flex-col items-center sm:items-start space-y-1"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.5, delay: 0.3 }}
+                                            viewport={{ once: true }}
+                                          >
+                                            <motion.span
+                                              className="text-gray-900 font-bold text-xl"
+                                              initial={{ opacity: 0, x: -10 }}
+                                              whileInView={{ opacity: 1, x: 0 }}
+                                              transition={{ duration: 0.4, delay: 0.4 }}
+                                              viewport={{ once: true }}
+                                            >
+                                              EGP {rentalA.toFixed(0)}
+                                            </motion.span>
+                                            <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full">
+                                              Cat A
+                                            </span>
+                                          </motion.div>
+                                        );
+                                      }
+
                                       const smallestPrice = getSmallestPrice(product.sizes);
                                       const smallestOriginalPrice = getSmallestOriginalPrice(product.sizes);
 

@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tag, Shield, Truck, Package, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
+import { Tag, Shield, Truck, Package, ChevronDown, ChevronUp, Sparkles, Calendar, Ruler } from "lucide-react"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
+import { useLocale } from "@/lib/locale-context"
+import { useTranslation, TranslationKey } from "@/lib/translations"
 
 interface OrderSummaryProps {
   items: Array<{
@@ -37,6 +39,13 @@ interface OrderSummaryProps {
         }
       }>
     }
+    customMeasurements?: {
+      unit: string
+      values: Record<string, string>
+    }
+    type?: string
+    rentStart?: string
+    rentEnd?: string
   }>
   subtotal: number
   total: number
@@ -71,6 +80,8 @@ export const OrderSummary = ({
 }: OrderSummaryProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
 
   return (
     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
@@ -153,16 +164,58 @@ export const OrderSummary = ({
                     {item.isGiftPackage && item.packageDetails && (
                       <div className="mt-1 text-xs text-gray-500">
                         <div className="flex items-center space-x-1 mb-1">
-                          <Package className="h-3 w-3" />
-                          <span>Package Contents:</span>
+                          <Package className="h-3 w-3 text-purple-600" />
+                          <span className="font-medium text-purple-600">{t("packageContents")}</span>
                         </div>
-                        <div className="space-y-1 ml-4">
+                        <div className="space-y-1 ml-4 border-l border-purple-100 pl-2">
                           {item.packageDetails.sizes.map((sizeInfo: any, sizeIndex: number) => (
                             <div key={sizeIndex} className="flex items-center space-x-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                              <span>{sizeInfo.size}: {sizeInfo.selectedProduct.productName}</span>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <span>{sizeInfo.size}: {sizeInfo.selectedProduct?.productName || t("unknown")}</span>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Rental Details */}
+                    {item.type === "rent" && item.rentStart && item.rentEnd && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        <div className="flex items-center text-purple-600 font-medium mb-1">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          <span>{t("rentalDetails")}</span>
+                        </div>
+                        {(() => {
+                          const rStart = new Date(item.rentStart)
+                          const rEnd = new Date(item.rentEnd)
+                          const occasionDate = new Date(rStart)
+                          occasionDate.setDate(occasionDate.getDate() + 1)
+                          
+                          return (
+                            <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
+                              <div><span className="font-medium">{t("occasion")}</span> {occasionDate.toLocaleDateString()}</div>
+                              <div><span className="font-medium">{t("receiveDate")}</span> {rStart.toLocaleDateString()}</div>
+                              <div><span className="font-medium">{t("returnDate")}</span> {rEnd.toLocaleDateString()}</div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Custom Measurements */}
+                    {item.customMeasurements && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        <div className="flex items-center text-purple-600 font-medium mb-1">
+                          <Ruler className="h-3 w-3 mr-1" />
+                          <span>{t("customMeasurementsLabel")} ({item.customMeasurements.unit}):</span>
+                        </div>
+                        <div className="ml-4 border-l border-purple-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                          {Object.entries(item.customMeasurements.values).map(([key, val]) => {
+                            if (!val) return null
+                            return (
+                              <div key={key} className="capitalize">{t(key as TranslationKey)}: {val}</div>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -210,27 +263,25 @@ export const OrderSummary = ({
                 
                 {/* Gift Package Details */}
                 {item.isGiftPackage && item.packageDetails && item.packageDetails.sizes && Array.isArray(item.packageDetails.sizes) && (
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-gray-500">
                     <div className="flex items-center space-x-1 mb-1">
-                      <Package className="h-3 w-3" />
-                      <span>Package Contents:</span>
+                      <Package className="h-3 w-3 text-purple-600" />
+                      <span className="font-medium text-purple-600">{t("packageContents")}</span>
                     </div>
-                    <div className="space-y-1 ml-4">
+                    <div className="space-y-1 ml-4 border-l border-purple-100 pl-2">
                       {item.packageDetails.sizes.map((sizeInfo: any, sizeIndex: number) => {
                         // Safety check for malformed data
                         if (!sizeInfo || typeof sizeInfo !== 'object') {
-                          console.warn('Invalid sizeInfo in gift package:', sizeInfo);
                           return null;
                         }
                         
                         // Additional safety check for the selectedProduct field
                         if (!sizeInfo.selectedProduct || typeof sizeInfo.selectedProduct !== 'object') {
-                          console.warn('Invalid selectedProduct in sizeInfo:', sizeInfo);
                           return (
                             <div key={sizeIndex} className="flex items-center space-x-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
                               <span>
-                                {sizeInfo.size || 'Unknown size'}: No product selected
+                                {sizeInfo.size || t("unknownSize")}: {t("noProductSelected")}
                               </span>
                             </div>
                           );
@@ -238,13 +289,55 @@ export const OrderSummary = ({
                         
                         return (
                           <div key={sizeIndex} className="flex items-center space-x-1">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
                             <span>
-                              {sizeInfo.size || 'Unknown size'}: {sizeInfo.selectedProduct.productName || 'No product name'}
+                              {sizeInfo.size || t("unknownSize")}: {sizeInfo.selectedProduct.productName || t("noProductName")}
                             </span>
                           </div>
                         );
                       }).filter(Boolean)}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Rental Details */}
+                {item.type === "rent" && item.rentStart && item.rentEnd && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    <div className="flex items-center text-purple-600 font-medium mb-1">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      <span>{t("rentalDetails")}</span>
+                    </div>
+                    {(() => {
+                      const rStart = new Date(item.rentStart)
+                      const rEnd = new Date(item.rentEnd)
+                      const occasionDate = new Date(rStart)
+                      occasionDate.setDate(occasionDate.getDate() + 1)
+                      
+                      return (
+                        <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
+                          <div><span className="font-medium">{t("occasion")}</span> {occasionDate.toLocaleDateString()}</div>
+                          <div><span className="font-medium">{t("receiveDate")}</span> {rStart.toLocaleDateString()}</div>
+                          <div><span className="font-medium">{t("returnDate")}</span> {rEnd.toLocaleDateString()}</div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+
+                {/* Custom Measurements */}
+                {item.customMeasurements && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    <div className="flex items-center text-purple-600 font-medium mb-1">
+                      <Ruler className="h-3 w-3 mr-1" />
+                      <span>{t("customMeasurementsLabel")} ({item.customMeasurements.unit}):</span>
+                    </div>
+                    <div className="ml-4 border-l border-purple-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                      {Object.entries(item.customMeasurements.values).map(([key, val]) => {
+                        if (!val) return null
+                        return (
+                          <div key={key} className="capitalize">{t(key as TranslationKey)}: {val}</div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -273,7 +366,7 @@ export const OrderSummary = ({
 
         {/* Discount Code */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-purple-800">Discount Code</Label>
+          <Label className="text-sm font-medium text-purple-800">{t("discountCode")}</Label>
           {!appliedDiscount ? (
             <div className="flex space-x-2">
               <Input
@@ -281,7 +374,7 @@ export const OrderSummary = ({
                 onChange={(e) => {
                   setDiscountCode(e.target.value.toUpperCase())
                 }}
-                placeholder="Enter discount code"
+                placeholder={t("enterDiscountCode")}
                 className="flex-1 text-sm border-gray-200 focus:border-purple-500 focus:ring-purple-500"
               />
               <Button
@@ -299,7 +392,7 @@ export const OrderSummary = ({
                     className="h-4 w-4 border-t-2 border-b-2 border-purple-500 rounded-full"
                   />
                 ) : (
-                  "Apply"
+                  t("apply")
                 )}
               </Button>
             </div>
@@ -316,7 +409,7 @@ export const OrderSummary = ({
                 size="sm"
                 className="text-green-600 hover:text-green-700 hover:bg-green-100"
               >
-                Remove
+                {t("remove")}
               </Button>
             </div>
           )}
@@ -342,13 +435,13 @@ export const OrderSummary = ({
           <>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span>{t("subtotal")}</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               {appliedDiscount && (
                 <div className="flex justify-between text-green-600">
                   <span>
-                    Discount (
+                    {t("discount")} (
                     {appliedDiscount.type === "percentage"
                       ? `${appliedDiscount.value}%`
                       : appliedDiscount.type === "buyXgetX"
@@ -362,11 +455,11 @@ export const OrderSummary = ({
             </div>
 
             <div className="flex justify-between text-lg font-medium">
-              <span>Total</span>
+              <span>{t("total")}</span>
               <span>{formatPrice(total)}</span>
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              All prices include shipping.
+              {t("allPricesIncludeShipping")}
             </p>
           </>
         ) : null}
@@ -399,10 +492,10 @@ export const OrderSummary = ({
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   className="h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"
                 />
-                Processing...
+                {t("processing")}
               </div>
             ) : (
-              "Place Order"
+              t("placeOrder")
             )}
           </span>
           <motion.span 

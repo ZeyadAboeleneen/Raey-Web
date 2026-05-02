@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
 import { ArrowLeft, Star, Heart, ShoppingCart, Truck, Shield, RotateCcw, ChevronDown, X, Package, Instagram, Facebook, ChevronLeft, ChevronRight, AlertCircle, MessageCircle, Maximize2 } from "lucide-react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
@@ -64,6 +64,7 @@ interface ProductDetail {
   packagePrice?: number
   packageOriginalPrice?: number
   giftPackageSizes?: any[]
+  hasBeenRented?: boolean
 }
 
 interface Review {
@@ -100,6 +101,7 @@ const getValidImages = (images?: string[] | null) => {
 
 export default function ProductDetailPage() {
   const { branch, product: productId } = useParams() as { branch: string; product: string }
+  const router = useRouter()
   const isRentBranch = branch !== "sell-dresses"
   const { getById, getByBranch, loading: cacheLoading } = useProductsCache()
   const [product, setProduct] = useState<ProductDetail | null>(null)
@@ -543,6 +545,7 @@ export default function ProductDetailPage() {
         : `${product.name} added to cart.`,
     })
     setShowMainProductSizeSelector(false)
+    router.push("/checkout")
   }
 
   const openSizeSelector = (product: any) => {
@@ -838,8 +841,10 @@ export default function ProductDetailPage() {
                             )
                           }
                           const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
-                          const selectedPrice = selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
-                          const originalPrice = selectedSizeObj?.originalPrice || 0
+                          const selectedPrice = (isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
+                            ? product.rentalPriceA
+                            : (selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0)
+                          const originalPrice = isRentBranch ? 0 : (selectedSizeObj?.originalPrice || 0)
                           if (originalPrice > 0 && selectedPrice < originalPrice) {
                             return (
                               <div className="flex items-center space-x-3">
@@ -852,7 +857,16 @@ export default function ProductDetailPage() {
                               </div>
                             )
                           }
-                          return <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
+                          return (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
+                              {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
+                                <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full mt-1">
+                                  Starting at (Cat A)
+                                </span>
+                              )}
+                            </div>
+                          )
                         })()}
                       </div>
                     )
@@ -954,36 +968,38 @@ export default function ProductDetailPage() {
                       )}
 
                       {/* Exclusive Hold Option */}
-                      <div
-                        className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
-                          isExclusive
-                            ? 'border-black bg-gray-50 shadow-sm'
-                            : 'border-gray-200 hover:border-gray-400'
-                        }`}
-                        onClick={() => setIsExclusive(!isExclusive)}
-                      >
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={isExclusive}
-                            onChange={(e) => setIsExclusive(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm">Exclusive Hold</p>
-                            <div className="mt-1.5 space-y-1">
-                              <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                                <span className="text-gray-400">✦</span>
-                                The dress is reserved only for you
-                              </p>
-                              <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                                <span className="text-gray-400">✦</span>
-                                No one else can rent it before your pickup
-                              </p>
+                      {!product.hasBeenRented && (
+                        <div
+                          className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
+                            isExclusive
+                              ? 'border-black bg-gray-50 shadow-sm'
+                              : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                          onClick={() => setIsExclusive(!isExclusive)}
+                        >
+                          <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isExclusive}
+                              onChange={(e) => setIsExclusive(e.target.checked)}
+                              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900 text-sm">Exclusive Hold</p>
+                              <div className="mt-1.5 space-y-1">
+                                <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                  <span className="text-gray-400">✦</span>
+                                  The dress is reserved only for you
+                                </p>
+                                <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                  <span className="text-gray-400">✦</span>
+                                  No one else can rent it before your pickup
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </label>
-                      </div>
+                          </label>
+                        </div>
+                      )}
                       {/* Rental Price Display */}
                       {rentEventDate && (
                         <div className="border rounded-lg p-4 bg-white">
@@ -1052,8 +1068,8 @@ export default function ProductDetailPage() {
                             ? "Loading..."
                             : !rentEventDate
                               ? "Select Event Date"
-                              : "Add Rental to Cart")
-                          : "Add to Cart"}
+                              : "Rent Now")
+                          : "Buy Now"}
                     </Button>
                   </div>
                 </div>

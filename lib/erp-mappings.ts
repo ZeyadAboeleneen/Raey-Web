@@ -42,6 +42,8 @@ export interface ErpProduct {
   id: number;
   name: string;
   price: number;
+  /** Dress cost (Item_buypric) from ERP — used to derive rental category prices. */
+  cost: number;
   image: string;
   /** ERP Items.Category_id — wedding vs soiree line only. */
   lineId: number | null;
@@ -60,6 +62,7 @@ export interface ErpItemRow {
   ItemID: number;
   Item_name: string | null;
   Item_sellpricNow: number | null;
+  Item_buypric: number | null;
   PicPath: string | null;
   Item_Isdisabled: boolean | number | null;
   LineId: number | null;
@@ -94,6 +97,7 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
         id,
         name: (row.Item_name || "").trim(),
         price: row.Item_sellpricNow ?? 0,
+        cost: row.Item_buypric ?? 0,
         image: (row.PicPath || "").trim(),
         lineId: row.LineId,
         collection: mapLineIdToCollection(row.LineId),
@@ -126,10 +130,16 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
   return Array.from(itemMap.values());
 }
 
+/** Round to nearest 100 EGP (same logic as rental-pricing.ts). */
+const round100 = (val: number) => Math.round(val / 100) * 100;
+
 /**
  * Maps an ERP product to the JSON shape the storefront consumes.
  */
 export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
+  // Category A rental price = cost × 0.8, rounded to nearest 100, floor 3000
+  const rentalPriceA = p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
+
   return {
     _id: String(p.id),
     id: String(p.id),
@@ -138,6 +148,7 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     description: "",
     longDescription: "",
     price: p.price,
+    rentalPriceA,
     image: p.image,
     beforeSalePrice: null,
     afterSalePrice: null,
@@ -165,6 +176,7 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     packageOriginalPrice: null,
     giftPackageSizes: [],
     unavailableDates: p.unavailableDates,
+    hasBeenRented: p.unavailableDates.length > 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

@@ -310,7 +310,12 @@ export default function FavoritesPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="text-[11px] sm:text-xs">
+                                      <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                                        {item.branch !== "sell-dresses" && item.rentalPriceA && item.rentalPriceA > 0 && (
+                                          <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                            Starting at (Cat A)
+                                          </span>
+                                        )}
                                         <span className="text-xs sm:text-sm font-semibold">{formatPrice(item.price)}</span>
                                       </div>
                                     )}

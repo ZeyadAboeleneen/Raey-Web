@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
         i.ID          AS ItemID,
         i.Item_name,
         i.Item_sellpricNow,
+        i.Item_buypric,
         i.PicPath,
         i.Item_Isdisabled,
         i.Category_id AS LineId,

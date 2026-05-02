@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Minus, Plus, Trash2, Heart } from "lucide-react"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
+import { useLocale } from "@/lib/locale-context"
+import { useTranslation } from "@/lib/translations"
 
 interface CartItemProps {
   item: {
@@ -68,6 +70,8 @@ export function CartItem({
 }: CartItemProps) {
   const [isRemoving, setIsRemoving] = useState(false)
   const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
 
   const handleRemove = () => {
     setIsRemoving(true)
@@ -144,13 +148,13 @@ export function CartItem({
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                       item.type === 'rent' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                     }`}>
-                      {item.type === 'rent' ? 'Rent' : 'Buy'}
+                      {item.type === 'rent' ? t("rentLabel") : t("buyLabel")}
                     </span>
                   )}
                 </div>
                 {item.isGiftPackage && item.packageDetails ? (
                   <div className="text-gray-600 text-xs mb-1">
-                    <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
+                    <p className="font-medium">{t("giftPackage")} ({item.packageDetails.totalSizes} {t("sizes")})</p>
                     {item.packageDetails.sizes.map((sizeInfo, index) => (
                       <p key={index} className="text-gray-500">
                         • {sizeInfo.size} ({sizeInfo.volume}): {sizeInfo.selectedProduct.productName}
@@ -168,7 +172,7 @@ export function CartItem({
                 )}
                 {item.type === "rent" && item.rentStart && item.rentEnd && (
                   <p className="text-gray-500 text-xs mb-1">
-                    Dates: {new Date(item.rentStart).toLocaleDateString()} - {new Date(item.rentEnd).toLocaleDateString()}
+                    {t("dates")} {new Date(item.rentStart).toLocaleDateString()} {t("to")} {new Date(item.rentEnd).toLocaleDateString()}
                   </p>
                 )}
                 {showPrices ? (
@@ -258,13 +262,13 @@ export function CartItem({
                   <span className={`text-xs px-2.5 py-0.5 rounded-full ${
                     item.type === 'rent' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                   }`}>
-                    {item.type === 'rent' ? 'Rent' : 'Buy'}
+                    {item.type === 'rent' ? t("rentLabel") : t("buyLabel")}
                   </span>
                 )}
               </div>
               {item.isGiftPackage && item.packageDetails ? (
                 <div className="text-gray-600 text-sm mb-2">
-                  <p className="font-medium">Gift Package ({item.packageDetails.totalSizes} sizes)</p>
+                  <p className="font-medium">{t("giftPackage")} ({item.packageDetails.totalSizes} {t("sizes")})</p>
                   {item.packageDetails.sizes.map((sizeInfo, index) => (
                     <p key={index} className="text-gray-500 text-xs">
                       • {sizeInfo.size} ({sizeInfo.volume}): {sizeInfo.selectedProduct.productName}
@@ -282,7 +286,7 @@ export function CartItem({
               )}
               {item.type === "rent" && item.rentStart && item.rentEnd && (
                 <p className="text-gray-500 text-xs mb-2">
-                  Rental Period: {new Date(item.rentStart).toLocaleDateString()} to {new Date(item.rentEnd).toLocaleDateString()}
+                  {t("rentalPeriod")} {new Date(item.rentStart).toLocaleDateString()} {t("to")} {new Date(item.rentEnd).toLocaleDateString()}
                 </p>
               )}
               {showPrices ? (

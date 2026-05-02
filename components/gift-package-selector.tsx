@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Star, ShoppingCart, X, Heart, Package } from "lucide-react"
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
+import { useRouter } from "next/navigation"
 
 interface GiftPackageSize {
   size: string
@@ -60,6 +61,7 @@ export function GiftPackageSelector({
   const [selectedProducts, setSelectedProducts] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
   const { dispatch: cartDispatch } = useCart()
+  const router = useRouter()
 
   // Initialize default product selections when component mounts
   useEffect(() => {
@@ -140,6 +142,7 @@ export function GiftPackageSelector({
     }
 
     onClose()
+    router.push("/checkout")
   }
 
   const getSelectedProduct = (sizeName: string) => {

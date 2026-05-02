@@ -399,9 +399,10 @@ export default function SoireePage() {
 
   const renderProductCard = (product: Product, index: number) => {
     const isGift = product.isGiftPackage
-    const price = isGift ? product.packagePrice || 0 : getSmallestPrice(product.sizes)
+    const isRentBranch = product.branch !== "sell-dresses"
+    const price = isGift ? product.packagePrice || 0 : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
-    const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
+    const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
 
     // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
     const showProductPrice = showPrices || product.branch === "sell-dresses"
@@ -434,7 +435,12 @@ export default function SoireePage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-[11px] sm:text-xs">
+                      <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                        {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
+                          <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                            Starting at (Cat A)
+                          </span>
+                        )}
                         {hasDiscount ? (
                           <>
                             <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>

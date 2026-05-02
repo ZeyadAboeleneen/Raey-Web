@@ -59,6 +59,7 @@ interface Product {
     rating: number
     reviews: number
     branch: string
+    collection?: string
     isNew?: boolean
     isBestseller?: boolean
     isOutOfStock?: boolean
@@ -627,9 +628,9 @@ export function HomePageContent() {
                         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
                             {bestSellersRent.slice(0, 8).map((product, index) => {
                                 const isGift = product.isGiftPackage
-                                const price = isGift ? product.packagePrice || 0 : getMinPrice(product)
+                                const price = isGift ? product.packagePrice || 0 : (isRentBranch(product.branch) && product.rentalPriceA && product.rentalPriceA > 0) ? product.rentalPriceA : getMinPrice(product)
                                 const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
-                                const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
+                                const hasDiscount = !isRentBranch(product.branch) && originalPrice > 0 && price > 0 && price < originalPrice
                                 return (
                                     <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
                                         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
@@ -664,7 +665,12 @@ export function HomePageContent() {
                                                                                     </div>
                                                                                 </div>
                                                                             ) : (
-                                                                                <div className="text-[11px] sm:text-xs">
+                                                                                <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                                                                                    {isRentBranch(product.branch) && product.rentalPriceA && product.rentalPriceA > 0 && (
+                                                                                        <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                                                                            Starting at (Cat A)
+                                                                                        </span>
+                                                                                    )}
                                                                                     {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
                                                                                 </div>
                                                                             )}

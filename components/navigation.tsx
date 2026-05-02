@@ -33,7 +33,7 @@ export function Navigation() {
   const { settings, setSettings, selectCountry, setSelectCountry, selectLanguage, setSelectLanguage, isSaving } = useLocale()
   const t = useTranslation(settings.language)
   const [menuCollectionMode, setMenuCollectionMode] = useState<"wedding" | "soiree">(
-    pathname.startsWith("/wedding") ? "wedding" : "soiree"
+    pathname?.startsWith("/wedding") ? "wedding" : "soiree"
   )
 
   const splitToTwoLines = (text: string): [string, string?] => {
@@ -122,7 +122,7 @@ export function Navigation() {
     if (href === "/") {
       return pathname === "/"
     }
-    return pathname.startsWith(href)
+    return pathname?.startsWith(href) ?? false
   }
 
   // Determine header styling based on page and scroll position
@@ -225,11 +225,11 @@ export function Navigation() {
   };
 
   useEffect(() => {
-    if (pathname.startsWith("/wedding")) {
+    if (pathname?.startsWith("/wedding")) {
       setMenuCollectionMode("wedding")
       return
     }
-    if (pathname.startsWith("/soiree")) {
+    if (pathname?.startsWith("/soiree")) {
       setMenuCollectionMode("soiree")
     }
   }, [pathname])

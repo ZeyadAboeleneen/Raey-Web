@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context"
 import { CheckoutProgress } from "@/components/checkout-progress"
 import { OrderSummary } from "@/components/order-summary"
 import { useLocale } from "@/lib/locale-context"
+import { useTranslation } from "@/lib/translations"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 
 // Country name to code mapping
@@ -108,6 +109,7 @@ export default function CheckoutPage() {
   const { state: cartState, dispatch: cartDispatch } = useCart()
   const { state: authState } = useAuth()
   const { settings } = useLocale()
+  const t = useTranslation(settings.language)
   const { formatPrice } = useCurrencyFormatter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -425,7 +427,7 @@ export default function CheckoutPage() {
                 className="mb-8"
               >
                 <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-4">
-                  Your cart is empty
+                  {t("yourCartIsEmpty")}
                 </h1>
                 <motion.div
                   initial={{ width: 0 }}
@@ -434,7 +436,7 @@ export default function CheckoutPage() {
                   className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto my-6 rounded-full"
                 />
                 <p className="text-gray-600 mb-8">
-                  Add some products to your cart before checkout.
+                  {t("cartEmptyDesc")}
                 </p>
               </motion.div>
               <motion.div
@@ -444,7 +446,7 @@ export default function CheckoutPage() {
               >
                 <Link href="/soiree/products">
                   <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-8 py-6 relative overflow-hidden group">
-                    <span className="relative z-10">Continue Shopping</span>
+                    <span className="relative z-10">{t("continueShopping")}</span>
                     <motion.span
                       className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100"
                       initial={{ x: "-100%" }}
@@ -478,19 +480,19 @@ export default function CheckoutPage() {
           >
             <Link
               href="/cart"
-              className="inline-flex items-center text-gray-600 hover:text-black mb-6 transition-colors text-sm sm:text-base"
+              className={`inline-flex items-center text-gray-600 hover:text-black mb-6 transition-colors text-sm sm:text-base ${settings.language === "ar" ? "flex-row-reverse" : ""}`}
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Cart
+              <ArrowLeft className={`h-4 w-4 ${settings.language === "ar" ? "ml-2 rotate-180" : "mr-2"}`} />
+              {t("backToCart")}
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-2">Checkout</h1>
+            <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-2">{t("checkoutTitle")}</h1>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: "100px" }}
               transition={{ duration: 0.8, delay: 0.3 }}
               className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mb-4 rounded-full"
             />
-            <p className="text-gray-600 text-sm sm:text-base">Complete your order details below</p>
+            <p className="text-gray-600 text-sm sm:text-base">{t("completeOrderDetails")}</p>
           </motion.div>
 
           <form onSubmit={handleSubmit}>
@@ -527,16 +529,16 @@ export default function CheckoutPage() {
                       }}
                     />
                     <CardHeader className="pb-4">
-                      <CardTitle className="flex items-center text-lg sm:text-xl">
-                        <MapPin className="mr-2 h-5 w-5 text-purple-600" />
-                        Shipping Information
+                      <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                        <MapPin className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("shippingInformation")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="firstName" className="text-sm font-medium">
-                            First Name *
+                            {t("firstName")}
                           </Label>
                           <Input
                             id="firstName"
@@ -548,7 +550,7 @@ export default function CheckoutPage() {
                         </div>
                         <div>
                           <Label htmlFor="lastName" className="text-sm font-medium">
-                            Last Name *
+                            {t("lastName")}
                           </Label>
                           <Input
                             id="lastName"
@@ -563,7 +565,7 @@ export default function CheckoutPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="email" className="text-sm font-medium">
-                            Email Address *
+                            {t("emailAddress")}
                           </Label>
                           <Input
                             id="email"
@@ -576,9 +578,9 @@ export default function CheckoutPage() {
                         </div>
                         <div>
                           <Label htmlFor="phone" className="text-sm font-medium">
-                            Phone Number *
+                            {t("phoneNumber")}
                           </Label>
-                          <div className="mt-1 flex gap-2">
+                          <div className={`mt-1 flex gap-2 ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                             <select
                               value={phoneCountry}
                               onChange={(e) => {
@@ -608,9 +610,9 @@ export default function CheckoutPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="altPhone" className="text-sm font-medium">
-                            Secondary Phone *
+                            {t("secondaryPhone")}
                           </Label>
-                          <div className="mt-1 flex gap-2">
+                          <div className={`mt-1 flex gap-2 ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                             <select
                               value={altPhoneCountry}
                               onChange={(e) => {
@@ -639,7 +641,7 @@ export default function CheckoutPage() {
 
                       <div>
                         <Label htmlFor="address" className="text-sm font-medium">
-                          Street Address *
+                          {t("streetAddress")}
                         </Label>
                         <Input
                           id="address"
@@ -653,7 +655,7 @@ export default function CheckoutPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="city" className="text-sm font-medium">
-                            City *
+                            {t("city")}
                           </Label>
                           <Input
                             id="city"
@@ -665,7 +667,7 @@ export default function CheckoutPage() {
                         </div>
                         <div>
                           <Label htmlFor="country" className="text-sm font-medium">
-                            Country *
+                            {t("country")} *
                           </Label>
                           <select
                             id="country"
@@ -692,7 +694,7 @@ export default function CheckoutPage() {
                         </div>
                         <div>
                           <Label htmlFor="postalCode" className="text-sm font-medium">
-                            Postal Code
+                            {t("postalCode")}
                           </Label>
                           <Input
                             id="postalCode"
@@ -736,9 +738,9 @@ export default function CheckoutPage() {
                       }}
                     />
                     <CardHeader className="pb-4">
-                      <CardTitle className="flex items-center text-lg sm:text-xl">
-                        <CreditCard className="mr-2 h-5 w-5 text-purple-600" />
-                        Payment Method
+                      <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                        <CreditCard className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("paymentMethod")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -749,10 +751,10 @@ export default function CheckoutPage() {
                         <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-all duration-300">
                           <RadioGroupItem value="cod" id="cod" className="text-purple-600" />
                           <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                            <div className="flex items-center justify-between">
+                            <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                               <div>
-                                <p className="font-medium text-sm sm:text-base">Cash on Delivery</p>
-                                <p className="text-xs sm:text-sm text-gray-600">Pay when you receive your order</p>
+                                <p className="font-medium text-sm sm:text-base">{t("cashOnDelivery")}</p>
+                                <p className="text-xs sm:text-sm text-gray-600">{t("payWhenReceive")}</p>
                               </div>
                               <Truck className="h-5 w-5 text-purple-400" />
                             </div>

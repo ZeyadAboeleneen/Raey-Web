@@ -37,6 +37,9 @@ export interface CachedProduct {
     base: string[]
   }
   unavailableDates?: { from: string; to: string }[]
+  hasBeenRented?: boolean
+  /** Category A rental price (cost × 0.8, rounded to 100, floor 3000) from ERP */
+  rentalPriceA?: number | null
 }
 
 interface ProductsCacheContextType {
