@@ -76,42 +76,50 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function loadFavorites() {
       setLoading(true)
+      // Always load from localStorage first as a baseline
+      let localItems: FavoriteItem[] = []
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("sense_favorites")
+        if (saved) {
+          try {
+            localItems = JSON.parse(saved)
+            console.log('[Favorites] Loaded baseline from localStorage:', localItems)
+          } catch (e) {
+            console.error('[Favorites] localStorage parse error:', e)
+          }
+        }
+      }
+
       if (authState.isAuthenticated && authState.token) {
-        console.log('[Favorites] Authenticated, loading from backend', authState.user, authState.token)
+        console.log('[Favorites] Authenticated, syncing with backend')
         try {
           const res = await fetch("/api/favorites", {
             headers: { Authorization: `Bearer ${authState.token}` },
           })
           if (res.ok) {
-            const items = await res.json()
-            console.log('[Favorites] Loaded from backend:', items)
-            dispatch({ type: "LOAD_FAVORITES", payload: Array.isArray(items) ? items : [] })
+            const backendItems = await res.json()
+            console.log('[Favorites] Loaded from backend:', backendItems)
+            
+            // Merge local and backend items, prioritizing backend items
+            const mergedItems = [...backendItems]
+            localItems.forEach(localItem => {
+              if (!mergedItems.find(item => item.id === localItem.id)) {
+                mergedItems.push(localItem)
+              }
+            })
+            
+            dispatch({ type: "LOAD_FAVORITES", payload: mergedItems })
           } else {
             console.log('[Favorites] Backend returned error:', res.status)
-            dispatch({ type: "LOAD_FAVORITES", payload: [] })
+            dispatch({ type: "LOAD_FAVORITES", payload: localItems })
           }
         } catch (e) {
-          console.log('[Favorites] Backend fetch error:', e)
-          dispatch({ type: "LOAD_FAVORITES", payload: [] })
+          console.error('[Favorites] Backend fetch error:', e)
+          dispatch({ type: "LOAD_FAVORITES", payload: localItems })
         }
       } else {
-        // Guest: load from localStorage
-        if (typeof window !== "undefined") {
-          const saved = localStorage.getItem("sense_favorites")
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved)
-              console.log('[Favorites] Loaded from localStorage:', parsed)
-              dispatch({ type: "LOAD_FAVORITES", payload: parsed })
-            } catch (e) {
-              console.log('[Favorites] localStorage parse error:', e)
-              dispatch({ type: "LOAD_FAVORITES", payload: [] })
-            }
-          } else {
-            console.log('[Favorites] No localStorage favorites found')
-            dispatch({ type: "LOAD_FAVORITES", payload: [] })
-          }
-        }
+        // Guest mode: use localStorage items
+        dispatch({ type: "LOAD_FAVORITES", payload: localItems })
       }
       setHydrated(true)
       setLoading(false)
@@ -119,12 +127,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     loadFavorites()
   }, [authState.isAuthenticated, authState.token, authState.user?.id])
 
-  // Save to localStorage for guests
+  // Persist to localStorage whenever state changes
   useEffect(() => {
-    if (!authState.isAuthenticated && hydrated && typeof window !== "undefined") {
+    if (hydrated && typeof window !== "undefined") {
       localStorage.setItem("sense_favorites", JSON.stringify(state.items))
     }
-  }, [state.items, hydrated, authState.isAuthenticated])
+  }, [state.items, hydrated])
 
   if (!hydrated) return null
 
@@ -147,8 +155,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       ...(item.rentalPriceA !== undefined && { rentalPriceA: item.rentalPriceA })
     };
 
+    // Optimistic update
+    dispatch({ type: "ADD_FAVORITE", payload: favoriteItem })
+
     if (authState.isAuthenticated && authState.token) {
-      console.log('[Favorites] Adding to backend:', favoriteItem)
+      console.log('[Favorites] Syncing to backend:', favoriteItem.id)
       try {
         const response = await fetch("/api/favorites", {
           method: "POST",
@@ -159,54 +170,40 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ productId: item.id }),
         })
 
-        if (response.ok) {
-          // Only update local state if API call succeeds
-          dispatch({ type: "ADD_FAVORITE", payload: favoriteItem })
-          console.log('[Favorites] Successfully added to backend')
-        } else {
-          const errorData = await response.json().catch(() => ({ error: "Failed to add favorite" }))
-          console.error('[Favorites] Failed to add to backend:', errorData.error)
-          // You could show a toast/notification here
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: "Failed to sync favorite" }))
+          console.error('[Favorites] Failed to sync to backend:', errorData.error)
+          if (response.status === 401) {
+            console.log('[Favorites] Token expired, keeping in local state only')
+          }
         }
       } catch (error) {
-        console.error('[Favorites] Error adding to backend:', error)
-        // You could show a toast/notification here
+        console.error('[Favorites] Error syncing to backend:', error)
       }
-    } else {
-      // Guest: update local state immediately
-      console.log('[Favorites] Adding to localStorage:', favoriteItem)
-      dispatch({ type: "ADD_FAVORITE", payload: favoriteItem })
     }
   }
 
   const removeFromFavorites = async (id: string) => {
+    // Optimistic update
+    dispatch({ type: "REMOVE_FAVORITE", payload: id })
+
     if (authState.isAuthenticated && authState.token) {
-      console.log('[Favorites] Removing from backend:', id)
+      console.log('[Favorites] Syncing removal to backend:', id)
       try {
-        const response = await fetch("/api/favorites", {
+        const response = await fetch(`/api/favorites?productId=${id}`, {
           method: "DELETE",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${authState.token}`,
           },
-          body: JSON.stringify({ productId: id }),
         })
 
-        if (response.ok) {
-          // Only update local state if API call succeeds
-          dispatch({ type: "REMOVE_FAVORITE", payload: id })
-          console.log('[Favorites] Successfully removed from backend')
-        } else {
-          const errorData = await response.json().catch(() => ({ error: "Failed to remove favorite" }))
-          console.error('[Favorites] Failed to remove from backend:', errorData.error)
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: "Failed to sync removal" }))
+          console.error('[Favorites] Failed to sync removal to backend:', errorData.error)
         }
       } catch (error) {
-        console.error('[Favorites] Error removing from backend:', error)
+        console.error('[Favorites] Error syncing removal to backend:', error)
       }
-    } else {
-      // Guest: update local state immediately
-      console.log('[Favorites] Removing from localStorage:', id)
-      dispatch({ type: "REMOVE_FAVORITE", payload: id })
     }
   }
 
@@ -218,13 +215,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       // Remove all favorites for user (optional: implement a backend endpoint for this)
       // For now, remove one by one
       for (const item of state.items) {
-        await fetch("/api/favorites", {
+        await fetch(`/api/favorites?productId=${item.id}`, {
           method: "DELETE",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${authState.token}`,
           },
-          body: JSON.stringify({ productId: item.id }),
         })
       }
     }

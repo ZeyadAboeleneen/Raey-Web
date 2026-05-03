@@ -22,13 +22,10 @@ const Footer = dynamic(() => import("@/components/footer").then(mod => ({ defaul
 import { Badge } from "@/components/ui/badge"
 import { useFavorites } from "@/lib/favorites-context"
 import { useCart } from "@/lib/cart-context"
-import { StarRating } from "@/lib/star-rating"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
-import { useCustomSize } from "@/hooks/use-custom-size"
-import type { SizeChartRow } from "@/components/custom-size-form"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { QuickAddModal } from "@/components/quick-add-modal"
 import { useToast } from "@/hooks/use-toast"
 import { useProductsCache } from "@/lib/products-cache"
 
@@ -37,10 +34,6 @@ const GiftPackageSelector = dynamic(
     { ssr: false }
 )
 
-const CustomSizeForm = dynamic(
-    () => import("@/components/custom-size-form").then((m) => m.CustomSizeForm),
-    { ssr: false }
-)
 
 interface ProductSize {
     size: string
@@ -96,7 +89,6 @@ export function HomePageContent() {
     const { getBestsellers, loading: cacheLoading } = useProductsCache()
     const bestSellers = useMemo(() => getBestsellers(), [getBestsellers])
     const bestSellersLoading = cacheLoading
-    const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
     const moodWords = ["GLAM", "ROMANTIC", "ICONIC"]
     const [moodIndex, setMoodIndex] = useState(0)
     const currentMood = moodWords[moodIndex]
@@ -105,22 +97,8 @@ export function HomePageContent() {
     const [isSubscribing, setIsSubscribing] = useState(false)
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-    const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
-    const [quantity, setQuantity] = useState(1)
     const [showSizeSelector, setShowSizeSelector] = useState(false)
-    const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
-    const {
-        isCustomSizeMode,
-        setIsCustomSizeMode,
-        measurementUnit,
-        setMeasurementUnit,
-        measurements,
-        handleMeasurementChange,
-        confirmMeasurements,
-        setConfirmMeasurements,
-        resetMeasurements,
-        isMeasurementsValid,
-    } = useCustomSize()
+    const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
 
     useEffect(() => {
         const handleScroll = () => setScrollY(window.scrollY)
@@ -143,14 +121,6 @@ export function HomePageContent() {
         }
     }, [showSizeSelector, showCustomSizeConfirmation])
 
-    useEffect(() => {
-        if (!selectedProduct) return
-        if (isCustomSizeMode) {
-            setSelectedSize(null)
-        } else if (!selectedSize && selectedProduct.sizes.length > 0) {
-            setSelectedSize(selectedProduct.sizes[0])
-        }
-    }, [isCustomSizeMode, selectedProduct, selectedSize])
 
     useEffect(() => {
         const id = window.setInterval(() => {
@@ -204,88 +174,17 @@ export function HomePageContent() {
     const isRentBranch = (branch: string) => branch !== "sell-dresses"
 
     const openSizeSelector = (product: Product) => {
-        if (product.isGiftPackage) {
-            setSelectedProduct(product)
-            setShowSizeSelector(true)
-        } else {
-            setSelectedProduct(product)
-            setSelectedSize(null)
-            setQuantity(1)
-            setShowSizeSelector(true)
-            setIsCustomSizeMode(true)
-            setMeasurementUnit("cm")
-            resetMeasurements()
-        }
+        setSelectedProduct(product)
+        setShowSizeSelector(true)
     }
 
     const closeSizeSelector = () => {
         setShowSizeSelector(false)
         setTimeout(() => {
             setSelectedProduct(null)
-            setSelectedSize(null)
-            resetMeasurements()
-            setIsCustomSizeMode(true)
-            setMeasurementUnit("cm")
-            setConfirmMeasurements(false)
         }, 300)
     }
 
-    const addToCart = () => {
-        if (!selectedProduct) return
-        if (!isCustomSizeMode && !selectedSize) return
-        if (isCustomSizeMode && !isMeasurementsValid) return
-
-        if (!isCustomSizeMode && selectedSize) {
-            if (selectedSize.stockCount !== undefined && selectedSize.stockCount < quantity) {
-                alert(`Insufficient stock for ${selectedProduct.name} - Size ${selectedSize.size}. Available: ${selectedSize.stockCount}, Requested: ${quantity}`)
-                return
-            }
-            if (selectedSize.stockCount !== undefined && selectedSize.stockCount === 0) {
-                alert(`Size ${selectedSize.size} is out of stock`)
-                return
-            }
-        }
-
-        let firstSize: ProductSize | null = null
-        if (selectedProduct.sizes && selectedProduct.sizes.length > 0) {
-            firstSize = selectedProduct.sizes[0]
-        }
-        const fallbackSize: ProductSize = {
-            size: "custom",
-            volume: measurementUnit,
-            discountedPrice: selectedProduct.packagePrice || (firstSize ? (firstSize.discountedPrice ?? 0) : 0),
-            originalPrice: firstSize ? (firstSize.originalPrice ?? 0) : 0,
-        }
-        const baseSize: ProductSize = selectedSize || firstSize || fallbackSize
-        const computedPrice = baseSize.discountedPrice || baseSize.originalPrice || selectedProduct.packagePrice || 0
-
-        if (isRentBranch(selectedProduct.branch)) {
-            window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
-            return
-        }
-
-        cartDispatch({
-            type: "ADD_ITEM",
-            payload: {
-                id: `${selectedProduct.id}-${isCustomSizeMode ? "custom" : baseSize.size}`,
-                productId: selectedProduct.id,
-                name: selectedProduct.name,
-                price: computedPrice,
-                originalPrice: baseSize.originalPrice,
-                size: isCustomSizeMode ? "custom" : baseSize.size,
-                volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
-                image: selectedProduct.images[0],
-                branch: selectedProduct.branch,
-                quantity,
-                stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
-                type: "buy",
-                collection: selectedProduct.collection || "",
-                customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
-            },
-        })
-
-        closeSizeSelector()
-    }
 
     const getSmallestPrice = (sizes: ProductSize[]) => {
         if (!sizes || sizes.length === 0) return 0
@@ -318,13 +217,16 @@ export function HomePageContent() {
                     sizes: product.giftPackageSizes || [], isGiftPackage: true,
                     packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
                     giftPackageSizes: product.giftPackageSizes,
+                    rentalPriceA: (product as any).rentalPriceA,
                 })
             } else {
-                const minPrice = getMinPrice(product)
+                const isRent = product.branch !== "sell-dresses"
+                const minPrice = (isRent && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getMinPrice(product)
                 addToFavorites({
                     id: product.id, name: product.name, price: minPrice,
                     image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller, sizes: product.sizes,
+                    rentalPriceA: (product as any).rentalPriceA,
                 })
             }
         }
@@ -357,177 +259,26 @@ export function HomePageContent() {
                                 if (isFavorite(product.id)) {
                                     removeFromFavorites(product.id)
                                 } else {
-                                    addToFavorites({
-                                        id: product.id, name: product.name, price: product.packagePrice || 0,
-                                        image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
-                                        isNew: product.isNew, isBestseller: product.isBestseller,
-                                        sizes: product.giftPackageSizes || [], isGiftPackage: true,
-                                        packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
-                                        giftPackageSizes: product.giftPackageSizes,
-                                    })
+                                        addToFavorites({
+                                            id: product.id, name: product.name, price: product.packagePrice || 0,
+                                            image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
+                                            isNew: product.isNew, isBestseller: product.isBestseller,
+                                            sizes: product.giftPackageSizes || [], isGiftPackage: true,
+                                            packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
+                                            giftPackageSizes: product.giftPackageSizes,
+                                            rentalPriceA: (product as any).rentalPriceA,
+                                        })
                                 }
                             }}
                             isFavorite={isFavorite}
                         />
                     ) : (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                            onClick={closeSizeSelector}
-                            style={{ touchAction: 'none' }}
-                        >
-                            <motion.div
-                                className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl"
-                                initial={{ scale: 0.9, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ touchAction: 'pan-y' }}
-                            >
-                                <div className="p-6">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                                            <p className="text-gray-600 text-sm">{t("selectSize")}</p>
-                                        </div>
-                                        <div className="flex">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    if (isFavorite(selectedProduct.id)) {
-                                                        removeFromFavorites(selectedProduct.id)
-                                                    } else {
-                                                        addToFavorites({
-                                                            id: selectedProduct.id, name: selectedProduct.name,
-                                                            price: getSmallestPrice(selectedProduct.sizes),
-                                                            image: selectedProduct.images[0], branch: selectedProduct.branch,
-                                                            collection: selectedProduct.collection,
-                                                            rating: selectedProduct.rating, isNew: selectedProduct.isNew || false,
-                                                            isBestseller: selectedProduct.isBestseller || false, sizes: selectedProduct.sizes || [],
-                                                        })
-                                                    }
-                                                }}
-                                                className="mr-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors"
-                                            >
-                                                <Heart className={`h-5 w-5 ${isFavorite(selectedProduct.id) ? "text-rose-400 fill-rose-400" : "text-gray-700"}`} />
-                                            </button>
-                                            <button onClick={closeSizeSelector} className="text-gray-500 hover:text-gray-700 transition-colors">
-                                                <X className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center mb-6">
-                                        <div className="relative w-20 h-20 mr-4">
-                                            <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill sizes="80px" className="rounded-lg object-cover" />
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-600 text-sm line-clamp-2">{selectedProduct.description}</p>
-                                            <div className="flex items-center mt-1">
-                                                <StarRating rating={selectedProduct.rating || 0} />
-                                                <span className="text-xs text-gray-600 ml-2">({selectedProduct.rating ? selectedProduct.rating.toFixed(1) : '0.0'})</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-6">
-                                        <CustomSizeForm
-                                            controller={{
-                                                isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit,
-                                                measurements, onMeasurementChange: handleMeasurementChange,
-                                                confirmMeasurements, setConfirmMeasurements, isMeasurementsValid,
-                                            }}
-                                            sizeChart={sizeChart}
-                                            sizes={selectedProduct.sizes}
-                                            selectedSize={selectedSize}
-                                            onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }}
-                                            formatPrice={formatPrice}
-                                        />
-                                        {isCustomSizeMode && selectedProduct && isRentBranch(selectedProduct.branch) && (
-                                            <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                                <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
-                                                <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center justify-between gap-3 py-4 border-t border-gray-100">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm text-gray-600 mb-1">{t("total")}:</div>
-                                            <div className="text-lg font-light">
-                                                {(() => {
-                                                    const qty = quantity
-                                                    if (selectedSize) {
-                                                        const unitOriginal = selectedSize.originalPrice || 0
-                                                        const unitDiscount = selectedSize.discountedPrice || 0
-                                                        const hasDiscount = unitOriginal > 0 && selectedSize.discountedPrice !== undefined && unitDiscount < unitOriginal
-                                                        const totalOriginal = unitOriginal * qty
-                                                        const totalPrice = (hasDiscount ? unitDiscount : (unitOriginal || unitDiscount)) * qty
-                                                        if (hasDiscount) {
-                                                            return (<><span className="line-through text-gray-300 mr-2 text-base">{formatPrice(totalOriginal)}</span><span className="text-red-500 font-bold">{formatPrice(totalPrice)}</span></>)
-                                                        }
-                                                        return <>{formatPrice(totalPrice)}</>
-                                                    }
-                                                    const baseUnitPrice = getSmallestPrice(selectedProduct.sizes)
-                                                    return <>{formatPrice(baseUnitPrice * qty)}</>
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        <Button
-                                            onClick={() => {
-                                                if (!selectedProduct || selectedProduct.isOutOfStock) return
-                                                if (!isCustomSizeMode) { addToCart(); return }
-                                                if (!isMeasurementsValid) { alert("Please complete your custom measurements"); return }
-                                                setShowCustomSizeConfirmation(true)
-                                            }}
-                                            className={`flex items-center rounded-full px-6 py-5 flex-shrink-0 ${selectedProduct?.isOutOfStock || (!isCustomSizeMode && selectedSize && selectedSize.stockCount !== undefined && selectedSize.stockCount === 0) ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-black hover:bg-gray-800'}`}
-                                            disabled={selectedProduct?.isOutOfStock || (!isCustomSizeMode && selectedSize && selectedSize.stockCount !== undefined && selectedSize.stockCount === 0) || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}
-                                        >
-                                            <ShoppingCart className="h-4 w-4 mr-2 text-rose-400" />
-                                            {selectedProduct?.isOutOfStock || (!isCustomSizeMode && selectedSize && selectedSize.stockCount !== undefined && selectedSize.stockCount === 0)
-                                                ? t("outOfStock")
-                                                : selectedProduct?.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </>
-            )}
-
-            {/* Custom Size Confirmation Alert */}
-            <AlertDialog open={showCustomSizeConfirmation} onOpenChange={setShowCustomSizeConfirmation}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-amber-500" />
-                            {t("confirmCustomSize")}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-2 pt-2">
-                            <p>{t("confirmCustomSizeDesc")}</p>
-                            <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <span><strong>{t("shoulder")}:</strong> {measurements.shoulder} {measurementUnit}</span>
-                                    <span><strong>{t("bust")}:</strong> {measurements.bust} {measurementUnit}</span>
-                                    <span><strong>{t("waist")}:</strong> {measurements.waist} {measurementUnit}</span>
-                                    <span><strong>{t("hips")}:</strong> {measurements.hips} {measurementUnit}</span>
-                                    <span><strong>{t("sleeve")}:</strong> {measurements.sleeve} {measurementUnit}</span>
-                                    <span><strong>{t("length")}:</strong> {measurements.length} {measurementUnit}</span>
-                                </div>
-                            </div>
-                            <p className="text-amber-600 font-medium">{t("ifAnythingIncorrect")}</p>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { addToCart(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">
-                            Confirm {selectedProduct?.branch === "sell-dresses" ? "Buy" : "Rent"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                        <QuickAddModal
+                            product={selectedProduct as any}
+                            isOpen={showSizeSelector}
+                            onClose={closeSizeSelector}
+                            sizeChart={sizeChart}
+                        />
 
             {/* Hero Section */}
             <motion.section

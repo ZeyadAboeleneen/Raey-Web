@@ -18,8 +18,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 })
     }
 
+    const userId = decoded.userId
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid token: missing user ID" }, { status: 401 })
+    }
+
     // Fetch user from MySQL
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
+    const user = await prisma.user.findUnique({ where: { id: userId } })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -28,7 +33,7 @@ export async function PATCH(request: NextRequest) {
     // Check if email is being changed and if new email already exists
     if (email !== user.email) {
       const existing = await prisma.user.findFirst({
-        where: { email, NOT: { id: decoded.userId } },
+        where: { email, NOT: { id: userId } },
       })
       if (existing) {
         return NextResponse.json({ error: "Email already in use" }, { status: 400 })
@@ -51,7 +56,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update user in MySQL
-    await prisma.user.update({ where: { id: decoded.userId }, data: updateData })
+    await prisma.user.update({ where: { id: userId }, data: updateData })
 
     return NextResponse.json({
       success: true,

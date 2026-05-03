@@ -159,6 +159,7 @@ model Employee {
   phone                    String?
   role                     String   @default("staff")
   isActive                 Boolean  @default(true) @map("is_active")
+  favorites                Json     @default("[]")
 
   // Products
   canAddProducts           Boolean  @default(false) @map("can_add_products")

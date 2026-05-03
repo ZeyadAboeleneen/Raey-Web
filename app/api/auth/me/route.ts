@@ -19,8 +19,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ authenticated: false }, { status: 401 })
     }
 
+    const userId = decoded.userId
+    if (!userId) {
+      return NextResponse.json({ authenticated: false }, { status: 401 })
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: { id: true, email: true, name: true, role: true },
     })
 

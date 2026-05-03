@@ -46,6 +46,8 @@ interface ProductDetail {
   description: string
   longDescription: string
   sizes: {
+    size: string;
+    volume: string;
     originalPrice?: number;
     discountedPrice?: number;
     stockCount?: number;
@@ -65,6 +67,7 @@ interface ProductDetail {
   packageOriginalPrice?: number
   giftPackageSizes?: any[]
   hasBeenRented?: boolean
+  rentalPriceA?: number
 }
 
 interface Review {

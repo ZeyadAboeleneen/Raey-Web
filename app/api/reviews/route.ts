@@ -55,15 +55,21 @@ export async function POST(request: NextRequest) {
     const product = await prisma.product.findUnique({ where: { productId }, select: { productId: true } })
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 })
 
+    const userId = decoded.userId
+    if (!userId) {
+      console.error("Reviews POST: Token verified but userId is missing", decoded)
+      return NextResponse.json({ error: "Invalid token: missing user ID" }, { status: 401 })
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: { name: true, email: true },
     })
 
     const review = await prisma.review.create({
       data: {
         productId,
-        userId: decoded.userId,
+        userId: userId,
         userName: user?.name || decoded.email,
         rating: Number(rating),
         comment: comment || "",

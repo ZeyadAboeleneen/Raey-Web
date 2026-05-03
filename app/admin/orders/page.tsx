@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Package, User, MapPin, Eye } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, Eye, Trash2 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
@@ -16,6 +16,7 @@ export default function AdminOrdersPage() {
   const router = useRouter()
   const { state: authState } = useAuth()
   const canViewOrders = usePermission("canViewOrders")
+  const canDeleteOrders = usePermission("canDeleteOrders")
   const { formatPrice } = useCurrencyFormatter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +66,31 @@ export default function AdminOrdersPage() {
       case "delivered": return "Delivered"
       case "cancelled": return "Cancelled"
       default: return status
+    }
+  }
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authState.token}`,
+        },
+      })
+
+      if (response.ok) {
+        setOrders((prev) => prev.filter((order) => order.id !== orderId))
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || "Failed to delete order")
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error)
+      alert("An error occurred while deleting order")
     }
   }
 
@@ -141,11 +167,26 @@ export default function AdminOrdersPage() {
                       
                       <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3">
                         <div className="font-medium">{formatPrice(order.total || 0)}</div>
-                        <Link href={`/admin/orders/${order.id}`}>
-                          <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-[36px]">
-                            <Eye className="h-4 w-4 mr-1" /> View Details
-                          </Button>
-                        </Link>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <Link href={`/admin/orders/${order.id}`} className="flex-1 sm:flex-none">
+                            <Button size="sm" variant="outline" className="w-full min-h-[36px]">
+                              <Eye className="h-4 w-4 mr-1" /> View Details
+                            </Button>
+                          </Link>
+                          {canDeleteOrders && (
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="min-h-[36px]"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleDeleteOrder(order.id)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

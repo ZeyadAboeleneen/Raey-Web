@@ -215,22 +215,6 @@ export function GiftPackageSelector({
               <p className="text-gray-600 text-sm line-clamp-2">
                 {product.description}
               </p>
-              <div className="flex items-center mt-1">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${product.rating && product.rating > 0 && i < Math.floor(product.rating)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-300"
-                        }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs text-gray-600 ml-2">
-                  ({product.rating ? product.rating.toFixed(1) : '0.0'})
-                </span>
-              </div>
             </div>
           </div>
 

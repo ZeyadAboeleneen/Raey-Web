@@ -7,18 +7,16 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, ShoppingCart, Trash2, ArrowLeft, Star, X, Sparkles, Package, AlertCircle } from "lucide-react"
+import { Heart, ShoppingCart, Trash2, ArrowLeft } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useFavorites, type FavoriteItem } from "@/lib/favorites-context"
 import { useCart } from "@/lib/cart-context"
 import { GiftPackageSelector } from "@/components/gift-package-selector"
+import { QuickAddModal } from "@/components/quick-add-modal"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
-import { useCustomSize } from "@/hooks/use-custom-size"
 import { useTranslation } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
-import { CustomSizeForm } from "@/components/custom-size-form"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 
 // WhatsApp ordering removed — using cart-based checkout
@@ -32,23 +30,8 @@ export default function FavoritesPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FavoriteItem | null>(null)
   const [showSizeSelector, setShowSizeSelector] = useState(false)
-  const [selectedSize, setSelectedSize] = useState<any>(null)
-  const [quantity, setQuantity] = useState(1)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
-  const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
 
-  const {
-    isCustomSizeMode,
-    setIsCustomSizeMode,
-    measurementUnit,
-    setMeasurementUnit,
-    measurements,
-    handleMeasurementChange,
-    confirmMeasurements,
-    setConfirmMeasurements,
-    resetMeasurements,
-    isMeasurementsValid,
-  } = useCustomSize()
 
   const sizeChart = [
     { label: "XL", shoulderIn: "16", waistIn: "32", bustIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", bustCm: "101", hipsCm: "106", sleeveCm: "58" },
@@ -61,178 +44,53 @@ export default function FavoritesPage() {
   const getSmallestPrice = (sizes: any[]) => {
     if (!sizes || sizes.length === 0) return 0
     const prices = sizes.map(size => size.discountedPrice || size.originalPrice || 0)
-    return Math.min(...prices.filter(price => price > 0))
+    const validPrices = prices.filter(price => price > 0)
+    return validPrices.length > 0 ? Math.min(...validPrices) : 0
+  }
+
+  const getSmallestOriginalPrice = (sizes: any[]) => {
+    if (!sizes || sizes.length === 0) return 0
+    const prices = sizes.map(size => size.originalPrice || 0)
+    const validPrices = prices.filter(price => price > 0)
+    return validPrices.length > 0 ? Math.min(...validPrices) : 0
   }
 
   const openSizeSelector = (product: FavoriteItem) => {
     setSelectedProduct(product)
-    setSelectedSize(null)
     setShowSizeSelector(true)
-    setQuantity(1)
-    setIsCustomSizeMode(true)
-    resetMeasurements()
   }
 
   const closeSizeSelector = () => {
     setShowSizeSelector(false)
     setTimeout(() => {
       setSelectedProduct(null)
-      setSelectedSize(null)
-      resetMeasurements()
-      setIsCustomSizeMode(true)
-      setMeasurementUnit("cm")
-      setConfirmMeasurements(false)
     }, 300)
   }
 
   useEffect(() => {
-    if (showSizeSelector || showGiftPackageSelector || showCustomSizeConfirmation) {
+    if (showSizeSelector || showGiftPackageSelector) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
     }
     return () => { document.body.style.overflow = '' }
-  }, [showSizeSelector, showGiftPackageSelector, showCustomSizeConfirmation])
+  }, [showSizeSelector, showGiftPackageSelector])
 
   // WhatsApp ordering removed — using cart-based checkout
 
 
-  const addToCartWithSize = () => {
-    if (!selectedProduct) return
-    if (!isCustomSizeMode && !selectedSize) return
-    if (isCustomSizeMode && !isMeasurementsValid) return
-    if (selectedProduct.branch !== "sell-dresses") {
-      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
-      return
-    }
-
-    const firstSize = selectedProduct.sizes?.[0] || null
-    const fallbackSize: any = {
-      size: "custom",
-      volume: measurementUnit,
-      discountedPrice: selectedProduct.packagePrice || (firstSize?.discountedPrice ?? 0),
-      originalPrice: firstSize?.originalPrice ?? 0
-    }
-    const baseSize = selectedSize || firstSize || fallbackSize
-    const computedPrice = baseSize.discountedPrice || baseSize.originalPrice || selectedProduct.packagePrice || 0
-    cartDispatch({
-      type: "ADD_ITEM",
-      payload: {
-        id: `${selectedProduct.id}-${isCustomSizeMode ? "custom" : baseSize.size}`,
-        productId: selectedProduct.id,
-        name: selectedProduct.name,
-        price: computedPrice,
-        originalPrice: baseSize.originalPrice,
-        size: isCustomSizeMode ? "custom" : baseSize.size,
-        volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
-        image: selectedProduct.image,
-        branch: selectedProduct.branch,
-        quantity,
-        type: "buy",
-        collection: selectedProduct.collection || "",
-        customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
-      }
-    })
-    closeSizeSelector()
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navigation />
 
-      {/* Size Selector Modal */}
-      {showSizeSelector && selectedProduct && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeSizeSelector}>
-          <motion.div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl relative" initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                  <p className="text-gray-600 text-sm">{t("selectSize")}</p>
-                </div>
-                <div className="flex">
-                  <button onClick={(e) => { e.stopPropagation(); removeFromFavorites(selectedProduct.id); closeSizeSelector() }} className="mr-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
-                    <Heart className="h-5 w-5 text-red-500 fill-red-500" />
-                  </button>
-                  <button onClick={closeSizeSelector} className="text-gray-500 hover:text-gray-700 transition-colors"><X className="h-5 w-5" /></button>
-                </div>
-              </div>
-              <div className="flex items-center mb-6">
-                <div className="relative w-20 h-20 mr-4"><Image src={selectedProduct.image || "/placeholder.svg"} alt={selectedProduct.name} fill sizes="80px" className="rounded-lg object-cover" /></div>
-                <div>
-                  <p className="text-gray-600 text-sm line-clamp-2">Choose your preferred size</p>
-                  <div className="flex items-center mt-1">
-                    {[...Array(5)].map((_, i) => (<Star key={i} className={`h-4 w-4 ${selectedProduct.rating && i < Math.floor(selectedProduct.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />))}
-                    <span className="text-xs text-gray-600 ml-2">({selectedProduct.rating ? selectedProduct.rating.toFixed(1) : '0.0'})</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mb-6">
-                <CustomSizeForm 
-                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }} 
-                  sizeChart={sizeChart} 
-                  sizes={selectedProduct.sizes || []} 
-                  selectedSize={selectedSize} 
-                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size) }} 
-                  formatPrice={formatPrice} 
-                />
-              </div>
-              <div className="flex justify-between items-center py-4 border-t border-gray-100">
-                <div>
-                  <span className="text-gray-600">{t("total")}:</span>
-                  {(() => {
-                    const isWeddingOrSoiree = selectedProduct.collection?.toLowerCase().includes("wedding") || selectedProduct.collection?.toLowerCase().includes("soiree") || selectedProduct.name?.toLowerCase().includes("wedding") || selectedProduct.name?.toLowerCase().includes("soiree")
-                    const showProductPrice = showPrices || (selectedProduct.branch === "sell-dresses" && isWeddingOrSoiree)
-                    if (!showProductPrice) return null
-                    return (
-                      <div className="text-xl font-medium ml-2">
-                        {(() => {
-                          if (selectedSize) {
-                            const uo = selectedSize.originalPrice || 0; const ud = selectedSize.discountedPrice || 0; const hd = uo > 0 && selectedSize.discountedPrice !== undefined && ud < uo; const tp = (hd ? ud : uo || ud) * quantity;
-                            if (hd) return (<><span className="line-through text-gray-400 mr-2 text-lg">{formatPrice(uo * quantity)}</span><span className="text-red-600 font-bold">{formatPrice(tp)}</span></>);
-                            return <>{formatPrice(tp)}</>
-                          }
-                          return <>{formatPrice(getSmallestPrice(selectedProduct.sizes || []) * quantity)}</>
-                        })()}
-                      </div>
-                    )
-                  })()}
-                </div>
-                <Button onClick={() => { if (selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCartWithSize(); return }; if (!isMeasurementsValid) { alert("Please complete your measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`rounded-full px-6 py-5 ${selectedProduct.isOutOfStock ? 'bg-gray-400 opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
-                  <ShoppingCart className="h-4 w-4 mr-2" />{selectedProduct.isOutOfStock ? t("outOfStock") : selectedProduct.branch !== "sell-dresses" ? t("rentNow") : t("buyNow")}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <QuickAddModal
+        product={selectedProduct as any}
+        isOpen={showSizeSelector}
+        onClose={closeSizeSelector}
+        sizeChart={sizeChart}
+      />
 
-      {/* Custom Size Confirmation */}
-      <AlertDialog open={showCustomSizeConfirmation} onOpenChange={setShowCustomSizeConfirmation}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><AlertCircle className="h-5 w-5 text-amber-500" />{t("confirmCustomSize")}</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 pt-2">
-              <p>{t("confirmCustomSizeDesc")}</p>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <span><strong>{t("shoulder")}:</strong> {measurements.shoulder} {measurementUnit}</span>
-                  <span><strong>{t("bust")}:</strong> {measurements.bust} {measurementUnit}</span>
-                  <span><strong>{t("waist")}:</strong> {measurements.waist} {measurementUnit}</span>
-                  <span><strong>{t("hips")}:</strong> {measurements.hips} {measurementUnit}</span>
-                  <span><strong>{t("sleeve")}:</strong> {measurements.sleeve} {measurementUnit}</span>
-                  <span><strong>{t("length")}:</strong> {measurements.length} {measurementUnit}</span>
-                </div>
-              </div>
-              <p className="text-amber-600 font-medium">{t("ifAnythingIncorrect")}</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { addToCartWithSize(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">Confirm {selectedProduct?.branch !== "sell-dresses" ? "Rent" : "Buy"}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {showGiftPackageSelector && selectedProduct && (
         <GiftPackageSelector product={selectedProduct as any} isOpen={showGiftPackageSelector} onClose={() => setShowGiftPackageSelector(false)} onToggleFavorite={(product) => removeFromFavorites(product.id)} isFavorite={() => true} />
@@ -297,6 +155,11 @@ export default function FavoritesPage() {
                             {(() => {
                               const isWeddingOrSoiree = item.collection?.toLowerCase().includes("wedding") || item.collection?.toLowerCase().includes("soiree") || item.name?.toLowerCase().includes("wedding") || item.name?.toLowerCase().includes("soiree")
                               const showProductPrice = showPrices || (item.branch === "sell-dresses" && isWeddingOrSoiree)
+                              const isRentBranch = item.branch !== "sell-dresses"
+                              const price = item.isGiftPackage ? (item.packagePrice || 0) : (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0) ? item.rentalPriceA : getSmallestPrice(item.sizes || [])
+                              const originalPrice = item.isGiftPackage ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
+                              const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+
                               return (
                                 <>
                                   {showProductPrice ? (
@@ -311,15 +174,22 @@ export default function FavoritesPage() {
                                       </div>
                                     ) : (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                                        {item.branch !== "sell-dresses" && item.rentalPriceA && item.rentalPriceA > 0 && (
+                                        {isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 && (
                                           <span className="text-[9px] text-purple-300 font-medium mb-0.5">
                                             Starting at (Cat A)
                                           </span>
                                         )}
-                                        <span className="text-xs sm:text-sm font-semibold">{formatPrice(item.price)}</span>
+                                        {hasDiscount ? (
+                                          <>
+                                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>
+                                            <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                                          </>
+                                        ) : (
+                                          <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                                        )}
                                       </div>
                                     )}
-                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock}><ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
+                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!item.isOutOfStock) openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock}><ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
                                   </div>
                                 </>
                               )

@@ -1,4 +1,4 @@
-﻿import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 
@@ -12,14 +12,21 @@ export async function GET(request: NextRequest) {
     let decoded: any
     try { decoded = jwt.verify(token, process.env.JWT_SECRET!) } catch { return NextResponse.json({ error: "Invalid token" }, { status: 401 }) }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { favorites: true },
-    })
+    const userId = decoded.userId || decoded.employeeId
+    const isEmployee = !!decoded.employeeId
+
+    if (!userId) {
+      console.error("Favorites GET: Token verified but no valid ID found", decoded)
+      return NextResponse.json({ error: "Invalid token: missing ID" }, { status: 401 })
+    }
+
+    const user = isEmployee 
+      ? (await prisma.$queryRawUnsafe(`SELECT favorites FROM employees WHERE id = ?`, userId) as any)?.[0]
+      : await prisma.user.findUnique({ where: { id: userId }, select: { favorites: true } })
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
-    const favoriteIds = (user.favorites as string[]) || []
+    const favoriteIds = (typeof user.favorites === 'string' ? JSON.parse(user.favorites) : user.favorites) || []
 
     if (favoriteIds.length === 0) {
       return NextResponse.json([])
@@ -59,13 +66,28 @@ export async function POST(request: NextRequest) {
     const { productId } = await request.json()
     if (!productId) return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, select: { favorites: true } })
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const userId = decoded.userId || decoded.employeeId
+    const isEmployee = !!decoded.employeeId
 
-    const favorites = (user.favorites as string[]) || []
+    if (!userId) {
+      console.error("Favorites POST: Token verified but no valid ID found", decoded)
+      return NextResponse.json({ error: "Invalid token: missing ID" }, { status: 401 })
+    }
+
+    const user = isEmployee
+      ? (await prisma.$queryRawUnsafe(`SELECT favorites FROM employees WHERE id = ?`, userId) as any)?.[0]
+      : await prisma.user.findUnique({ where: { id: userId }, select: { favorites: true } })
+
+    if (!user) return NextResponse.json({ error: "Account not found" }, { status: 404 })
+
+    const favorites = (typeof user.favorites === 'string' ? JSON.parse(user.favorites) : user.favorites) || []
     if (!favorites.includes(productId)) {
       favorites.push(productId)
-      await prisma.user.update({ where: { id: decoded.userId }, data: { favorites } })
+      if (isEmployee) {
+        await prisma.$executeRawUnsafe(`UPDATE employees SET favorites = ? WHERE id = ?`, JSON.stringify(favorites), userId)
+      } else {
+        await prisma.user.update({ where: { id: userId }, data: { favorites: favorites as any } })
+      }
     }
 
     return NextResponse.json({ success: true, favorites })
@@ -87,11 +109,26 @@ export async function DELETE(request: NextRequest) {
     const productId = searchParams.get("productId")
     if (!productId) return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, select: { favorites: true } })
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const userId = decoded.userId || decoded.employeeId
+    const isEmployee = !!decoded.employeeId
 
-    const favorites = ((user.favorites as string[]) || []).filter((id) => id !== productId)
-    await prisma.user.update({ where: { id: decoded.userId }, data: { favorites } })
+    if (!userId) {
+      console.error("Favorites DELETE: Token verified but no valid ID found", decoded)
+      return NextResponse.json({ error: "Invalid token: missing ID" }, { status: 401 })
+    }
+
+    const user = isEmployee
+      ? (await prisma.$queryRawUnsafe(`SELECT favorites FROM employees WHERE id = ?`, userId) as any)?.[0]
+      : await prisma.user.findUnique({ where: { id: userId }, select: { favorites: true } })
+
+    if (!user) return NextResponse.json({ error: "Account not found" }, { status: 404 })
+
+    const favorites = ((typeof user.favorites === 'string' ? JSON.parse(user.favorites) : user.favorites) || []).filter((id: string) => id !== productId)
+    if (isEmployee) {
+      await prisma.$executeRawUnsafe(`UPDATE employees SET favorites = ? WHERE id = ?`, JSON.stringify(favorites), userId)
+    } else {
+      await prisma.user.update({ where: { id: userId }, data: { favorites: favorites as any } })
+    }
 
     return NextResponse.json({ success: true, favorites })
   } catch (error) {

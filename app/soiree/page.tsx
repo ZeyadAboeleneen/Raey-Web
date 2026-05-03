@@ -5,22 +5,21 @@ import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Navigation } from "@/components/navigation"
+import { Footer } from "@/components/footer"
+import dynamic from "next/dynamic"
+
+const QuickAddModal = dynamic(
+  () => import("@/components/quick-add-modal").then((m) => m.QuickAddModal),
+  { ssr: false }
+)
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus } from "lucide-react"
-import dynamic from "next/dynamic"
 
-// Lazy load heavy components for faster initial render
-const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
-  ssr: true,
-})
-
-const Footer = dynamic(() => import("@/components/footer").then(mod => ({ default: mod.Footer })), {
-  ssr: true,
-})
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
 import useEmblaCarousel from 'embla-carousel-react'
@@ -38,7 +37,6 @@ import { useToast } from "@/hooks/use-toast"
 
 
 const PAGE_SIZE = 12
-// WhatsApp ordering removed — using cart-based checkout
 
 const PRICE_RANGES = [
   { label: "4,000 – 6,000", min: 4000, max: 6000 },
@@ -136,15 +134,12 @@ export default function SoireePage() {
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
-  const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
 
   const {
     isCustomSizeMode, setIsCustomSizeMode,
-    measurementUnit, setMeasurementUnit,
-    measurements, handleMeasurementChange,
-    confirmMeasurements, setConfirmMeasurements,
-    resetMeasurements, isMeasurementsValid,
+    setMeasurementUnit,
+    resetMeasurements,
   } = useCustomSize()
 
   const { dispatch: cartDispatch } = useCart()
@@ -178,8 +173,6 @@ export default function SoireePage() {
   const getProductPrice = (product: Product) =>
     product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
 
-  const isRentBranch = (branchSlug: string | null) => branchSlug !== "sell-dresses"
-
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery), 250)
     return () => clearTimeout(handle)
@@ -190,7 +183,7 @@ export default function SoireePage() {
   }, [debouncedQuery, selectedCollection, selectedPriceRanges])
 
   useEffect(() => {
-    if (showSizeSelector || showGiftPackageSelector || showCustomSizeConfirmation) {
+    if (showSizeSelector || showGiftPackageSelector) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -198,7 +191,7 @@ export default function SoireePage() {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [showSizeSelector, showGiftPackageSelector, showCustomSizeConfirmation])
+  }, [showSizeSelector, showGiftPackageSelector])
 
   useEffect(() => {
     if (!selectedProduct) return
@@ -307,61 +300,7 @@ export default function SoireePage() {
       resetMeasurements()
       setIsCustomSizeMode(true)
       setMeasurementUnit("cm")
-      setConfirmMeasurements(false)
     }, 300)
-  }
-
-  // WhatsApp ordering removed — using cart-based checkout
-
-
-  const addToCart = () => {
-    if (!selectedProduct) return
-    if (!isCustomSizeMode && !selectedSize) return
-    if (isCustomSizeMode && !isMeasurementsValid) return
-    if (!isCustomSizeMode && selectedSize) {
-      if (selectedSize.stockCount !== undefined && selectedSize.stockCount < 1) {
-        alert(`Insufficient stock`)
-        return
-      }
-      if (selectedSize.stockCount !== undefined && selectedSize.stockCount === 0) {
-        alert(`Out of stock`)
-        return
-      }
-    }
-    if (selectedProduct.branch !== "sell-dresses") {
-      window.location.href = `/products/${selectedProduct.branch}/${selectedProduct.id}`
-      return
-    }
-
-    const firstSize = selectedProduct.sizes?.[0] || null
-    const fallbackSize: ProductSize = {
-      size: "custom",
-      volume: measurementUnit,
-      discountedPrice: selectedProduct.packagePrice || (firstSize?.discountedPrice ?? 0),
-      originalPrice: firstSize?.originalPrice ?? 0
-    }
-    const baseSize = selectedSize || firstSize || fallbackSize
-    const computedPrice = baseSize.discountedPrice || baseSize.originalPrice || selectedProduct.packagePrice || 0
-    cartDispatch({
-      type: "ADD_ITEM",
-      payload: {
-        id: `${selectedProduct.id}-${isCustomSizeMode ? "custom" : baseSize.size}`,
-        productId: selectedProduct.id,
-        name: selectedProduct.name,
-        price: computedPrice,
-        originalPrice: baseSize.originalPrice,
-        size: isCustomSizeMode ? "custom" : baseSize.size,
-        volume: isCustomSizeMode ? measurementUnit : baseSize.volume,
-        image: selectedProduct.images[0],
-        branch: selectedProduct.branch,
-        quantity: 1,
-        stockCount: isCustomSizeMode ? undefined : baseSize.stockCount,
-        type: "buy",
-        collection: selectedProduct.collection || "",
-        customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined
-      }
-    })
-    closeSizeSelector()
   }
 
   const handlePageChange = (newPage: number) => {
@@ -377,7 +316,8 @@ export default function SoireePage() {
     if (isFavorite(product.id)) {
       removeFromFavorites(product.id)
     } else {
-      const price = product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
+      const isRentBranch = product.branch !== "sell-dresses"
+    const price = product.isGiftPackage ? (product.packagePrice || 0) : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)
       addToFavorites({
         id: product.id,
         name: product.name,
@@ -392,7 +332,8 @@ export default function SoireePage() {
         isGiftPackage: product.isGiftPackage,
         packagePrice: product.packagePrice,
         packageOriginalPrice: product.packageOriginalPrice,
-        giftPackageSizes: product.giftPackageSizes
+        giftPackageSizes: product.giftPackageSizes,
+        rentalPriceA: (product as any).rentalPriceA
       })
     }
   }
@@ -404,7 +345,6 @@ export default function SoireePage() {
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
 
-    // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
     const showProductPrice = showPrices || product.branch === "sell-dresses"
 
     return (
@@ -464,7 +404,6 @@ export default function SoireePage() {
     )
   }
 
-  // Show skeleton loader only on initial load with no data
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -486,119 +425,12 @@ export default function SoireePage() {
     <div className="min-h-screen bg-white">
       <Navigation />
 
-      {showSizeSelector && selectedProduct && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeSizeSelector}>
-          <motion.div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-medium">{selectedProduct.name}</h3>
-                  <p className="text-gray-600 text-sm">{t("selectSize")}</p>
-                </div>
-                <div className="flex">
-                  <button onClick={(e) => { e.stopPropagation(); handleFavoriteClick(e, selectedProduct) }} className="mr-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors">
-                    <Heart className={`h-5 w-5 ${isFavorite(selectedProduct.id) ? "text-red-500 fill-red-500" : "text-gray-700"}`} />
-                  </button>
-                  <button onClick={closeSizeSelector} className="text-gray-500 hover:text-gray-700 transition-colors">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center mb-6">
-                <div className="relative w-20 h-20 mr-4">
-                  <Image src={selectedProduct.images[0] || "/placeholder.svg"} alt={selectedProduct.name} fill sizes="80px" className="rounded-lg object-cover" />
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm line-clamp-2">{selectedProduct.description}</p>
-                  <div className="flex items-center mt-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`h-4 w-4 ${i < Math.floor(selectedProduct.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-                    ))}
-                    <span className="text-xs text-gray-600 ml-2">({selectedProduct.rating.toFixed(1)})</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mb-6">
-                <CustomSizeForm
-                  controller={{ isCustomSizeMode, setIsCustomSizeMode, measurementUnit, setMeasurementUnit, measurements, onMeasurementChange: handleMeasurementChange, confirmMeasurements, setConfirmMeasurements, isMeasurementsValid }}
-                  sizeChart={sizeChart}
-                  sizes={selectedProduct.sizes}
-                  selectedSize={selectedSize}
-                  onSelectSize={(size) => { setIsCustomSizeMode(false); setSelectedSize(size as any) }}
-                  formatPrice={formatPrice}
-                />
-                {isCustomSizeMode && isRentBranch(selectedProduct.branch) && (
-                  <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <p className="mb-2 font-medium">{t("selectOccasionDate")}</p>
-                    <Calendar mode="single" selected={occasionDate} onSelect={setOccasionDate} />
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-between items-center py-4 border-t border-gray-100">
-                <div>
-                  <span className="text-gray-600">{t("total")}:</span>
-                  <div className="text-xl font-medium ml-2">
-                    {(() => {
-                      if (selectedSize) {
-                        const uo = selectedSize.originalPrice || 0
-                        const ud = selectedSize.discountedPrice || 0
-                        const hd = uo > 0 && selectedSize.discountedPrice !== undefined && ud < uo
-                        const tp = (hd ? ud : uo || ud)
-                        if (hd) return (
-                          <>
-                            <span className="line-through text-gray-400 mr-2 text-lg">{formatPrice(uo)}</span>
-                            <span className="text-red-600 font-bold">{formatPrice(tp)}</span>
-                          </>
-                        )
-                        return <>{formatPrice(tp)}</>
-                      }
-                      if (isCustomSizeMode && selectedProduct.sizes?.length > 0) {
-                        const fs = selectedProduct.sizes[0]
-                        return <>{formatPrice(fs.discountedPrice || fs.originalPrice || 0)}</>
-                      }
-                      return <>{formatPrice(getSmallestPrice(selectedProduct.sizes))}</>
-                    })()}
-                  </div>
-                </div>
-                <Button onClick={() => { if (!selectedProduct || selectedProduct.isOutOfStock) return; if (!isCustomSizeMode) { addToCart(); return }; if (!isMeasurementsValid) { alert("Please complete your custom measurements"); return }; setShowCustomSizeConfirmation(true) }} className={`flex items-center rounded-full px-6 py-5 ${selectedProduct?.isOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-black hover:bg-gray-800'}`} disabled={selectedProduct?.isOutOfStock || (isCustomSizeMode ? !isMeasurementsValid : !selectedSize)}>
-                  <ShoppingCart className="h-4 w-4" />{selectedProduct?.isOutOfStock ? t("outOfStock") : isRentBranch(selectedProduct.branch) ? t("rentNow") : t("buyNow")}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-
-      <AlertDialog open={showCustomSizeConfirmation} onOpenChange={setShowCustomSizeConfirmation}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              {t("confirmCustomSize")}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 pt-2">
-              <p>{t("confirmCustomSizeDesc")}</p>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <span><strong>{t("shoulder")}:</strong> {measurements.shoulder} {measurementUnit}</span>
-                  <span><strong>{t("bust")}:</strong> {measurements.bust} {measurementUnit}</span>
-                  <span><strong>{t("waist")}:</strong> {measurements.waist} {measurementUnit}</span>
-                  <span><strong>{t("hips")}:</strong> {measurements.hips} {measurementUnit}</span>
-                  <span><strong>{t("sleeve")}:</strong> {measurements.sleeve} {measurementUnit}</span>
-                  <span><strong>{t("length")}:</strong> {measurements.length} {measurementUnit}</span>
-                </div>
-              </div>
-              <p className="text-amber-600 font-medium">{t("ifAnythingIncorrect")}</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowCustomSizeConfirmation(false)}>{t("reviewAgain")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { addToCart(); setShowCustomSizeConfirmation(false) }} className="bg-black hover:bg-gray-800">
-              {t("confirmAddToCart")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <QuickAddModal
+        product={selectedProduct as any}
+        isOpen={showSizeSelector}
+        onClose={closeSizeSelector}
+        sizeChart={sizeChart}
+      />
 
       {showGiftPackageSelector && selectedProduct && (
         <GiftPackageSelector product={selectedProduct} isOpen={showGiftPackageSelector} onClose={() => setShowGiftPackageSelector(false)}
