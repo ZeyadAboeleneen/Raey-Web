@@ -49,6 +49,8 @@ interface OrderSummaryProps {
   }>
   subtotal: number
   total: number
+  depositAmount?: number
+  remainingAmount?: number
   discountCode: string
   setDiscountCode: (code: string) => void
   appliedDiscount: any
@@ -66,6 +68,8 @@ export const OrderSummary = ({
   items,
   subtotal,
   total,
+  depositAmount = 0,
+  remainingAmount = 0,
   discountCode,
   setDiscountCode,
   appliedDiscount,
@@ -458,7 +462,24 @@ export const OrderSummary = ({
               <span>{t("total")}</span>
               <span>{formatPrice(total)}</span>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            
+            {remainingAmount > 0 && (
+              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-purple-900">{t("paymentDueNowDeposit" as TranslationKey)}</span>
+                  <span className="text-lg font-bold text-purple-700">{formatPrice(depositAmount)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>{t("remainingBalance" as TranslationKey)}</span>
+                  <span className="font-medium">{formatPrice(remainingAmount)}</span>
+                </div>
+                <p className="text-xs text-purple-600/80 mt-2 italic">
+                  {t("depositRequiredNotice" as TranslationKey)}
+                </p>
+              </div>
+            )}
+            
+            <p className="mt-2 text-xs text-gray-500">
               {t("allPricesIncludeShipping")}
             </p>
           </>

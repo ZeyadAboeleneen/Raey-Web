@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       } catch { }
     }
 
-    const { items, total, shippingAddress, paymentMethod, paymentDetails, discountCode, discountAmount } =
+    const { items, total, shippingAddress, paymentMethod, paymentDetails, discountCode, discountAmount, depositAmount, remainingAmount } =
       await request.json()
 
     if (!items?.length || !total || !shippingAddress) {
@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
       paymentDetails: paymentDetails || null,
       discountCode: discountCode || null,
       discountAmount: discountAmount || 0,
+      depositAmount: depositAmount || 0,
+      remainingAmount: remainingAmount || 0,
       status: "pending",
       userId: isLoggedIn ? userId : "guest",
     }
@@ -261,8 +263,8 @@ export async function POST(request: NextRequest) {
               .input('CurrencyID', sql.Int, 1)
               .input('ExRate', sql.Decimal(18, 2), 1.0)
               .input('Total', sql.Decimal(18, 2), serverPrice)
-              .input('Deposit', sql.Decimal(18, 2), 0)
-              .input('Remaining', sql.Decimal(18, 2), serverPrice)
+              .input('Deposit', sql.Decimal(18, 2), serverPrice * 0.5)
+              .input('Remaining', sql.Decimal(18, 2), serverPrice * 0.5)
               .input('NoteItem', sql.NVarChar, noteItem.substring(0, 200))
               .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust).substring(0, 20) : '')
               .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist).substring(0, 20) : '')

@@ -170,8 +170,24 @@ export default function CheckoutPage() {
 
   // Correct order of calculations:
   const subtotal = cartState.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  
+  const rentSubtotal = cartState.items.reduce((sum, item) => {
+    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
+    return sum + (isRent ? item.price * item.quantity : 0);
+  }, 0);
+  
+  const buySubtotal = cartState.items.reduce((sum, item) => {
+    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
+    return sum + (!isRent ? item.price * item.quantity : 0);
+  }, 0);
+
   const discountAmount = appliedDiscount?.discountAmount || 0
   const total = subtotal - discountAmount
+  
+  const baseDeposit = (rentSubtotal * 0.5) + buySubtotal;
+  const depositRatio = subtotal > 0 ? baseDeposit / subtotal : 0;
+  const depositAmount = discountAmount > 0 ? total * depositRatio : baseDeposit;
+  const remainingAmount = total - depositAmount;
 
 
   const handleInputChange = (field: string, value: string) => {
@@ -379,6 +395,8 @@ export default function CheckoutPage() {
         paymentMethod: formData.paymentMethod,
         discountCode: appliedDiscount?.code,
         discountAmount: appliedDiscount?.discountAmount,
+        depositAmount,
+        remainingAmount,
       }
 
       const token = authState.token
@@ -778,6 +796,8 @@ export default function CheckoutPage() {
                       items={cartState.items as any}
                       subtotal={subtotal}
                       total={total}
+                      depositAmount={depositAmount}
+                      remainingAmount={remainingAmount}
                       discountCode={discountCode}
                       setDiscountCode={setDiscountCode}
                       appliedDiscount={appliedDiscount}

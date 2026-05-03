@@ -412,7 +412,7 @@ export default function BranchProductsPage() {
                                   packagePrice: product.packagePrice,
                                   packageOriginalPrice: product.packageOriginalPrice,
                                   giftPackageSizes: product.giftPackageSizes,
-                                  rentalPriceA: product.rentalPriceA,
+                                  rentalPriceA: product.rentalPriceA ?? undefined,
                                 })
                               }
                             }}

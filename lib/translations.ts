@@ -59,6 +59,9 @@ export const translations = {
     apply: "Apply",
     discountCode: "Discount Code",
     enterDiscountCode: "Enter discount code",
+    paymentDueNowDeposit: "Payment Due Now (Deposit)",
+    remainingBalance: "Remaining Balance",
+    depositRequiredNotice: "* 50% deposit required for rental items to secure your booking.",
     
     // Cart Item
     rentLabel: "Rent",
@@ -387,6 +390,9 @@ export const translations = {
     apply: "تطبيق",
     discountCode: "كود الخصم",
     enterDiscountCode: "أدخل كود الخصم",
+    paymentDueNowDeposit: "المبلغ المستحق الآن (العربون)",
+    remainingBalance: "الرصيد المتبقي",
+    depositRequiredNotice: "* يُطلب دفع عربون بنسبة 50٪ للعناصر المؤجرة لتأكيد حجزك.",
     
     // Cart Item
     rentLabel: "إيجار",
