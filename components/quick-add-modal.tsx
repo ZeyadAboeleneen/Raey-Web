@@ -438,13 +438,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                         )
                       ) : (
                         <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 uppercase tracking-wider">Starting at</span>
-                          <span className="text-xl font-bold text-black">
-                            {product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0
-                              ? formatPrice(product.rentalPriceA)
-                              : formatPrice(getSmallestPrice(product.sizes))}
-                          </span>
-                          <span className="text-[10px] text-gray-400">Select a date for final price</span>
+                          <span className="text-sm text-gray-500 italic">Select a date to view pricing</span>
                         </div>
                       )
                     ) : (
