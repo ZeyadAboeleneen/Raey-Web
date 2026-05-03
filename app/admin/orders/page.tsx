@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Package, User, MapPin, Eye, Trash2 } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, Eye, Trash2, CreditCard, ImageIcon } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
@@ -151,6 +151,53 @@ export default function AdminOrdersPage() {
                         </div>
                         <p className="text-xs sm:text-sm text-gray-500">Date: {new Date(order.createdAt).toLocaleString()}</p>
                         
+                        {/* Product Names */}
+                        {order.items?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {order.items.map((item: any, idx: number) => (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-xs font-medium border border-purple-100">
+                                <Package className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate max-w-[180px]">{item.name || 'Unnamed Product'}</span>
+                                {item.quantity > 1 && <span className="text-purple-400">×{item.quantity}</span>}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Rental dates if any item is a rental */}
+                        {order.items?.some((item: any) => item.rentStart && item.rentEnd) && (
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {order.items.filter((item: any) => item.rentStart && item.rentEnd).map((item: any, idx: number) => (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs border border-amber-100">
+                                📅 {new Date(item.rentStart).toLocaleDateString()} → {new Date(item.rentEnd).toLocaleDateString()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Payment method & deposit */}
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100">
+                            <CreditCard className="h-3 w-3" />
+                            {order.paymentMethod === "instapay" ? "Instapay" :
+                             order.paymentMethod === "bank_transfer" ? "Bank Transfer" :
+                             order.paymentMethod === "vodafone_cash" ? "Vodafone Cash" :
+                             order.paymentMethod === "cod" ? "COD" :
+                             order.paymentMethod}
+                          </span>
+                          {order.depositAmount > 0 && (
+                            <span className="text-xs text-amber-700 font-medium">
+                              Deposit: {formatPrice(order.depositAmount)}
+                            </span>
+                          )}
+                          {order.paymentScreenshot && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 text-xs border border-green-100">
+                              <ImageIcon className="h-3 w-3" />
+                              Proof ✓
+                            </span>
+                          )}
+                        </div>
+
                         <div className="flex items-center gap-4 mt-2">
                           <div className="flex items-center text-xs text-gray-600">
                             <User className="h-3 w-3 mr-1" />

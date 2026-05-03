@@ -6,6 +6,10 @@ import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
 
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
+
+// Allow larger body for base64 payment screenshots
+export const fetchCache = 'force-no-store'
 
 const transformOrder = (order: any) => ({
   _id: order.id,
@@ -15,10 +19,13 @@ const transformOrder = (order: any) => ({
   total: order.total || 0,
   status: order.status || "pending",
   shippingAddress: order.shippingAddress || {},
-  paymentMethod: order.paymentMethod || "cod",
+  paymentMethod: order.paymentMethod || "instapay",
   paymentDetails: order.paymentDetails,
+  paymentScreenshot: order.paymentScreenshot || null,
   discountCode: order.discountCode,
   discountAmount: order.discountAmount || 0,
+  depositAmount: order.depositAmount || 0,
+  remainingAmount: order.remainingAmount || 0,
   createdAt: order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString(),
   updatedAt: order.updatedAt ? new Date(order.updatedAt).toISOString() : new Date().toISOString(),
 })
@@ -88,7 +95,7 @@ export async function POST(request: NextRequest) {
       } catch { }
     }
 
-    const { items, total, shippingAddress, paymentMethod, paymentDetails, discountCode, discountAmount, depositAmount, remainingAmount } =
+    const { items, total, shippingAddress, paymentMethod, paymentDetails, paymentScreenshot, discountCode, discountAmount, depositAmount, remainingAmount } =
       await request.json()
 
     if (!items?.length || !total || !shippingAddress) {
@@ -124,8 +131,9 @@ export async function POST(request: NextRequest) {
       orderId,
       items: items.map((item: any) => ({ ...item, reviewed: false })),
       total, shippingAddress,
-      paymentMethod: paymentMethod || "cod",
+      paymentMethod: paymentMethod || "instapay",
       paymentDetails: paymentDetails || null,
+      paymentScreenshot: paymentScreenshot || null,
       discountCode: discountCode || null,
       discountAmount: discountAmount || 0,
       depositAmount: depositAmount || 0,

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2 } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2, ImageIcon, DollarSign } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
 
@@ -82,13 +82,16 @@ interface OrderDetails {
     countryCode?: string
     postalCode: string
   }
-  paymentMethod: "cod" | "visa" | "mastercard"
+  paymentMethod: "instapay" | "bank_transfer" | "vodafone_cash" | "cod"
   paymentDetails?: {
     cardNumber: string
     cardName: string
   }
+  paymentScreenshot?: string | null
   discountCode?: string
   discountAmount?: number
+  depositAmount?: number
+  remainingAmount?: number
   createdAt: string
   updatedAt: string
 }
@@ -505,26 +508,58 @@ export default function AdminOrderDetailsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Method</span>
                       <span className="text-sm font-medium">
-                        {order.paymentMethod === "cod" ? "Cash on Delivery" : order.paymentMethod.toUpperCase()}
+                        {order.paymentMethod === "instapay" ? "Instapay" :
+                         order.paymentMethod === "bank_transfer" ? "Bank Transfer" :
+                         order.paymentMethod === "vodafone_cash" ? "Vodafone Cash" :
+                         order.paymentMethod === "cod" ? "Cash on Delivery" :
+                         order.paymentMethod}
                       </span>
                     </div>
-                    {order.paymentDetails && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Card Name</span>
-                          <span className="text-sm">{order.paymentDetails.cardName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Card Number</span>
-                          <span className="text-sm">****{order.paymentDetails.cardNumber}</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Deposit</span>
+                      <span className="text-sm font-medium text-amber-700">{formatPriceEGP(order.depositAmount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Remaining</span>
+                      <span className="text-sm font-medium text-red-600">{formatPriceEGP(order.remainingAmount || 0)}</span>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Payment Proof Screenshot */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <ImageIcon className="mr-2 h-5 w-5" />
+                    Payment Proof
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {order.paymentScreenshot ? (
+                    <div className="space-y-3">
+                      <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <a href={order.paymentScreenshot} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={order.paymentScreenshot}
+                            alt="Payment proof screenshot"
+                            className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition-opacity max-h-[400px]"
+                          />
+                        </a>
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">Click image to view full size</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <ImageIcon className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">No payment screenshot uploaded</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

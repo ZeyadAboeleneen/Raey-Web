@@ -59,22 +59,23 @@ model Product {
 }
 
 model Order {
-  id              String   @id @default(uuid())
-  orderId         String   @unique @map("order_id")
-  userId          String?  @map("user_id")
-  items           Json
-  total           Float
-  status          String   @default("pending")
-  shippingAddress Json     @map("shipping_address")
-  paymentMethod   String   @default("cod") @map("payment_method")
-  paymentDetails  Json?    @map("payment_details")
-  discountCode    String?  @map("discount_code")
-  discountAmount  Float    @default(0) @map("discount_amount")
-  depositAmount   Float    @default(0) @map("deposit_amount")
-  remainingAmount Float    @default(0) @map("remaining_amount")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  user            User?    @relation(fields: [userId], references: [id])
+  id               String   @id @default(uuid())
+  orderId          String   @unique @map("order_id")
+  userId           String?  @map("user_id")
+  items            Json
+  total            Float
+  status           String   @default("pending")
+  shippingAddress  Json     @map("shipping_address")
+  paymentMethod    String   @default("instapay") @map("payment_method")
+  paymentDetails   Json?    @map("payment_details")
+  paymentScreenshot String? @map("payment_screenshot") @db.LongText
+  discountCode     String?  @map("discount_code")
+  discountAmount   Float    @default(0) @map("discount_amount")
+  depositAmount    Float    @default(0) @map("deposit_amount")
+  remainingAmount  Float    @default(0) @map("remaining_amount")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  user             User?    @relation(fields: [userId], references: [id])
 
   @@map("orders")
 }
