@@ -68,6 +68,7 @@ interface ProductDetail {
   giftPackageSizes?: any[]
   hasBeenRented?: boolean
   rentalPriceA?: number
+  rentalPriceC?: number
 }
 
 interface Review {
@@ -810,7 +811,20 @@ export default function ProductDetailPage() {
                   {(() => {
                     const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
                     const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
-                    if (!showProductPrice) return null
+                    const clientRentalPrice = isRentBranch && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
+                    if (!showProductPrice && !clientRentalPrice) return null
+                    if (!showProductPrice && clientRentalPrice) {
+                      return (
+                        <div className="text-2xl sm:text-3xl font-light text-left">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xl sm:text-2xl">{formatPrice(clientRentalPrice)}</span>
+                            <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
+                              Starting from
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    }
                     return (
                       <div className="text-2xl sm:text-3xl font-light text-left">
                         {(() => {

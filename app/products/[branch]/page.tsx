@@ -413,6 +413,7 @@ export default function BranchProductsPage() {
                                   packageOriginalPrice: product.packageOriginalPrice,
                                   giftPackageSizes: product.giftPackageSizes,
                                   rentalPriceA: product.rentalPriceA ?? undefined,
+                                  rentalPriceC: (product as any).rentalPriceC ?? undefined,
                                 })
                               }
                             }}
@@ -464,26 +465,35 @@ export default function BranchProductsPage() {
 
                                   {/* Bottom overlay with name, price and cart button */}
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                                    {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
-                                    {(() => {
-                                      const isWeddingOrSoiree = (product as any).collection?.toLowerCase().includes("wedding") || (product as any).collection?.toLowerCase().includes("soiree")
-                                      const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
-                                      return (
-                                        <>
-                                          {showProductPrice ? (
-                                            <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
-                                              {product.name}
-                                            </h3>
-                                          ) : null}
-
-                                          <div className="mt-0.5 flex items-center justify-between gap-2">
-                                            {!showProductPrice ? (
-                                              <div className="flex-1 min-w-0">
-                                                <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                        {(() => {
+                                          const isWeddingOrSoiree = (product as any).collection?.toLowerCase().includes("wedding") || (product as any).collection?.toLowerCase().includes("soiree")
+                                          const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
+                                          const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+                                          return (
+                                            <>
+                                              {(showProductPrice || clientRentalPrice) ? (
+                                                <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                                                   {product.name}
-                                                </div>
-                                              </div>
-                                            ) : (
+                                                </h3>
+                                              ) : null}
+
+                                              <div className="mt-0.5 flex items-center justify-between gap-2">
+                                                {(!showProductPrice && !clientRentalPrice) ? (
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
+                                                      {product.name}
+                                                    </div>
+                                                  </div>
+                                                ) : !showProductPrice && clientRentalPrice ? (
+                                                  <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                                                    <span className="text-[9px] text-rose-300 font-medium mb-0.5">
+                                                      Starting from
+                                                    </span>
+                                                    <span className="text-xs sm:text-sm font-semibold">
+                                                      {formatPrice(clientRentalPrice)}
+                                                    </span>
+                                                  </div>
+                                                ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                 {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
                                                   <span className="text-[9px] text-purple-300 font-medium mb-0.5">

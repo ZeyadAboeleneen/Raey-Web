@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
+import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -126,6 +127,25 @@ export async function POST(request: NextRequest) {
 
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
+    // Upload payment screenshot to Cloudinary if it's a base64 string
+    let finalPaymentScreenshot = paymentScreenshot || null
+    if (paymentScreenshot && paymentScreenshot.startsWith("data:image/")) {
+      try {
+        console.log("📸 [API] Uploading payment screenshot to Cloudinary...")
+        finalPaymentScreenshot = await uploadDataUrlToCloudinary(
+          paymentScreenshot,
+          "payments",
+          `order-${orderId}`
+        )
+        console.log("✅ [API] Payment screenshot uploaded:", finalPaymentScreenshot)
+      } catch (uploadError) {
+        console.error("❌ [API] Failed to upload payment screenshot to Cloudinary:", uploadError)
+        // We'll continue with the base64 if upload fails, or we could throw an error
+        // Given the requirement, let's assume we want it to succeed even if upload fails
+        // but it's better to store it as is than to lose it.
+      }
+    }
+
     // Build order data
     const orderData: any = {
       orderId,
@@ -133,7 +153,7 @@ export async function POST(request: NextRequest) {
       total, shippingAddress,
       paymentMethod: paymentMethod || "instapay",
       paymentDetails: paymentDetails || null,
-      paymentScreenshot: paymentScreenshot || null,
+      paymentScreenshot: finalPaymentScreenshot,
       discountCode: discountCode || null,
       discountAmount: discountAmount || 0,
       depositAmount: depositAmount || 0,

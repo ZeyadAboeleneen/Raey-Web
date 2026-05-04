@@ -335,6 +335,7 @@ export default function WeddingProductsPage() {
           packageOriginalPrice: product.packageOriginalPrice,
           giftPackageSizes: product.giftPackageSizes,
           rentalPriceA: product.rentalPriceA,
+          rentalPriceC: product.rentalPriceC,
         })
       }
     } catch (error) {
@@ -477,23 +478,32 @@ export default function WeddingProductsPage() {
 
                 {/* Bottom overlay with name, price and cart button - mirror Best Sellers */}
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
-                  {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                   {(() => {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
+                    const clientRentalPrice = product.branch !== "sell-dresses" && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
                     return (
                       <>
-                        {showProductPrice ? (
+                        {(showProductPrice || clientRentalPrice) ? (
                           <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                             {product.name}
                           </h3>
                         ) : null}
 
                         <div className={priceRowClassName}>
-                          {!showProductPrice ? (
+                          {(!showProductPrice && !clientRentalPrice) ? (
                             <div className="flex-1 min-w-0">
                               <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                 {product.name}
                               </div>
+                            </div>
+                          ) : !showProductPrice && clientRentalPrice ? (
+                            <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
+                              <span className="text-[9px] text-rose-300 font-medium mb-0.5">
+                                Starting from
+                              </span>
+                              <span className="text-xs sm:text-sm font-semibold">
+                                {formatPrice(clientRentalPrice)}
+                              </span>
                             </div>
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>

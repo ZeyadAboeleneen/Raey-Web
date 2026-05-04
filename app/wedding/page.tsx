@@ -179,8 +179,15 @@ export default function WeddingPage() {
     return Math.min(...prices.filter(p => p > 0))
   }
 
-  const getProductPrice = (product: Product) =>
-    product.isGiftPackage ? (product.packagePrice || 0) : getSmallestPrice(product.sizes)
+  const getProductPrice = (product: Product) => {
+    if (product.isGiftPackage) return product.packagePrice || 0
+    const isRent = product.branch !== "sell-dresses"
+    if (isRent) {
+      if (showPrices && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) return (product as any).rentalPriceA
+      if (!showPrices && (product as any).rentalPriceC && (product as any).rentalPriceC > 0) return (product as any).rentalPriceC
+    }
+    return getSmallestPrice(product.sizes)
+  }
 
   const isRentBranch = (branchSlug: string | null) => branchSlug !== "sell-dresses"
 
@@ -286,7 +293,7 @@ export default function WeddingPage() {
       result = scored.filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p)
     }
     return result
-  }, [allProducts, selectedCollection, selectedPriceRanges, debouncedQuery])
+  }, [allProducts, selectedCollection, selectedPriceRanges, debouncedQuery, showPrices])
 
   const totalPages = Math.max(Math.ceil(filteredProducts.length / PAGE_SIZE), 1)
   const paginatedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -353,7 +360,8 @@ export default function WeddingPage() {
         packagePrice: product.packagePrice,
         packageOriginalPrice: product.packageOriginalPrice,
         giftPackageSizes: product.giftPackageSizes,
-        rentalPriceA: (product as any).rentalPriceA
+        rentalPriceA: (product as any).rentalPriceA,
+        rentalPriceC: (product as any).rentalPriceC,
       })
     }
   }
@@ -365,8 +373,8 @@ export default function WeddingPage() {
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
 
-    // Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree
     const showProductPrice = showPrices || product.branch === "sell-dresses"
+    const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
 
     return (
       <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
@@ -385,15 +393,24 @@ export default function WeddingPage() {
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                  {showProductPrice ? (
+                  {(showProductPrice || clientRentalPrice) ? (
                     <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
                   ) : null}
                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                    {!showProductPrice ? (
+                    {(!showProductPrice && !clientRentalPrice) ? (
                       <div className="flex-1 min-w-0">
                         <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                           {product.name}
                         </div>
+                      </div>
+                    ) : !showProductPrice && clientRentalPrice ? (
+                      <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                        <span className="text-[9px] text-rose-300 font-medium mb-0.5">
+                          Starting from
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold">
+                          {formatPrice(clientRentalPrice)}
+                        </span>
                       </div>
                     ) : (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">

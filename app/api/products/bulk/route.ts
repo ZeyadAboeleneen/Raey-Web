@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getMssqlPool, sql } from "@/lib/mssql";
-import { v2 as cloudinary } from "cloudinary";
 import { mapCollectionToLineId } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
 import {
@@ -54,42 +53,7 @@ function generateItemCode(name: string): string {
   return `${baseCode || "ITEM"}-${Date.now().toString().slice(-6)}`;
 }
 
-/* ─── Cloudinary helpers ────────────────────────────────────────────── */
-function configureCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary env vars missing (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)");
-  }
-
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-  });
-}
-
-async function uploadBufferToCloudinary(buffer: Buffer, publicId?: string): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "products",
-        public_id: publicId,
-        overwrite: true,
-        resource_type: "image",
-      },
-      (err, result) => {
-        if (err) return reject(err);
-        const url = (result as any)?.secure_url;
-        if (!url) return reject(new Error("Cloudinary returned no secure_url"));
-        resolve(url);
-      }
-    );
-    stream.end(buffer);
-  });
-}
+import { uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 /**
  * Normalize an image filename to a product-matchable base name.
@@ -456,8 +420,7 @@ async function handleImageOnlyUpload(imagesFile: File) {
 
   console.log(`🖼️ [Bulk] Extracted ${zipMap.size} images from ZIP`);
 
-  /* ── configure Cloudinary ─────────────────────────────────────── */
-  configureCloudinary();
+  /* ── process each image ───────────────────────────────────────── */
 
   /* ── load all active items from MSSQL ─────────────────────────── */
   const pool = await getMssqlPool();
@@ -533,7 +496,7 @@ async function handleImageOnlyUpload(imagesFile: File) {
     /* ── Upload to Cloudinary ─────────────────────────────────── */
     try {
       const publicId = `erp-${matchedItem.ID}-${Date.now().toString().slice(-6)}`;
-      const imageUrl = await uploadBufferToCloudinary(buffer, publicId);
+      const imageUrl = await uploadBufferToCloudinary(buffer, "products", publicId);
 
       /* ── Update PicPath in MSSQL ─────────────────────────────── */
       await pool

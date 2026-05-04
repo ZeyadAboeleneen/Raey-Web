@@ -159,18 +159,28 @@ export default function FavoritesPage() {
                               const price = item.isGiftPackage ? (item.packagePrice || 0) : (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0) ? item.rentalPriceA : getSmallestPrice(item.sizes || [])
                               const originalPrice = item.isGiftPackage ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
                               const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+                              const clientRentalPrice = isRentBranch && item.rentalPriceC && item.rentalPriceC > 0 ? item.rentalPriceC : null
 
                               return (
                                 <>
-                                  {showProductPrice ? (
+                                  {(showProductPrice || clientRentalPrice) ? (
                                     <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{item.name}</h3>
                                   ) : null}
                                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                                    {!showProductPrice ? (
+                                    {(!showProductPrice && !clientRentalPrice) ? (
                                       <div className="flex-1 min-w-0">
                                         <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                           {item.name}
                                         </div>
+                                      </div>
+                                    ) : !showProductPrice && clientRentalPrice ? (
+                                      <div className="text-[11px] sm:text-xs flex flex-col items-start">
+                                        <span className="text-[9px] text-rose-300 font-medium mb-0.5">
+                                          Starting from
+                                        </span>
+                                        <span className="text-xs sm:text-sm font-semibold">
+                                          {formatPrice(clientRentalPrice)}
+                                        </span>
                                       </div>
                                     ) : (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">

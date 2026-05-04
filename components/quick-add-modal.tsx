@@ -275,6 +275,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         isGiftPackage: product.isGiftPackage,
         packagePrice: product.packagePrice,
         rentalPriceA: product.rentalPriceA,
+        rentalPriceC: (product as any).rentalPriceC,
       })
     }
   }
@@ -428,12 +429,23 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           </>
                         ) : (
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-purple-600 font-medium">Starting at (Cat A)</span>
-                            <span className="text-xl font-bold text-black">
-                              {product.rentalPriceA && product.rentalPriceA > 0 
-                                ? formatPrice(product.rentalPriceA) 
-                                : formatPrice(getSmallestPrice(product.sizes))}
-                            </span>
+                            {!showPrices && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (
+                              <>
+                                <span className="text-[10px] text-rose-600 font-medium">Starting from</span>
+                                <span className="text-xl font-bold text-black">
+                                  {formatPrice((product as any).rentalPriceC)}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-[10px] text-purple-600 font-medium">Starting at (Cat A)</span>
+                                <span className="text-xl font-bold text-black">
+                                  {product.rentalPriceA && product.rentalPriceA > 0 
+                                    ? formatPrice(product.rentalPriceA) 
+                                    : formatPrice(getSmallestPrice(product.sizes))}
+                                </span>
+                              </>
+                            )}
                           </div>
                         )
                       ) : (

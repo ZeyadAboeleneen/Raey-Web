@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
-import { v2 as cloudinary } from "cloudinary"
+import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -12,52 +12,6 @@ const DEFAULT_SETTINGS = {
     wedding: "/wedding.jpg?v=2",
     soiree: "/elraey-bg.PNG",
   },
-}
-
-function configureCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME
-  const apiKey = process.env.CLOUDINARY_API_KEY
-  const apiSecret = process.env.CLOUDINARY_API_SECRET
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary env vars missing")
-  }
-
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-  })
-}
-
-function dataUrlToBuffer(dataUrl: string): Buffer {
-  const commaIndex = dataUrl.indexOf(",")
-  if (commaIndex === -1) throw new Error("Invalid data URL")
-  const meta = dataUrl.slice(0, commaIndex)
-  const payload = dataUrl.slice(commaIndex + 1)
-  const isBase64 = meta.toLowerCase().includes(";base64")
-  return Buffer.from(payload, isBase64 ? "base64" : "utf8")
-}
-
-async function uploadBufferToCloudinary(buffer: Buffer, publicId: string): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "hero-images",
-        public_id: publicId,
-        overwrite: true,
-        resource_type: "image",
-        transformation: [{ quality: "auto", fetch_format: "auto" }],
-      },
-      (err, result) => {
-        if (err) return reject(err)
-        const url = (result as any)?.secure_url
-        if (!url) return reject(new Error("Cloudinary returned no secure_url"))
-        resolve(url)
-      }
-    )
-    stream.end(buffer)
-  })
 }
 
 // GET - Fetch current settings (public, no auth required)
@@ -113,9 +67,7 @@ export async function PUT(request: NextRequest) {
 
     // Upload wedding hero image if provided as data URL
     if (weddingImage && weddingImage.startsWith("data:")) {
-      configureCloudinary()
-      const buffer = dataUrlToBuffer(weddingImage)
-      const url = await uploadBufferToCloudinary(buffer, `hero-wedding-${Date.now()}`)
+      const url = await uploadDataUrlToCloudinary(weddingImage, "hero-images", `hero-wedding-${Date.now()}`)
       updateData.wedding = url
     } else if (weddingImage) {
       // If it's already a URL, store it directly
@@ -124,9 +76,7 @@ export async function PUT(request: NextRequest) {
 
     // Upload soiree hero image if provided as data URL
     if (soireeImage && soireeImage.startsWith("data:")) {
-      configureCloudinary()
-      const buffer = dataUrlToBuffer(soireeImage)
-      const url = await uploadBufferToCloudinary(buffer, `hero-soiree-${Date.now()}`)
+      const url = await uploadDataUrlToCloudinary(soireeImage, "hero-images", `hero-soiree-${Date.now()}`)
       updateData.soiree = url
     } else if (soireeImage) {
       updateData.soiree = soireeImage

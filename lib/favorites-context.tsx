@@ -27,6 +27,7 @@ export interface FavoriteItem {
     discountedPrice?: number
   }>
   rentalPriceA?: number
+  rentalPriceC?: number
 }
 
 interface FavoritesState {
@@ -152,7 +153,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       ...(item.packageOriginalPrice !== undefined && { packageOriginalPrice: item.packageOriginalPrice }),
       ...(item.giftPackageSizes && { giftPackageSizes: item.giftPackageSizes }),
       ...(item.sizes && { sizes: item.sizes }),
-      ...(item.rentalPriceA !== undefined && { rentalPriceA: item.rentalPriceA })
+      ...(item.rentalPriceA !== undefined && { rentalPriceA: item.rentalPriceA }),
+      ...(item.rentalPriceC !== undefined && { rentalPriceC: item.rentalPriceC })
     };
 
     // Optimistic update

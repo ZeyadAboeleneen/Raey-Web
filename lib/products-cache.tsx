@@ -40,6 +40,8 @@ export interface CachedProduct {
   hasBeenRented?: boolean
   /** Category A rental price (cost × 0.8, rounded to 100, floor 3000) from ERP */
   rentalPriceA?: number | null
+  /** Category C rental price (cost × 0.6, rounded to 100, floor 3000) — shown to clients */
+  rentalPriceC?: number | null
 }
 
 interface ProductsCacheContextType {
