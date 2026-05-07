@@ -334,8 +334,8 @@ export default function WeddingProductsPage() {
           packagePrice: product.packagePrice,
           packageOriginalPrice: product.packageOriginalPrice,
           giftPackageSizes: product.giftPackageSizes,
-          rentalPriceA: product.rentalPriceA,
-          rentalPriceC: product.rentalPriceC,
+          rentalPriceA: product.rentalPriceA ?? undefined,
+          rentalPriceC: product.rentalPriceC ?? undefined,
         })
       }
     } catch (error) {

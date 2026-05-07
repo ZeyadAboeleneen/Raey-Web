@@ -476,8 +476,8 @@ export default function SoireeBranchPage() {
                                   packagePrice: product.packagePrice,
                                   packageOriginalPrice: product.packageOriginalPrice,
                                   giftPackageSizes: product.giftPackageSizes,
-                                  rentalPriceA: (product as any).rentalPriceA,
-                                  rentalPriceC: (product as any).rentalPriceC,
+                                  rentalPriceA: (product as any).rentalPriceA ?? undefined,
+                                  rentalPriceC: (product as any).rentalPriceC ?? undefined,
                                 })
                               }
                             }}

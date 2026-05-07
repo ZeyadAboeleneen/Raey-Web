@@ -137,11 +137,13 @@ export async function PUT(
 
     // ── Update MSSQL ERP (NO branch column) ─────────────────────
     const pool = await getMssqlPool();
+    const isSellDress = branchCode === "15";
     await pool
       .request()
       .input("itemId", sql.Int, itemId)
       .input("name", sql.NVarChar(sql.MAX), name)
       .input("price", sql.Decimal(18, 2), price)
+      .input("cost", sql.Decimal(18, 2), isSellDress ? 0 : price)
       .input("image", sql.NVarChar(sql.MAX), image || null)
       .input("lineId", sql.Int, lineId)
       .input("isDisabled", sql.Bit, isActive ? 0 : 1)
@@ -150,6 +152,7 @@ export async function PUT(
         SET
           Item_name = @name,
           Item_sellpricNow = @price,
+          Item_buypric = @cost,
           PicPath = @image,
           Category_id = @lineId,
           Item_Isdisabled = @isDisabled

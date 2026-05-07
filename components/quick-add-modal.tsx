@@ -157,10 +157,31 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
     return Math.min(...prices.filter(price => price > 0))
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return
     if (isCustomSizeMode && !isMeasurementsValid) return
     if (!isCustomSizeMode && !selectedSize) return
+
+    // Real-time stock check for sell-dresses (unique one-of-a-kind pieces)
+    if (product.branch === "sell-dresses") {
+      try {
+        const res = await fetch(`/api/products/${product.branch}/${product.id}`)
+        if (res.ok) {
+          const freshProduct = await res.json()
+          if (freshProduct.isOutOfStock) {
+            toast({
+              variant: "destructive",
+              title: "Sold Out",
+              description: "This dress has already been sold and is no longer available.",
+            })
+            onClose()
+            return
+          }
+        }
+      } catch {
+        // If check fails, let the order API handle it as a fallback
+      }
+    }
 
     if (isRentBranch) {
       if (!rentEventDate) {
@@ -250,8 +271,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
     router.push("/checkout")
   }
 
-  const handleToggleFavorite = async (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleToggleFavorite = async (e?: React.MouseEvent | any) => {
+    if (e && typeof e === 'object' && 'stopPropagation' in e) {
+      e.stopPropagation()
+    }
+    
     if (!product) return
     
     if (isFavorite(product.id)) {
@@ -274,8 +298,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         sizes: product.sizes,
         isGiftPackage: product.isGiftPackage,
         packagePrice: product.packagePrice,
-        rentalPriceA: product.rentalPriceA,
-        rentalPriceC: (product as any).rentalPriceC,
+        rentalPriceA: product.rentalPriceA ?? undefined,
+        rentalPriceC: (product as any).rentalPriceC ?? undefined,
       })
     }
   }
@@ -288,7 +312,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         product={product}
         isOpen={isOpen}
         onClose={onClose}
-        onToggleFavorite={handleToggleFavorite}
+        onToggleFavorite={() => handleToggleFavorite()}
         isFavorite={isFavorite}
       />
     )

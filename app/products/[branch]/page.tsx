@@ -22,6 +22,7 @@ import { useLocale } from "@/lib/locale-context"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { QuickAddModal } from "@/components/quick-add-modal"
 import type { SizeChartRow } from "@/components/custom-size-form"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
@@ -251,6 +252,22 @@ export default function BranchProductsPage() {
     return kept.map(x => x.p)
   }, [products, debouncedQuery])
 
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate } = useDateFilteredProducts(filteredProducts)
+
+  const paginatedProducts = useMemo(() => {
+    return sortedProducts.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
+  }, [sortedProducts, page])
+
+  // Eagerly fetch ALL branch products for zero-delay UX
+  useEffect(() => {
+    if (occasionDate && products.length > 0) {
+      const ids = products
+        .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage)
+        .map(p => p.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, products, fetchPricesForIds])
+
   const details = collectionDetails[branch as keyof typeof collectionDetails];
 
   if (!details) {
@@ -362,20 +379,29 @@ export default function BranchProductsPage() {
             <>
               <div id="products-grid" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-8">
 
-                {filteredProducts
-                  .slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
-                  .map((product, index) => {
+                {paginatedProducts.map((product, index) => {
                     const isGift = product.isGiftPackage
+                    
+                    // Dynamic price logic
+                    let exactDynamicPrice: number | null = null
+                    if (occasionDate && isRentBranch && !isGift) {
+                      if (dynamicPrices[product.id]) {
+                        exactDynamicPrice = dynamicPrices[product.id]
+                      }
+                    }
+
                     // For rental branches, prefer the Category A rental price (cost × 0.8)
                     const price = isGift
                       ? product.packagePrice || 0
-                      : (isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
+                      : (exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
                         ? product.rentalPriceA
-                        : getSmallestPrice(product.sizes)
+                        : getSmallestPrice(product.sizes)))
                     const originalPrice = isGift
                       ? product.packageOriginalPrice || 0
                       : getSmallestOriginalPrice(product.sizes)
                     const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+
+                    const available = isAvailable(product)
 
                     return (
                       <motion.div
@@ -384,8 +410,8 @@ export default function BranchProductsPage() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: index * 0.1 }}
                         viewport={{ once: true }}
-                        whileHover={{ y: -10 }}
-                        className="relative h-full"
+                        whileHover={available ? { y: -10 } : undefined}
+                        className={`relative h-full ${!available ? "opacity-60 grayscale hover:grayscale-0 transition-all duration-300" : ""}`}
                       >
                         <div className="group relative h-full">
                           {/* Favorite Button */}
@@ -417,7 +443,7 @@ export default function BranchProductsPage() {
                                 })
                               }
                             }}
-                            className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200"
+                            className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 pointer-events-auto"
                             aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
                           >
                             <Heart
@@ -430,17 +456,22 @@ export default function BranchProductsPage() {
 
                           {/* Badges - Best Sellers style */}
                           <div className="absolute top-2 left-2 z-20 space-y-1">
-                            {product.isNew && (
+                            {!available && (
+                              <Badge className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
+                                Not Available
+                              </Badge>
+                            )}
+                            {product.isNew && available && (
                               <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
                                 New
                               </Badge>
                             )}
-                            {product.isBestseller && (
+                            {product.isBestseller && available && (
                               <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
                                 Best Rental
                               </Badge>
                             )}
-                            {product.isOutOfStock && (
+                            {product.isOutOfStock && available && (
                               <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">
                                 Out of Stock
                               </Badge>
@@ -450,7 +481,7 @@ export default function BranchProductsPage() {
                           {/* Product Card - aligned with Best Sellers */}
                           <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                             <CardContent className="p-0 h-full">
-                              <Link href={`/products/${branch}/${product.id}`} className="block relative w-full h-full">
+                              <Link href={`/products/${branch}/${product.id || product._id}`} className="block relative w-full h-full">
                                 <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                                   <Image
                                     src={product.images[0] || "/placeholder.svg"}
@@ -495,7 +526,7 @@ export default function BranchProductsPage() {
                                                   </div>
                                                 ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
+                                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !exactDynamicPrice && (
                                                   <span className="text-[9px] text-purple-300 font-medium mb-0.5">
                                                     Starting at (Cat A)
                                                   </span>
@@ -511,7 +542,9 @@ export default function BranchProductsPage() {
                                                   </>
                                                 ) : (
                                                   <span className="text-xs sm:text-sm font-semibold">
-                                                    {formatPrice(price)}
+                                                    {(occasionDate && !exactDynamicPrice && !loadingPrices && isRentBranch && !isGift) ? (
+                                                      <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                                    ) : formatPrice(price)}
                                                   </span>
                                                 )}
                                               </div>
@@ -522,7 +555,7 @@ export default function BranchProductsPage() {
                                                 e.preventDefault()
                                                 e.stopPropagation()
 
-                                                if (product.isOutOfStock) return
+                                                if (product.isOutOfStock || !available) return
                                                 if (product.isGiftPackage) {
                                                   setSelectedProduct(product)
                                                   setShowGiftPackageSelector(true)
@@ -530,17 +563,19 @@ export default function BranchProductsPage() {
                                                   openSizeSelector(product)
                                                 }
                                               }}
-                                              className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
+                                              className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] pointer-events-auto ${(product.isOutOfStock || !available)
                                                 ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                                                 : "bg-rose-100 text-rose-700 hover:bg-rose-200"
                                                 }`}
-                                              disabled={product.isOutOfStock}
+                                              disabled={product.isOutOfStock || !available}
                                               aria-label={
                                                 product.isOutOfStock
                                                   ? "Out of stock"
-                                                  : isRentBranch
-                                                    ? "Rent Now"
-                                                    : "Buy Now"
+                                                  : !available
+                                                    ? "Not available on selected date"
+                                                    : isRentBranch
+                                                      ? "Rent Now"
+                                                      : "Buy Now"
                                               }
                                             >
                                               <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
@@ -560,8 +595,8 @@ export default function BranchProductsPage() {
                   })}
               </div>
               {(() => {
-                const clientTotalPages = Math.max(Math.ceil(filteredProducts.length / CATEGORY_PAGE_SIZE), 1)
-                if (filteredProducts.length <= CATEGORY_PAGE_SIZE) return null
+                const clientTotalPages = Math.max(Math.ceil(sortedProducts.length / CATEGORY_PAGE_SIZE), 1)
+                if (sortedProducts.length <= CATEGORY_PAGE_SIZE) return null
 
                 const handlePageChange = (newPage: number) => {
                   setPage(newPage)

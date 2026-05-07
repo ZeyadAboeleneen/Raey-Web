@@ -138,9 +138,10 @@ const round100 = (val: number) => Math.round(val / 100) * 100;
  */
 export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
   // Category A rental price = cost × 0.8, rounded to nearest 100, floor 3000
-  const rentalPriceA = p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
-  // Category C rental price = cost × 0.6, rounded to nearest 100, floor 3000 (shown to clients)
-  const rentalPriceC = p.cost > 0 ? Math.max(round100(p.cost * 0.6), 3000) : null;
+  const isSellDress = p.branch === "sell-dresses";
+  const rentalPriceA = !isSellDress && p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
+  // Category C rental price = cost × 0.4, rounded to nearest 100, floor 3000 (shown to clients)
+  const rentalPriceC = !isSellDress && p.cost > 0 ? Math.max(round100(p.cost * 0.4), 3000) : null;
 
   return {
     _id: String(p.id),
@@ -180,6 +181,7 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     giftPackageSizes: [],
     unavailableDates: p.unavailableDates,
     hasBeenRented: p.unavailableDates.length > 0,
+    cost: p.cost,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

@@ -21,6 +21,7 @@ import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -249,28 +250,27 @@ export default function SoireeProductsPage() {
     }
   }, [isCustomSizeMode, selectedProduct, selectedSize])
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (showSizeSelector || showGiftPackageSelector) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [showSizeSelector, showGiftPackageSelector])
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate } = useDateFilteredProducts(products)
 
+  // Eagerly fetch ALL soiree prices if a date is selected
+  useEffect(() => {
+    if (occasionDate && products.length > 0) {
+      const ids = products
+        .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage)
+        .map(p => p.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, products, fetchPricesForIds])
 
   const categorizedProducts = useMemo(
     () => ({
-      winter: products.filter((p) => p.branch === "mona-saleh" && p.isActive),
-      summer: products.filter((p) => p.branch === "el-raey-1" && p.isActive),
-      fall: products.filter((p) => p.branch === "el-raey-2" && p.isActive),
-      yard: products.filter((p) => p.branch === "el-raey-the-yard" && p.isActive),
-      sellDresses: products.filter((p) => p.branch === "sell-dresses" && p.isActive),
+      winter: sortedProducts.filter((p) => p.branch === "mona-saleh" && p.isActive),
+      summer: sortedProducts.filter((p) => p.branch === "el-raey-1" && p.isActive),
+      fall: sortedProducts.filter((p) => p.branch === "el-raey-2" && p.isActive),
+      yard: sortedProducts.filter((p) => p.branch === "el-raey-the-yard" && p.isActive),
+      sellDresses: sortedProducts.filter((p) => p.branch === "sell-dresses" && p.isActive),
     }),
-    [products]
+    [sortedProducts]
   )
 
   const openSizeSelector = (product: Product) => {
@@ -334,8 +334,8 @@ export default function SoireeProductsPage() {
           packagePrice: product.packagePrice,
           packageOriginalPrice: product.packageOriginalPrice,
           giftPackageSizes: product.giftPackageSizes,
-          rentalPriceA: product.rentalPriceA,
-          rentalPriceC: product.rentalPriceC,
+          rentalPriceA: product.rentalPriceA ?? undefined,
+          rentalPriceC: product.rentalPriceC ?? undefined,
         })
       }
     } catch (error) {
@@ -379,14 +379,25 @@ export default function SoireeProductsPage() {
         return { price, original }
       }
 
-      const price = (product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0)
+      // Dynamic price logic
+      let exactDynamicPrice: number | null = null
+      const isRentBranch = product.branch !== "sell-dresses"
+      if (occasionDate && isRentBranch && !product.isGiftPackage) {
+        if (dynamicPrices[product.id]) {
+          exactDynamicPrice = dynamicPrices[product.id]
+        }
+      }
+
+      const price = exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
         ? product.rentalPriceA
-        : getSmallestPrice(product.sizes)
+        : getSmallestPrice(product.sizes))
+      
       const original = getSmallestOriginalPrice(product.sizes)
-      return { price, original }
-    }, [product])
+      return { price, original, exactDynamicPrice }
+    }, [product, dynamicPrices, occasionDate])
 
     const hasDiscount = product.branch === "sell-dresses" && priceData.original > 0 && priceData.price < priceData.original
+    const available = isAvailable(product)
 
     const handleFavoriteClick = useCallback(
       async (e: any) => {
@@ -417,13 +428,12 @@ export default function SoireeProductsPage() {
           : "Buy Now"
 
     const imageSizes = "(max-width: 768px) 80vw, (max-width: 1200px) 33vw, 25vw"
-
     return (
-      <div className="group relative h-full">
+      <div className={`group relative h-full ${!available ? "opacity-60 grayscale hover:grayscale-0 transition-all duration-300" : ""}`}>
         {/* Favorite Button */}
         <button
           onClick={handleFavoriteClick}
-          className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200"
+          className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 pointer-events-auto"
           aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
         >
           <Heart
@@ -436,17 +446,22 @@ export default function SoireeProductsPage() {
 
         {/* Badges - match Best Sellers design */}
         <div className="absolute top-2 left-2 z-20 space-y-1">
-          {product.isNew && (
+          {!available && (
+            <Badge className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
+              Not Available
+            </Badge>
+          )}
+          {product.isNew && available && (
             <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
               New
             </Badge>
           )}
-          {product.isBestseller && (
+          {product.isBestseller && available && (
             <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">
               Best Rental
             </Badge>
           )}
-          {product.isOutOfStock && (
+          {product.isOutOfStock && available && (
             <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">
               Out of Stock
             </Badge>
@@ -477,10 +492,12 @@ export default function SoireeProductsPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                 {/* Bottom overlay with name, price and cart button - mirror Best Sellers */}
-                <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
+                <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                   {(() => {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
-                    const clientRentalPrice = product.branch !== "sell-dresses" && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
+                    const clientRentalPrice = product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+                    const isRent = product.branch !== "sell-dresses"
+                    
                     return (
                       <>
                         {(showProductPrice || clientRentalPrice) ? (
@@ -499,15 +516,17 @@ export default function SoireeProductsPage() {
                           ) : !showProductPrice && clientRentalPrice ? (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                Starting from
+                                {priceData.exactDynamicPrice ? "" : "Starting from"}
                               </span>
                               <span className="text-xs sm:text-sm font-semibold">
-                                {formatPrice(clientRentalPrice)}
+                                {(occasionDate && !priceData.exactDynamicPrice && !loadingPrices && isRent && !product.isGiftPackage) ? (
+                                  <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                ) : formatPrice(priceData.exactDynamicPrice || clientRentalPrice)}
                               </span>
                             </div>
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
-                              {product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0 && (
+                              {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-purple-300 font-medium mb-0.5">
                                   Starting at (Cat A)
                                 </span>
@@ -523,19 +542,21 @@ export default function SoireeProductsPage() {
                                 </>
                               ) : (
                                 <span className="text-xs sm:text-sm font-semibold">
-                                  {formatPrice(priceData.price)}
+                                  {(occasionDate && !priceData.exactDynamicPrice && !loadingPrices && isRent && !product.isGiftPackage) ? (
+                                    <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                  ) : formatPrice(priceData.price)}
                                 </span>
                               )}
                             </div>
                           )}
 
                           <Button
-                            onClick={handleAddToCartClick}
-                            className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock && available) openSizeSelector(product) }}
+                            className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] pointer-events-auto ${(!available || product.isOutOfStock)
                               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                               : "bg-rose-100 text-rose-700 hover:bg-rose-200"
                               }`}
-                            disabled={product.isOutOfStock}
+                            disabled={product.isOutOfStock || !available}
                             aria-label={addToCartAriaLabel}
                           >
                             {layout === "desktop" && product.isGiftPackage ? (

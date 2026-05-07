@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
+import { returnOrderItemsToStock } from "@/lib/order-stock"
 
 export const dynamic = "force-dynamic"
 
@@ -82,6 +83,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const updatedOrder = await prisma.order.update({ where: { id: currentOrder.id }, data: { status } })
 
+    // If order was cancelled, return items to stock
+    if (status === "cancelled" && currentOrder.status !== "cancelled") {
+      await returnOrderItemsToStock(currentOrder.items as any[] || [])
+    }
+
     const transformed = transformOrder(updatedOrder)
     return NextResponse.json({ message: "Order status updated successfully", order: transformed })
   } catch (error) {
@@ -104,6 +110,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (!currentOrder) return NextResponse.json({ error: "Order not found" }, { status: 404 })
 
     const updatedOrder = await prisma.order.update({ where: { id: currentOrder.id }, data: { status } })
+
+    // If order was cancelled, return items to stock
+    if (status === "cancelled" && currentOrder.status !== "cancelled") {
+      await returnOrderItemsToStock(currentOrder.items as any[] || [])
+    }
+
     const transformed = transformOrder(updatedOrder)
 
     // Send review reminder emails if status is 'delivered'
@@ -180,7 +192,12 @@ export async function DELETE(
       // Continue locally even if MSSQL fails to keep systems somewhat clean or let admin retry manually
     }
 
-    // 3. Delete local Prisma Order (Cascade will delete items)
+    // 3. Return items to stock before deletion (if not already cancelled)
+    if (order.status !== "cancelled") {
+      await returnOrderItemsToStock(order.items as any[] || [])
+    }
+
+    // 4. Delete local Prisma Order (Cascade will delete items)
     await prisma.order.delete({
       where: { id: order.id },
     })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { isAdminRequest } from "@/lib/erp-items"
+import { returnOrderItemsToStock } from "@/lib/order-stock"
 
 export async function PUT(request: NextRequest) {
   try {
@@ -15,6 +16,11 @@ export async function PUT(request: NextRequest) {
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
 
     const updatedOrder = await prisma.order.update({ where: { id: order.id }, data: { status } })
+
+    // If order was cancelled, return items to stock
+    if (status === "cancelled" && order.status !== "cancelled") {
+      await returnOrderItemsToStock(order.items as any[] || [])
+    }
 
     const transformedOrder = {
       _id: updatedOrder.id,

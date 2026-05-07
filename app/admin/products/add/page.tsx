@@ -45,7 +45,6 @@ export default function AddProductPage() {
     branch: "E",
     sizes: [{
       originalPrice: "",
-      discountedPrice: "",
       stockCount: ""
     }],
     isActive: true,
@@ -114,11 +113,7 @@ export default function AddProductPage() {
         collection: formData.collection,
         branch: formData.branch,
         image: uploadedImages[0] || "",
-        price: Number(
-          firstSize?.discountedPrice?.trim() ||
-            firstSize?.originalPrice?.trim() ||
-            "0"
-        ),
+        price: Number(firstSize?.originalPrice?.trim() || "0"),
       }
 
       let response;
@@ -157,7 +152,6 @@ export default function AddProductPage() {
           branch: "E",
           sizes: [{
             originalPrice: "",
-            discountedPrice: "",
             stockCount: ""
           }],
           isActive: true,
@@ -226,7 +220,6 @@ export default function AddProductPage() {
       ...prev,
       sizes: [...prev.sizes, {
         originalPrice: "",
-        discountedPrice: "",
         stockCount: ""
       }],
     }))
@@ -468,28 +461,22 @@ export default function AddProductPage() {
                       <div className="space-y-4">
                         {formData.sizes.map((size, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                            <div className="grid md:grid-cols-2 gap-3 items-end">
+                            <div className="grid grid-cols-1 gap-3 items-end">
                               <div>
-                                <Label>Original Price (EGP)</Label>
+                                <Label>{formData.branch === "15" ? "Selling Price (EGP) *" : "Cost Price (EGP) *"}</Label>
                                 <Input
                                   type="number"
                                   step="0.01"
                                   value={size.originalPrice}
                                   onChange={(e) => handleSizeChange(index, "originalPrice", e.target.value)}
-                                  placeholder="200.00"
+                                  placeholder={formData.branch === "15" ? "5000.00" : "1000.00"}
+                                  required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Price in EGP</p>
-                              </div>
-                              <div>
-                                <Label>Discounted Price (EGP)</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={size.discountedPrice}
-                                  onChange={(e) => handleSizeChange(index, "discountedPrice", e.target.value)}
-                                  placeholder="150.00"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Price in EGP</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formData.branch === "15" 
+                                    ? "This price will be shown directly on the website for sale." 
+                                    : "This cost is used to calculate rental categories (F, A, B, C, POST4)"}
+                                </p>
                               </div>
                             </div>
                             <div className="flex justify-end mt-3">

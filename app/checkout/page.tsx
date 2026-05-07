@@ -101,6 +101,29 @@ const getShippingCost = (countryCode: string): number => {
   }
 }
 
+const BRANCH_ADDRESSES: Record<string, Record<string, string>> = {
+  "el-raey-1": {
+    en: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
+    ar: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
+  },
+  "mona-saleh": {
+    en: "El Mansoura – Hay El Gamea",
+    ar: "المنصورة – حي الجامعة",
+  },
+  "el-raey-2": {
+    en: "Cairo - Rehab - The yard mall.",
+    ar: "القاهرة - الرحاب - The Yard Mall",
+  },
+  "el-raey-the-yard": {
+    en: "Cairo - Rehab - The yard mall.",
+    ar: "القاهرة - الرحاب - The Yard Mall",
+  },
+  "sell-dresses": {
+    en: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
+    ar: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
+  },
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
 
@@ -148,6 +171,16 @@ export default function CheckoutPage() {
 
   const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null)
   const [screenshotFileName, setScreenshotFileName] = useState<string>("")
+
+  const [deliveryMethod, setDeliveryMethod] = useState<"shipping" | "pickup">("shipping")
+
+  const hasRental = cartState.items.some((item) => item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch)
+  
+  useEffect(() => {
+    if (hasRental) {
+      setDeliveryMethod("pickup")
+    }
+  }, [hasRental])
 
   // Initialize country with default from locale settings
   useEffect(() => {
@@ -400,6 +433,13 @@ export default function CheckoutPage() {
           country: formData.country || settings.countryName,
           countryCode: selectedCountryCode,
           postalCode: formData.postalCode,
+          deliveryMethod: deliveryMethod,
+          pickupDetails: deliveryMethod === "pickup" ? cartState.items.map(item => ({
+            itemName: item.name,
+            branch: item.branch,
+            address: BRANCH_ADDRESSES[item.branch?.toLowerCase() || "el-raey-1"]?.[settings.language],
+            pickupDate: item.rentStart
+          })) : null
         },
         paymentMethod: formData.paymentMethod,
         paymentScreenshot: paymentScreenshot,
@@ -736,6 +776,105 @@ export default function CheckoutPage() {
                   </Card>
                 </motion.div>
 
+                {/* Delivery Method */}
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, delay: 0.05 }}
+                >
+                  <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+                    <CardHeader className="pb-4">
+                      <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                        <Truck className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("deliveryMethod" as any)}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <RadioGroup
+                        value={deliveryMethod}
+                        onValueChange={(value) => setDeliveryMethod(value as any)}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                        disabled={hasRental}
+                      >
+                        {/* Home Shipping - Only for Sell Dresses */}
+                        {!hasRental && (
+                          <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "shipping" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="shipping" id="shipping" className="text-purple-600" />
+                              <Label htmlFor="shipping" className="flex-1 cursor-pointer">
+                                <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                                  <div>
+                                    <p className="font-medium text-sm sm:text-base">{t("homeShipping" as any)}</p>
+                                    <p className="text-xs text-gray-600">{t("allPricesIncludeShipping")}</p>
+                                  </div>
+                                  <Truck className="h-5 w-5 text-purple-400" />
+                                </div>
+                              </Label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pickup from Branch */}
+                        <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "pickup" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                          <div className="flex items-center space-x-3 p-4">
+                            <RadioGroupItem value="pickup" id="pickup" className="text-purple-600" />
+                            <Label htmlFor="pickup" className="flex-1 cursor-pointer">
+                              <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                                <div>
+                                  <p className="font-medium text-sm sm:text-base">{t("pickupFromBranch" as any)}</p>
+                                  <p className="text-xs text-gray-600">Free pickup from our stores</p>
+                                </div>
+                                <MapPin className="h-5 w-5 text-purple-400" />
+                              </div>
+                            </Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+
+                      {hasRental && (
+                        <Alert className="bg-purple-50 border-purple-100">
+                          <AlertDescription className="text-purple-800 text-xs sm:text-sm">
+                            Rental items are only available for pickup from our branches to ensure quality check.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {deliveryMethod === "pickup" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="pt-2"
+                        >
+                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                            <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">{t("branchAddress" as any)}:</p>
+                            <div className="space-y-3">
+                              {/* Display addresses for each item in the cart to be clear */}
+                              {cartState.items.map((item, idx) => {
+                                const branchKey = item.branch?.toLowerCase() || "el-raey-1";
+                                const address = BRANCH_ADDRESSES[branchKey]?.[settings.language] || BRANCH_ADDRESSES["el-raey-1"][settings.language];
+                                return (
+                                  <div key={idx} className="flex items-start gap-2 pb-2 border-b border-gray-200 last:border-0 last:pb-0">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-[10px] sm:text-xs font-medium text-purple-700 uppercase tracking-wider">{item.name}</p>
+                                      <p className="text-[11px] sm:text-sm text-gray-600 leading-relaxed">{address}</p>
+                                      {item.type === "rent" && item.rentStart && (
+                                        <p className="text-[10px] sm:text-xs font-bold text-green-600 mt-1 italic">
+                                          {t("pickupDate" as any)}: {new Date(item.rentStart).toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
                 {/* Payment Information */}
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
@@ -1024,6 +1163,8 @@ export default function CheckoutPage() {
                       loading={loading}
                       governorate={formData.country || settings.countryName}
                       formError={error}
+                      deliveryMethod={deliveryMethod}
+                      setDeliveryMethod={setDeliveryMethod}
                     />
                   </div>
                 </motion.div>

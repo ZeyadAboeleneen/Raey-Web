@@ -8,9 +8,11 @@ export function clearErpProductCaches() {
     _erpItemsCache?: Map<string, unknown>;
     _ssrProductsCache?: unknown;
     _ssrProductsPromise?: Promise<unknown>;
+    _productDetailCache?: Map<string, unknown>;
   };
 
   g._erpItemsCache?.clear();
+  g._productDetailCache?.clear();
   g._ssrProductsCache = undefined;
   g._ssrProductsPromise = undefined;
 }

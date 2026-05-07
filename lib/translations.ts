@@ -62,6 +62,12 @@ export const translations = {
     paymentDueNowDeposit: "Payment Due Now (Deposit)",
     remainingBalance: "Remaining Balance",
     depositRequiredNotice: "* 50% deposit required for rental items to secure your booking.",
+    deliveryMethod: "Delivery Method",
+    pickupFromBranch: "Pickup from Branch",
+    homeShipping: "Home Shipping",
+    pickupDate: "Pickup Date",
+    branchAddress: "Branch Address",
+    pickupDetails: "Pickup Details",
     
     // Cart Item
     rentLabel: "Rent",
@@ -393,6 +399,12 @@ export const translations = {
     paymentDueNowDeposit: "المبلغ المستحق الآن (العربون)",
     remainingBalance: "الرصيد المتبقي",
     depositRequiredNotice: "* يُطلب دفع عربون بنسبة 50٪ للعناصر المؤجرة لتأكيد حجزك.",
+    deliveryMethod: "طريقة الاستلام",
+    pickupFromBranch: "الاستلام من الفرع",
+    homeShipping: "شحن للمنزل",
+    pickupDate: "تاريخ الاستلام",
+    branchAddress: "عنوان الفرع",
+    pickupDetails: "تفاصيل الاستلام",
     
     // Cart Item
     rentLabel: "إيجار",

@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         istore.Store_name AS ItemStoreName
       FROM Items i
       LEFT JOIN Category c ON i.Category_id = c.ID
-      LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
+      LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID AND b.ReturnDate >= CAST(GETDATE() AS DATE)
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
       LEFT JOIN (
           SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
@@ -152,6 +152,32 @@ export async function GET(request: NextRequest) {
       format === "erp"
         ? pagedProducts
         : pagedProducts.map(erpProductToCachedShape);
+
+    // ── Merge local out-of-stock status for sell-dresses ────────────────
+    // Sell dresses are unique pieces. When purchased, the local Prisma DB
+    // marks them as isOutOfStock. Merge that flag into the ERP-sourced data.
+    if (format !== "erp") {
+      const sellDressIds = pagedProducts
+        .filter((p) => p.branch === "sell-dresses")
+        .map((p) => String(p.id));
+
+      if (sellDressIds.length > 0) {
+        const localProducts = await prisma.product.findMany({
+          where: { productId: { in: sellDressIds }, isOutOfStock: true },
+          select: { productId: true },
+        });
+        const soldOutIds = new Set(localProducts.map((p) => p.productId));
+
+        if (soldOutIds.size > 0) {
+          output = output.map((item: any) => {
+            if (soldOutIds.has(String(item.id))) {
+              return { ...item, isOutOfStock: true };
+            }
+            return item;
+          });
+        }
+      }
+    }
 
     // ── Strip prices based on permissions ──────────────────────────────
     const canViewPrices = await isAdminRequest(request, "canViewPricesOnWebsite");

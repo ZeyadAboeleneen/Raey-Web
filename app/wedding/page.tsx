@@ -39,6 +39,7 @@ import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useToast } from "@/hooks/use-toast"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 
 
@@ -141,7 +142,6 @@ export default function WeddingPage() {
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
-  const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
 
   const {
     isCustomSizeMode, setIsCustomSizeMode,
@@ -257,18 +257,9 @@ export default function WeddingPage() {
     }
   }
 
-  const filteredProducts = useMemo(() => {
+  const candidateProducts = useMemo(() => {
     let result = allProducts
     if (selectedCollection) result = result.filter(p => p.branch === selectedCollection)
-    if (selectedPriceRanges.length > 0) {
-      result = result.filter(p => {
-        const price = getProductPrice(p)
-        return selectedPriceRanges.some(i => {
-          const r = PRICE_RANGES[i]
-          return price >= r.min && price < r.max
-        })
-      })
-    }
     if (debouncedQuery.trim()) {
       const normalize = (v: string) => (v || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       const q = normalize(debouncedQuery.trim())
@@ -293,10 +284,43 @@ export default function WeddingPage() {
       result = scored.filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p)
     }
     return result
-  }, [allProducts, selectedCollection, selectedPriceRanges, debouncedQuery, showPrices])
+  }, [allProducts, selectedCollection, debouncedQuery])
 
-  const totalPages = Math.max(Math.ceil(filteredProducts.length / PAGE_SIZE), 1)
-  const paginatedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate } = useDateFilteredProducts(candidateProducts)
+
+  const finalFilteredProducts = useMemo(() => {
+    let result = sortedProducts
+    if (selectedPriceRanges.length > 0) {
+      result = result.filter(p => {
+        const isRent = p.branch !== "sell-dresses"
+        const dynamicPrice = (occasionDate && isRent && !p.isGiftPackage) ? dynamicPrices[p.id] : null
+        const price = dynamicPrice ?? getProductPrice(p)
+        return selectedPriceRanges.some(i => {
+          const r = PRICE_RANGES[i]
+          return price >= r.min && price < r.max
+        })
+      })
+    }
+    return result
+  }, [sortedProducts, selectedPriceRanges, dynamicPrices, occasionDate, showPrices])
+
+  const totalPages = Math.max(Math.ceil(finalFilteredProducts.length / PAGE_SIZE), 1)
+  const paginatedProducts = finalFilteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  useEffect(() => {
+    if (occasionDate && candidateProducts.length > 0) {
+      // Eagerly fetch ALL candidate prices if a date is selected
+      const ids = candidateProducts
+        .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage)
+        .map(p => p.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, candidateProducts, fetchPricesForIds])
+
+  useEffect(() => {
+    // Also keep the page-based fetch as a fallback / to refresh visible items
+    fetchPricesForPage(paginatedProducts)
+  }, [paginatedProducts, fetchPricesForPage])
 
   const openSizeSelector = (product: Product) => {
     if (product.isGiftPackage) {
@@ -360,8 +384,8 @@ export default function WeddingPage() {
         packagePrice: product.packagePrice,
         packageOriginalPrice: product.packageOriginalPrice,
         giftPackageSizes: product.giftPackageSizes,
-        rentalPriceA: (product as any).rentalPriceA,
-        rentalPriceC: (product as any).rentalPriceC,
+        rentalPriceA: (product as any).rentalPriceA ?? undefined,
+        rentalPriceC: (product as any).rentalPriceC ?? undefined,
       })
     }
   }
@@ -369,27 +393,39 @@ export default function WeddingPage() {
   const renderProductCard = (product: Product, index: number) => {
     const isGift = product.isGiftPackage
     const isRentBranch = product.branch !== "sell-dresses"
-    const price = isGift ? product.packagePrice || 0 : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)
+    
+    // Dynamic price logic
+    let exactDynamicPrice: number | null = null
+    if (occasionDate && isRentBranch && !isGift) {
+      if (dynamicPrices[product.id]) {
+        exactDynamicPrice = dynamicPrices[product.id]
+      }
+    }
+
+    const price = isGift ? product.packagePrice || 0 : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)))
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
 
     const showProductPrice = showPrices || product.branch === "sell-dresses"
-    const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+    const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
+
+    const available = isAvailable(product)
 
     return (
-      <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }}>
+      <motion.div key={product._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} viewport={{ once: true }} className={!available ? "opacity-60 grayscale hover:grayscale-0 transition-all duration-300" : ""}>
         <Card className="h-full rounded-2xl border border-gray-100 bg-transparent shadow-none hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="p-0 h-full">
-            <Link href={`/products/${product.branch}/${product.id}`} className="block relative w-full h-full">
+            <Link href={`/products/${product.branch}/${product.id || product._id}`} className="block relative w-full h-full">
               <div className="relative w-full aspect-[4/7] sm:aspect-[3/5] overflow-hidden rounded-2xl bg-gray-50">
                 <Image src={product.images[0] || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
-                <button onClick={(e) => handleFavoriteClick(e, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200">
+                <button onClick={(e) => handleFavoriteClick(e, product)} className="absolute top-2 right-2 z-20 p-1.5 bg-white/95 rounded-full shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 pointer-events-auto">
                   <Heart className={`h-4 w-4 ${isFavorite(product.id) ? "text-gray-900 fill-gray-900" : "text-gray-400"}`} />
                 </button>
                 <div className="absolute top-2 left-2 z-20 space-y-1">
-                  {product.isNew && <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">New</Badge>}
-                  {product.isBestseller && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">{t("bestRental")}</Badge>}
-                  {product.isOutOfStock && <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">{t("outOfStock")}</Badge>}
+                  {!available && <Badge className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">Not Available</Badge>}
+                  {product.isNew && available && <Badge className="bg-gradient-to-r from-amber-400 to-yellow-600 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">New</Badge>}
+                  {product.isBestseller && available && <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full border-none shadow-sm">{t("bestRental")}</Badge>}
+                  {product.isOutOfStock && available && <Badge className="bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded-full">{t("outOfStock")}</Badge>}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
@@ -406,15 +442,17 @@ export default function WeddingPage() {
                     ) : !showProductPrice && clientRentalPrice ? (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                         <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                          Starting from
+                          {exactDynamicPrice ? "" : "Starting from"}
                         </span>
                         <span className="text-xs sm:text-sm font-semibold">
-                          {formatPrice(clientRentalPrice)}
+                          {(occasionDate && !exactDynamicPrice && !loadingPrices) ? (
+                            <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                          ) : formatPrice(clientRentalPrice)}
                         </span>
                       </div>
                     ) : (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                        {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
+                        {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && !exactDynamicPrice && (
                           <span className="text-[9px] text-purple-300 font-medium mb-0.5">
                             Starting at (Cat A)
                           </span>
@@ -425,11 +463,15 @@ export default function WeddingPage() {
                             <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
                           </>
                         ) : (
-                          <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                          <span className="text-xs sm:text-sm font-semibold">
+                            {(occasionDate && !exactDynamicPrice && !loadingPrices && isRentBranch && !isGift) ? (
+                              <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                            ) : formatPrice(price)}
+                          </span>
                         )}
                       </div>
                     )}
-                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock}>
+                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock && available) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${(!available || product.isOutOfStock) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"} pointer-events-auto`} disabled={product.isOutOfStock || !available}>
                       <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
                     </Button>
                   </div>
@@ -592,21 +634,21 @@ export default function WeddingPage() {
             </div>
             <div className="text-center text-sm text-gray-500">
               {debouncedQuery || selectedCollection || selectedPriceRanges.length > 0
-                ? t("showingProducts", { count: filteredProducts.length, total: allProducts.length })
+                ? t("showingProducts", { count: finalFilteredProducts.length, total: allProducts.length })
                 : t("showingAllProducts", { total: allProducts.length })}
             </div>
           </div>
-          {filteredProducts.length === 0 && !cacheLoading ? (<div className="text-center py-16"><p className="text-gray-600 text-lg">{t("noProductsFound")}</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">{t("clearFilters")}</Button></div>) : (
+          {finalFilteredProducts.length === 0 && !cacheLoading ? (<div className="text-center py-16"><p className="text-gray-600 text-lg">{t("noProductsFound")}</p><Button onClick={() => { setSearchQuery(""); setSelectedCollection(""); setSelectedPriceRanges([]) }} className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full">{t("clearFilters")}</Button></div>) : (
             <>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">{paginatedProducts.map((product, index) => renderProductCard(product as Product, index))}</div>
-              {filteredProducts.length > PAGE_SIZE && (
+              {finalFilteredProducts.length > PAGE_SIZE && (
                 <div className="flex flex-col items-center gap-4 mt-12 border-t border-gray-100 pt-8">
                   <div className="flex items-center justify-center gap-2">
                     <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => handlePageChange(page - 1)} className="rounded-full px-4 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30">{t("previous")}</Button>
                     <div className="flex flex-wrap items-center justify-center gap-1 max-w-[210px] sm:max-w-none">{Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let start = Math.max(1, page - 2); if (start + 4 > totalPages) start = Math.max(1, totalPages - 4); return start + i; }).map((p) => (<Button key={p} variant={page === p ? "default" : "ghost"} size="sm" onClick={() => handlePageChange(p)} className={`w-9 h-9 rounded-full p-0 transition-all duration-200 ${page === p ? "bg-black text-white shadow-md scale-110" : "hover:bg-rose-50 hover:text-rose-600 text-gray-500"}`}>{p}</Button>))}</div>
                     <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)} className="rounded-full px-4 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30">{t("next")}</Button>
                   </div>
-                  <span className="text-xs text-gray-400 uppercase tracking-widest">{t("page")} {page} {t("of")} {totalPages} — {filteredProducts.length} {t("totalProducts")}</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-widest">{t("page")} {page} {t("of")} {totalPages} — {finalFilteredProducts.length} {t("totalProducts")}</span>
                 </div>
               )}
             </>

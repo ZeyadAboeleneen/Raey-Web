@@ -8,6 +8,8 @@ import dynamic from "next/dynamic"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 import { useSiteSettings } from "@/lib/site-settings-context"
+import { useDateContext } from "@/lib/date-context"
+import { DateSelectionModal } from "@/components/date-selection-modal"
 
 // Lazy load Navigation to improve initial page load
 const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
@@ -25,11 +27,24 @@ export default function HomePage() {
 
   const imagesReady = useMemo(() => weddingLoaded && soireeLoaded, [soireeLoaded, weddingLoaded])
 
+  const { hasMadeSelection } = useDateContext()
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
+
   // Pre-navigation handler with prefetching
   const handleNavigation = (href: string) => {
-    // Prefetch the route immediately
     router.prefetch(href)
-    router.push(href)
+    if (!hasMadeSelection) {
+      setPendingNavigation(href)
+    } else {
+      router.push(href)
+    }
+  }
+
+  const completeNavigation = () => {
+    if (pendingNavigation) {
+      router.push(pendingNavigation)
+      setPendingNavigation(null)
+    }
   }
 
   // Prefetch on hover for instant navigation
@@ -99,6 +114,15 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Date Selection Modal before entering collection */}
+      <DateSelectionModal
+        isOpen={!!pendingNavigation}
+        onClose={() => setPendingNavigation(null)}
+        onConfirm={completeNavigation}
+        onBrowseOnly={completeNavigation}
+        cancellable={true}
+      />
     </div>
   )
 }

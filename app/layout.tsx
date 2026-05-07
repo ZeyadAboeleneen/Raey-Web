@@ -9,11 +9,13 @@ import { FavoritesProvider } from "@/lib/favorites-context"
 import { CartProvider } from "@/lib/cart-context"
 import { LocaleProvider } from "@/lib/locale-context"
 import { ScrollProvider } from "@/lib/scroll-context"
+import { DateProvider } from "@/lib/date-context"
 import { SiteSettingsProvider, DEFAULT_SETTINGS, SiteSettings } from "@/lib/site-settings-context"
 import { prisma } from "@/lib/prisma"
 import { CartSuccessNotification } from "@/components/cart-success-notification"
 import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
+import { GlobalDateModal } from "@/components/global-date-modal"
 import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
 
@@ -98,13 +100,16 @@ export default async function RootLayout({
                   <OrderProvider>
                     <FavoritesProvider>
                       <CartProvider>
-                        <ScrollProvider>
-                          <SiteSettingsProvider initialSettings={initialSettings}>
-                            {children}
-                            <CartSuccessNotification />
-                            <Toaster />
-                          </SiteSettingsProvider>
-                        </ScrollProvider>
+                        <DateProvider>
+                          <ScrollProvider>
+                            <SiteSettingsProvider initialSettings={initialSettings}>
+                              <GlobalDateModal />
+                              {children}
+                              <CartSuccessNotification />
+                              <Toaster />
+                            </SiteSettingsProvider>
+                          </ScrollProvider>
+                        </DateProvider>
                       </CartProvider>
                     </FavoritesProvider>
                   </OrderProvider>

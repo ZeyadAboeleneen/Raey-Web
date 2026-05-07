@@ -5,6 +5,7 @@ import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
 import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
+import { clearErpProductCaches } from "@/lib/erp-items"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -108,6 +109,18 @@ export async function POST(request: NextRequest) {
       if (!item.productId || !item.size || item.quantity === undefined) continue
 
       const product = await prisma.product.findUnique({ where: { productId: item.productId } })
+
+      // Sell dresses are unique pieces — reject if already sold
+      if (item.branch === "sell-dresses" || (product as any)?.branch === "sell-dresses") {
+        if (product?.isOutOfStock) {
+          return NextResponse.json({
+            error: `"${product.name}" has already been sold and is no longer available.`,
+            outOfStock: true, productId: item.productId,
+          }, { status: 400 })
+        }
+        continue // No further stock checks needed for sell dresses
+      }
+
       if (!product) continue
 
       const sizes = product.sizes as any[]
@@ -176,6 +189,26 @@ export async function POST(request: NextRequest) {
       if (!item.productId || !item.size || item.quantity === undefined) continue
 
       const product = await prisma.product.findUnique({ where: { productId: item.productId } })
+
+      // Sell dresses are unique one-of-a-kind pieces — mark as out of stock immediately after purchase
+      const isSellDress = (product as any)?.branch === "sell-dresses" || item.branch === "sell-dresses"
+      if (isSellDress) {
+        // Upsert: if the product doesn't exist locally yet (ERP-only), create a minimal record
+        await prisma.product.upsert({
+          where: { productId: item.productId },
+          update: { isOutOfStock: true },
+          create: {
+            productId: item.productId,
+            name: item.name || "Sell Dress",
+            branch: "sell-dresses",
+            isOutOfStock: true,
+          },
+        })
+        // Invalidate server-side cache so subsequent listing requests reflect sold-out status
+        clearErpProductCaches()
+        continue
+      }
+
       if (!product) continue
 
       const sizes = product.sizes as any[]

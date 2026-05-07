@@ -70,6 +70,20 @@ interface Product {
     }
 }
 
+interface SizeChartRow {
+    label: string
+    shoulderIn: string
+    waistIn: string
+    bustIn: string
+    hipsIn: string
+    sleeveIn: string
+    shoulderCm: string
+    waistCm: string
+    bustCm: string
+    hipsCm: string
+    sleeveCm: string
+}
+
 // WhatsApp ordering removed — using cart-based checkout
 
 export function HomePageContent() {
@@ -98,6 +112,7 @@ export function HomePageContent() {
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
     const [showSizeSelector, setShowSizeSelector] = useState(false)
+    const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
     const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
 
     useEffect(() => {
@@ -217,8 +232,8 @@ export function HomePageContent() {
                     sizes: product.giftPackageSizes || [], isGiftPackage: true,
                     packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
                     giftPackageSizes: product.giftPackageSizes,
-                    rentalPriceA: (product as any).rentalPriceA,
-                    rentalPriceC: (product as any).rentalPriceC,
+                    rentalPriceA: (product as any).rentalPriceA ?? undefined,
+                    rentalPriceC: (product as any).rentalPriceC ?? undefined,
                 })
             } else {
                 const isRent = product.branch !== "sell-dresses"
@@ -227,8 +242,8 @@ export function HomePageContent() {
                     id: product.id, name: product.name, price: minPrice,
                     image: product.images[0], branch: product.branch, collection: product.collection, rating: product.rating,
                     isNew: product.isNew, isBestseller: product.isBestseller, sizes: product.sizes,
-                    rentalPriceA: (product as any).rentalPriceA,
-                    rentalPriceC: (product as any).rentalPriceC,
+                    rentalPriceA: (product as any).rentalPriceA ?? undefined,
+                    rentalPriceC: (product as any).rentalPriceC ?? undefined,
                 })
             }
         }
@@ -268,8 +283,8 @@ export function HomePageContent() {
                                             sizes: product.giftPackageSizes || [], isGiftPackage: true,
                                             packagePrice: product.packagePrice, packageOriginalPrice: product.packageOriginalPrice,
                                             giftPackageSizes: product.giftPackageSizes,
-                                            rentalPriceA: (product as any).rentalPriceA,
-                                            rentalPriceC: (product as any).rentalPriceC,
+                                            rentalPriceA: (product as any).rentalPriceA ?? undefined,
+                                            rentalPriceC: (product as any).rentalPriceC ?? undefined,
                                         })
                                 }
                             }}
@@ -282,6 +297,9 @@ export function HomePageContent() {
                             onClose={closeSizeSelector}
                             sizeChart={sizeChart}
                         />
+                    )}
+                </>
+            )}
 
             {/* Hero Section */}
             <motion.section

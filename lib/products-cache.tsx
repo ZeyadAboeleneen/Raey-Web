@@ -40,8 +40,10 @@ export interface CachedProduct {
   hasBeenRented?: boolean
   /** Category A rental price (cost × 0.8, rounded to 100, floor 3000) from ERP */
   rentalPriceA?: number | null
-  /** Category C rental price (cost × 0.6, rounded to 100, floor 3000) — shown to clients */
+  /** Category C rental price (cost × 0.4, rounded to 100, floor 3000) — shown to clients */
   rentalPriceC?: number | null
+  /** Raw cost from ERP — used for dynamic pricing calculations */
+  cost?: number
 }
 
 interface ProductsCacheContextType {
@@ -177,7 +179,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
           setLoading(false)
 
-          const fullList = await fetchStage(`/api/items`)
+          const fullList = await fetchStage(`/api/items?limit=500`)
           setProducts((prev) => {
             const merged = mergeById(prev, fullList)
             writeToStorage(merged)

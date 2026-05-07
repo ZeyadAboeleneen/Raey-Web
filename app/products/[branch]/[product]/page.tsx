@@ -28,6 +28,8 @@ import { useLocale } from "@/lib/locale-context"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { SizeChartRow } from "@/components/custom-size-form"
 import { useProductsCache } from "@/lib/products-cache"
+import { useDateContext } from "@/lib/date-context"
+import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -69,6 +71,7 @@ interface ProductDetail {
   hasBeenRented?: boolean
   rentalPriceA?: number
   rentalPriceC?: number
+  cost?: number
 }
 
 interface Review {
@@ -113,7 +116,8 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<number>(0)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [rentEventDate, setRentEventDate] = useState<Date | undefined>(undefined)
+  const { occasionDate, setOccasionDate } = useDateContext()
+  const [rentEventDate, setRentEventDate] = useState<Date | undefined>(occasionDate || undefined)
   const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message?: string } | null>(null)
@@ -340,37 +344,63 @@ export default function ProductDetailPage() {
     }
   }
 
-  // Fetch bookings whenever the product changes and it's a rental
   useEffect(() => {
     if (isRentBranch && product) {
       fetchBookings()
     }
   }, [product?.id, isRentBranch])
 
+  const rentEventTime = rentEventDate?.getTime()
+  const occasionTime = occasionDate?.getTime()
+
+  // Sync FROM global occasion date TO local rentEventDate
+  // This ensures that if a user selects a date from the global popup, the product page updates.
+  useEffect(() => {
+    if (occasionDate && (!rentEventDate || rentEventTime !== occasionTime)) {
+      setRentEventDate(occasionDate)
+    }
+  }, [occasionTime])
+
   // Fetch rental price whenever date or exclusive option changes
   useEffect(() => {
-    if (!isRentBranch || !product || !rentEventDate) {
+    if (!isRentBranch || !product || !rentEventTime || !rentEventDate) {
       setRentalPrice(null)
       return
     }
+
+    // --- SPECULATIVE PRICING (INSTANT) ---
+    // Calculate d exactly as the server does
+    const msPerDay = 1000 * 60 * 60 * 24
+    const occasion = new Date(rentEventDate)
+    const rentStart = new Date(occasion)
+    rentStart.setDate(rentStart.getDate() - 1)
+    
+    const startDay = new Date(rentStart)
+    startDay.setHours(0, 0, 0, 0)
+    const bookDay = new Date()
+    bookDay.setHours(0, 0, 0, 0)
+    
+    const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
+    
+    // Assume n=0 for speculative pricing
+    const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
+    if (costBase > 0) {
+      const res = calculateRentalPrice(costBase, d, 0, isExclusive)
+      setRentalPrice({ total: res.total, category: "Speculative" })
+    }
+    // -------------------------------------
 
     const controller = new AbortController()
     const fetchPrice = async () => {
       setRentalPriceLoading(true)
       try {
-        // Build the same rentStart/rentEnd the cart uses
-        const start = new Date(rentEventDate)
-        start.setDate(start.getDate() - 1)
-        const end = new Date(rentEventDate)
-        end.setDate(end.getDate() + 1)
-
         const res = await fetch('/api/rental/pricing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             productId: product.id,
-            rentStart: start.toISOString(),
-            rentEnd: end.toISOString(),
+            rentStart: startDay.toISOString(),
+            rentEnd: new Date(new Date(rentStart).setDate(rentStart.getDate() + 2)).toISOString(),
             isExclusive,
           }),
           signal: controller.signal,
@@ -378,13 +408,10 @@ export default function ProductDetailPage() {
         if (res.ok) {
           const data = await res.json()
           setRentalPrice({ total: data.total, category: data.category })
-        } else {
-          setRentalPrice(null)
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
           console.error('Failed to fetch rental price:', err)
-          setRentalPrice(null)
         }
       } finally {
         setRentalPriceLoading(false)
@@ -393,7 +420,7 @@ export default function ProductDetailPage() {
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventDate, isExclusive])
+  }, [isRentBranch, product?.id, rentEventTime, isExclusive])
 
   // Handle adding to cart with custom size support
   const handleAddToCart = async () => {
@@ -814,13 +841,16 @@ export default function ProductDetailPage() {
                     const clientRentalPrice = isRentBranch && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
                     if (!showProductPrice && !clientRentalPrice) return null
                     if (!showProductPrice && clientRentalPrice) {
+                      const displayPrice = rentalPrice ? rentalPrice.total : clientRentalPrice
                       return (
                         <div className="text-2xl sm:text-3xl font-light text-left">
                           <div className="flex items-center space-x-2">
-                            <span className="text-xl sm:text-2xl">{formatPrice(clientRentalPrice)}</span>
-                            <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
-                              Starting from
-                            </span>
+                            <span className="text-xl sm:text-2xl">{formatPrice(displayPrice)}</span>
+                            {!rentalPrice && (
+                              <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
+                                Starting from
+                              </span>
+                            )}
                           </div>
                         </div>
                       )
@@ -858,9 +888,11 @@ export default function ProductDetailPage() {
                             )
                           }
                           const selectedSizeObj = product.sizes[selectedSize] || product.sizes[0]
-                          const selectedPrice = (isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
-                            ? product.rentalPriceA
-                            : (selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0)
+                          const selectedPrice = (isRentBranch && rentalPrice)
+                            ? rentalPrice.total
+                            : (isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
+                              ? product.rentalPriceA
+                              : (selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0)
                           const originalPrice = isRentBranch ? 0 : (selectedSizeObj?.originalPrice || 0)
                           if (originalPrice > 0 && selectedPrice < originalPrice) {
                             return (
@@ -877,7 +909,7 @@ export default function ProductDetailPage() {
                           return (
                             <div className="flex items-center space-x-2">
                               <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
-                              {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
+                              {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !rentalPrice && (
                                 <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full mt-1">
                                   Starting at (Cat A)
                                 </span>
@@ -954,7 +986,14 @@ export default function ProductDetailPage() {
                           <Calendar
                             mode="single"
                             selected={rentEventDate}
-                            onSelect={(date) => setRentEventDate(date ?? undefined)}
+                            onSelect={(date) => {
+                              const newDate = date ?? undefined;
+                              setRentEventDate(newDate);
+                              // Sync TO global context when user selects a date here
+                              if (newDate) {
+                                setOccasionDate(newDate);
+                              }
+                            }}
                             disabled={(date) => {
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);

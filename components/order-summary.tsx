@@ -46,6 +46,7 @@ interface OrderSummaryProps {
     type?: string
     rentStart?: string
     rentEnd?: string
+    branch?: string
   }>
   subtotal: number
   total: number
@@ -62,6 +63,8 @@ interface OrderSummaryProps {
   loading: boolean
   governorate: string
   formError?: string
+  deliveryMethod?: "shipping" | "pickup"
+  setDeliveryMethod?: (method: "shipping" | "pickup") => void
 }
 
 export const OrderSummary = ({
@@ -80,12 +83,43 @@ export const OrderSummary = ({
   onSubmit,
   loading,
   governorate,
-  formError
+  formError,
+  deliveryMethod = "shipping",
+  setDeliveryMethod
 }: OrderSummaryProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+
+  const BRANCH_ADDRESSES: Record<string, Record<string, string>> = {
+    "el-raey-1": {
+      en: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
+      ar: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
+    },
+    "mona-saleh": {
+      en: "El Mansoura – Hay El Gamea",
+      ar: "المنصورة – حي الجامعة",
+    },
+    "el-raey-2": {
+      en: "Cairo - Rehab - The yard mall.",
+      ar: "القاهرة - الرحاب - The Yard Mall",
+    },
+    "el-raey-the-yard": {
+      en: "Cairo - Rehab - The yard mall.",
+      ar: "القاهرة - الرحاب - The Yard Mall",
+    },
+    "sell-dresses": {
+      en: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
+      ar: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
+    },
+  }
+
+  const getBranchAddress = (branchSlug?: string) => {
+    if (!branchSlug) return BRANCH_ADDRESSES["el-raey-1"][settings.language]
+    const normalized = branchSlug.toLowerCase()
+    return (BRANCH_ADDRESSES[normalized]?.[settings.language] || BRANCH_ADDRESSES["el-raey-1"][settings.language])
+  }
 
   return (
     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
@@ -187,19 +221,17 @@ export const OrderSummary = ({
                       <div className="mt-2 text-xs text-gray-500">
                         <div className="flex items-center text-purple-600 font-medium mb-1">
                           <Calendar className="h-3 w-3 mr-1" />
-                          <span>{t("rentalDetails")}</span>
+                          <span>{t("pickupDetails")}</span>
                         </div>
                         {(() => {
                           const rStart = new Date(item.rentStart)
-                          const rEnd = new Date(item.rentEnd)
                           const occasionDate = new Date(rStart)
                           occasionDate.setDate(occasionDate.getDate() + 1)
                           
                           return (
                             <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
-                              <div><span className="font-medium">{t("occasion")}</span> {occasionDate.toLocaleDateString()}</div>
-                              <div><span className="font-medium">{t("receiveDate")}</span> {rStart.toLocaleDateString()}</div>
-                              <div><span className="font-medium">{t("returnDate")}</span> {rEnd.toLocaleDateString()}</div>
+                              <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
+                              <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                             </div>
                           )
                         })()}
@@ -309,19 +341,17 @@ export const OrderSummary = ({
                   <div className="mt-2 text-xs text-gray-500">
                     <div className="flex items-center text-purple-600 font-medium mb-1">
                       <Calendar className="h-3 w-3 mr-1" />
-                      <span>{t("rentalDetails")}</span>
+                      <span>{t("pickupDetails")}</span>
                     </div>
                     {(() => {
                       const rStart = new Date(item.rentStart)
-                      const rEnd = new Date(item.rentEnd)
                       const occasionDate = new Date(rStart)
                       occasionDate.setDate(occasionDate.getDate() + 1)
                       
                       return (
                         <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
-                          <div><span className="font-medium">{t("occasion")}</span> {occasionDate.toLocaleDateString()}</div>
-                          <div><span className="font-medium">{t("receiveDate")}</span> {rStart.toLocaleDateString()}</div>
-                          <div><span className="font-medium">{t("returnDate")}</span> {rEnd.toLocaleDateString()}</div>
+                          <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
+                          <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                         </div>
                       )
                     })()}
@@ -462,6 +492,13 @@ export const OrderSummary = ({
               <span>{t("total")}</span>
               <span>{formatPrice(total)}</span>
             </div>
+
+            {deliveryMethod === "pickup" && (
+              <div className="flex items-center gap-2 text-xs text-green-600 font-medium mt-1">
+                <Shield className="h-3 w-3" />
+                <span>{t("pickupFromBranch")}</span>
+              </div>
+            )}
             
             {remainingAmount > 0 && (
               <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
@@ -480,7 +517,7 @@ export const OrderSummary = ({
             )}
             
             <p className="mt-2 text-xs text-gray-500">
-              {t("allPricesIncludeShipping")}
+              {deliveryMethod === "shipping" ? t("allPricesIncludeShipping") : ""}
             </p>
           </>
         ) : null}
