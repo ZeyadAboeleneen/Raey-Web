@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react"
+import { isPubliclyVisible } from "@/lib/product-visibility"
 
 export interface ProductSize {
   size: string
@@ -203,32 +204,40 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
     await fetchAll(false)
   }, [fetchAll])
 
+  // ── Public visibility filter (defensive client-side layer) ──────
+  // Products without valid images are excluded from all public queries.
+  // This mirrors the server-side filter in /api/items as a safety net.
+  const publicProducts = useMemo(
+    () => products.filter((p) => isPubliclyVisible(p)),
+    [products]
+  )
+
   const getByBranch = useCallback(
     (branchSlug: string) => {
-      return products.filter(
+      return publicProducts.filter(
         (p) => p.branch === branchSlug && p.isActive !== false
       )
     },
-    [products]
+    [publicProducts]
   )
 
   const getByCollection = useCallback(
     (collection: string) => {
       const target = collection.toLowerCase().trim()
-      return products.filter((p) => {
+      return publicProducts.filter((p) => {
         const pCollection = (p.collection || "").toLowerCase().trim()
         const isActive = p.isActive !== false
         return pCollection === target && isActive
       })
     },
-    [products]
+    [publicProducts]
   )
 
   const getBestsellers = useCallback(() => {
-    return products.filter(
+    return publicProducts.filter(
       (p) => p.isBestseller && p.isActive !== false
     )
-  }, [products])
+  }, [publicProducts])
 
   const getById = useCallback(
     (id: string) => {
@@ -239,7 +248,7 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
   return (
     <ProductsCacheContext.Provider
-      value={{ products, loading, refresh, getById, getByBranch, getByCollection, getBestsellers }}
+      value={{ products: publicProducts, loading, refresh, getById, getByBranch, getByCollection, getBestsellers }}
     >
       {children}
     </ProductsCacheContext.Provider>

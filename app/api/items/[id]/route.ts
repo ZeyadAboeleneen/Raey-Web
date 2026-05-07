@@ -9,6 +9,7 @@ import {
 } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
 import { resolveStoreId } from "@/lib/erp-stores";
+import { isPubliclyVisible } from "@/lib/product-visibility";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
@@ -86,6 +87,12 @@ export async function GET(
     }
 
     const product = erpProducts[0];
+
+    // ── Public visibility: block access to imageless products ────────
+    // Admin requests bypass so the dashboard can always view/edit.
+    if (!includeInactive && !isPubliclyVisible(product)) {
+      return errorResponse(404, "Item not found");
+    }
 
     const output = format === "erp" ? product : erpProductToCachedShape(product);
 

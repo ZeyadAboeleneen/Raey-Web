@@ -9,6 +9,7 @@ import {
 import { isAdminRequest } from "@/lib/erp-items";
 import { prisma } from "@/lib/prisma";
 import { decodeEmployeeJWT } from "@/lib/auth-helpers";
+import { filterPublicProducts } from "@/lib/product-visibility";
 
 // ── In-memory cache ─────────────────────────────────────────────────
 interface CacheEntry {
@@ -140,6 +141,12 @@ export async function GET(request: NextRequest) {
     let finalProducts = erpProducts;
     if (branch) {
       finalProducts = erpProducts.filter((p) => p.branch === branch);
+    }
+
+    // ── Public visibility: hide products without valid images ────────
+    // Admin requests bypass this filter so the dashboard sees everything.
+    if (!includeInactive) {
+      finalProducts = filterPublicProducts(finalProducts);
     }
 
     const totalCount = finalProducts.length;

@@ -5,6 +5,7 @@ import {
   erpProductToCachedShape,
   VALID_ERP_LINE_IDS,
 } from "./erp-mappings";
+import { filterPublicProducts } from "./product-visibility";
 
 /**
  * Server-side product fetcher with an in-memory cache.
@@ -58,13 +59,17 @@ async function fetchProductsFromDB(): Promise<any[]> {
     `);
 
     const erpProducts = transformErpRows(result.recordset as ErpItemRow[]);
-    const transformed = erpProducts.map(erpProductToCachedShape);
+    const allTransformed = erpProducts.map(erpProductToCachedShape);
+
+    // Only publicly-visible products (those with valid images) enter the SSR cache.
+    // Admin surfaces never use this cache — they hit the API directly.
+    const transformed = filterPublicProducts(allTransformed);
 
     g._ssrProductsCache = {
       data: transformed,
       expiresAt: Date.now() + CACHE_TTL_MS,
     };
-    console.log(`✅ [SSR] Cache warmed with ${transformed.length} ERP products`);
+    console.log(`✅ [SSR] Cache warmed with ${transformed.length}/${allTransformed.length} visible ERP products`);
     return transformed;
   } catch (err: any) {
     console.error("❌ [SSR] Fetch from MSSQL ERP failed:", err?.message || err);
