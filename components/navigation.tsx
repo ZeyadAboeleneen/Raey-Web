@@ -354,7 +354,7 @@ export function Navigation() {
             >
               <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
               {cartState.items.length > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs border-0">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs border-0">
                   {cartState.items.length}
                 </Badge>
               )}

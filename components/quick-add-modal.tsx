@@ -449,7 +449,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           <>
                             <span className="text-xs text-gray-500 uppercase tracking-wider">Rental Total</span>
                             <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
-                            <span className="text-[10px] text-purple-600 font-medium">Category {rentalPrice.category}</span>
+                            <span className="text-[10px] text-rose-600 font-medium">Category {rentalPrice.category}</span>
                           </>
                         ) : (
                           <div className="flex flex-col">
@@ -462,7 +462,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                               </>
                             ) : (
                               <>
-                                <span className="text-[10px] text-purple-600 font-medium">Starting at (Cat A)</span>
+                                <span className="text-[10px] text-rose-600 font-medium">Starting at (Cat A)</span>
                                 <span className="text-xl font-bold text-black">
                                   {product.rentalPriceA && product.rentalPriceA > 0 
                                     ? formatPrice(product.rentalPriceA) 

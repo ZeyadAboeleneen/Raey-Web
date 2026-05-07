@@ -55,7 +55,7 @@ export const CheckoutProgress = ({ currentStep, className = "" }: CheckoutProgre
         
         {/* Filled Progress Bar */}
         <motion.div 
-          className="absolute top-0 left-0 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+          className="absolute top-0 left-0 h-3 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${Math.max(0, (currentStep - 1) / (steps.length - 1)) * 100}%` }}
           transition={{ duration: 0.7, ease: "easeOut" }}
@@ -71,7 +71,7 @@ export const CheckoutProgress = ({ currentStep, className = "" }: CheckoutProgre
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                 step.id <= currentStep 
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-2 border-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-2 border-white shadow-lg' 
                   : 'bg-gray-300 text-gray-600 border-2 border-white'
               }`}
             >
@@ -91,7 +91,7 @@ export const CheckoutProgress = ({ currentStep, className = "" }: CheckoutProgre
             transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
             className={`text-sm font-medium text-center transition-colors duration-300 ${
               step.id <= currentStep 
-                ? 'text-purple-600' 
+                ? 'text-rose-600' 
                 : 'text-gray-500'
             }`}
           >

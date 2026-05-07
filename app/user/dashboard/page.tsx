@@ -158,7 +158,7 @@ export default function UserDashboard() {
                       <p className="text-sm text-gray-600">Account Status</p>
                       <p className="text-2xl font-light">Active</p>
                     </div>
-                    <User className="h-8 w-8 text-purple-600" />
+                    <User className="h-8 w-8 text-rose-600" />
                   </div>
                 </CardContent>
               </Card>

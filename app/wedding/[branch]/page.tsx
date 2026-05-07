@@ -559,7 +559,7 @@ export default function WeddingBranchPage() {
                                             ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                 {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
-                                                  <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                                  <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                                     Starting at (Cat A)
                                                   </span>
                                                 )}

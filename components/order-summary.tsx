@@ -124,7 +124,7 @@ export const OrderSummary = ({
   return (
     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
       <motion.div 
-        className="absolute -inset-4 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg -z-10"
+        className="absolute -inset-4 bg-gradient-to-r from-rose-400/20 to-pink-400/20 rounded-lg -z-10"
         animate={{
           rotate: [0, 1, 0, -1, 0],
         }}
@@ -135,7 +135,7 @@ export const OrderSummary = ({
         }}
       />
       <motion.div 
-        className="absolute -inset-2 bg-gradient-to-r from-purple-300/30 to-pink-300/30 rounded-lg -z-10"
+        className="absolute -inset-2 bg-gradient-to-r from-rose-300/30 to-pink-300/30 rounded-lg -z-10"
         animate={{
           rotate: [0, -0.5, 0, 0.5, 0],
         }}
@@ -147,7 +147,7 @@ export const OrderSummary = ({
       />
       <CardHeader className="pb-4">
         <CardTitle className="text-lg sm:text-xl flex items-center">
-          <Package className="mr-2 h-5 w-5 text-purple-600" />
+          <Package className="mr-2 h-5 w-5 text-rose-600" />
           Order Summary
         </CardTitle>
       </CardHeader>
@@ -161,15 +161,15 @@ export const OrderSummary = ({
               e.stopPropagation()
               setIsExpanded(!isExpanded)
             }}
-            className="flex items-center justify-between w-full p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-pink-100 transition-all duration-300"
+            className="flex items-center justify-between w-full p-3 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-lg hover:from-rose-100 hover:to-pink-100 transition-all duration-300"
           >
-            <span className="text-sm font-medium text-purple-800">
+            <span className="text-sm font-medium text-rose-800">
               {items.length} item{items.length !== 1 ? 's' : ''} in cart
             </span>
             {isExpanded ? (
-              <ChevronUp className="h-4 w-4 text-purple-600" />
+              <ChevronUp className="h-4 w-4 text-rose-600" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-purple-600" />
+              <ChevronDown className="h-4 w-4 text-rose-600" />
             )}
           </button>
           
@@ -182,7 +182,7 @@ export const OrderSummary = ({
               className="mt-3 space-y-3 max-h-64 overflow-y-auto"
             >
               {items.map((item) => (
-                <div key={item.id} className="flex items-center space-x-3 p-2 bg-white rounded border border-purple-100 hover:border-purple-300 transition-colors">
+                <div key={item.id} className="flex items-center space-x-3 p-2 bg-white rounded border border-rose-100 hover:border-rose-300 transition-colors">
                   <div className="relative w-10 h-10 flex-shrink-0">
                     <Image
                       src={item.image || "/placeholder.svg"}
@@ -202,10 +202,10 @@ export const OrderSummary = ({
                     {item.isGiftPackage && item.packageDetails && (
                       <div className="mt-1 text-xs text-gray-500">
                         <div className="flex items-center space-x-1 mb-1">
-                          <Package className="h-3 w-3 text-purple-600" />
-                          <span className="font-medium text-purple-600">{t("packageContents")}</span>
+                          <Package className="h-3 w-3 text-rose-600" />
+                          <span className="font-medium text-rose-600">{t("packageContents")}</span>
                         </div>
-                        <div className="space-y-1 ml-4 border-l border-purple-100 pl-2">
+                        <div className="space-y-1 ml-4 border-l border-rose-100 pl-2">
                           {item.packageDetails.sizes.map((sizeInfo: any, sizeIndex: number) => (
                             <div key={sizeIndex} className="flex items-center space-x-1">
                               <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
@@ -219,7 +219,7 @@ export const OrderSummary = ({
                     {/* Rental Details */}
                     {item.type === "rent" && item.rentStart && item.rentEnd && (
                       <div className="mt-2 text-xs text-gray-500">
-                        <div className="flex items-center text-purple-600 font-medium mb-1">
+                        <div className="flex items-center text-rose-600 font-medium mb-1">
                           <Calendar className="h-3 w-3 mr-1" />
                           <span>{t("pickupDetails")}</span>
                         </div>
@@ -229,7 +229,7 @@ export const OrderSummary = ({
                           occasionDate.setDate(occasionDate.getDate() + 1)
                           
                           return (
-                            <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
+                            <div className="ml-4 space-y-1 border-l border-rose-100 pl-2">
                               <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
                               <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                             </div>
@@ -241,11 +241,11 @@ export const OrderSummary = ({
                     {/* Custom Measurements */}
                     {item.customMeasurements && (
                       <div className="mt-2 text-xs text-gray-500">
-                        <div className="flex items-center text-purple-600 font-medium mb-1">
+                        <div className="flex items-center text-rose-600 font-medium mb-1">
                           <Ruler className="h-3 w-3 mr-1" />
                           <span>{t("customMeasurementsLabel")} ({item.customMeasurements.unit}):</span>
                         </div>
-                        <div className="ml-4 border-l border-purple-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                        <div className="ml-4 border-l border-rose-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
                           {Object.entries(item.customMeasurements.values).map(([key, val]) => {
                             if (!val) return null
                             return (
@@ -281,7 +281,7 @@ export const OrderSummary = ({
         {/* Desktop Items */}
         <div className="hidden sm:block space-y-3 max-h-64 overflow-y-auto">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-purple-50 transition-colors">
+            <div key={item.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-rose-50 transition-colors">
               <div className="relative w-12 h-12 flex-shrink-0">
                 <Image
                   src={item.image || "/placeholder.svg"}
@@ -301,10 +301,10 @@ export const OrderSummary = ({
                 {item.isGiftPackage && item.packageDetails && item.packageDetails.sizes && Array.isArray(item.packageDetails.sizes) && (
                   <div className="mt-2 text-xs text-gray-500">
                     <div className="flex items-center space-x-1 mb-1">
-                      <Package className="h-3 w-3 text-purple-600" />
-                      <span className="font-medium text-purple-600">{t("packageContents")}</span>
+                      <Package className="h-3 w-3 text-rose-600" />
+                      <span className="font-medium text-rose-600">{t("packageContents")}</span>
                     </div>
-                    <div className="space-y-1 ml-4 border-l border-purple-100 pl-2">
+                    <div className="space-y-1 ml-4 border-l border-rose-100 pl-2">
                       {item.packageDetails.sizes.map((sizeInfo: any, sizeIndex: number) => {
                         // Safety check for malformed data
                         if (!sizeInfo || typeof sizeInfo !== 'object') {
@@ -339,7 +339,7 @@ export const OrderSummary = ({
                 {/* Rental Details */}
                 {item.type === "rent" && item.rentStart && item.rentEnd && (
                   <div className="mt-2 text-xs text-gray-500">
-                    <div className="flex items-center text-purple-600 font-medium mb-1">
+                    <div className="flex items-center text-rose-600 font-medium mb-1">
                       <Calendar className="h-3 w-3 mr-1" />
                       <span>{t("pickupDetails")}</span>
                     </div>
@@ -349,7 +349,7 @@ export const OrderSummary = ({
                       occasionDate.setDate(occasionDate.getDate() + 1)
                       
                       return (
-                        <div className="ml-4 space-y-1 border-l border-purple-100 pl-2">
+                        <div className="ml-4 space-y-1 border-l border-rose-100 pl-2">
                           <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
                           <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                         </div>
@@ -361,11 +361,11 @@ export const OrderSummary = ({
                 {/* Custom Measurements */}
                 {item.customMeasurements && (
                   <div className="mt-2 text-xs text-gray-500">
-                    <div className="flex items-center text-purple-600 font-medium mb-1">
+                    <div className="flex items-center text-rose-600 font-medium mb-1">
                       <Ruler className="h-3 w-3 mr-1" />
                       <span>{t("customMeasurementsLabel")} ({item.customMeasurements.unit}):</span>
                     </div>
-                    <div className="ml-4 border-l border-purple-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div className="ml-4 border-l border-rose-100 pl-2 grid grid-cols-2 gap-x-2 gap-y-1">
                       {Object.entries(item.customMeasurements.values).map(([key, val]) => {
                         if (!val) return null
                         return (
@@ -396,11 +396,11 @@ export const OrderSummary = ({
           ))}
         </div>
 
-        <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
+        <Separator className="bg-gradient-to-r from-rose-200 to-pink-200" />
 
         {/* Discount Code */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-purple-800">{t("discountCode")}</Label>
+          <Label className="text-sm font-medium text-rose-800">{t("discountCode")}</Label>
           {!appliedDiscount ? (
             <div className="flex space-x-2">
               <Input
@@ -409,7 +409,7 @@ export const OrderSummary = ({
                   setDiscountCode(e.target.value.toUpperCase())
                 }}
                 placeholder={t("enterDiscountCode")}
-                className="flex-1 text-sm border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                className="flex-1 text-sm border-gray-200 focus:border-rose-500 focus:ring-rose-500"
               />
               <Button
                 type="button"
@@ -417,13 +417,13 @@ export const OrderSummary = ({
                 disabled={discountLoading || !discountCode.trim()}
                 variant="outline"
                 size="sm"
-                className="whitespace-nowrap border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-500"
+                className="whitespace-nowrap border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-500"
               >
                 {discountLoading ? (
                   <motion.div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="h-4 w-4 border-t-2 border-b-2 border-purple-500 rounded-full"
+                    className="h-4 w-4 border-t-2 border-b-2 border-rose-500 rounded-full"
                   />
                 ) : (
                   t("apply")
@@ -462,7 +462,7 @@ export const OrderSummary = ({
           )}
         </div>
 
-        <Separator className="bg-gradient-to-r from-purple-200 to-pink-200" />
+        <Separator className="bg-gradient-to-r from-rose-200 to-pink-200" />
 
         {/* Pricing */}
         {showPrices ? (
@@ -501,16 +501,16 @@ export const OrderSummary = ({
             )}
             
             {remainingAmount > 0 && (
-              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+              <div className="mt-4 p-4 bg-rose-50 rounded-lg border border-rose-100">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-purple-900">{t("paymentDueNowDeposit" as TranslationKey)}</span>
-                  <span className="text-lg font-bold text-purple-700">{formatPrice(depositAmount)}</span>
+                  <span className="text-sm font-semibold text-rose-900">{t("paymentDueNowDeposit" as TranslationKey)}</span>
+                  <span className="text-lg font-bold text-rose-700">{formatPrice(depositAmount)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm text-gray-600">
                   <span>{t("remainingBalance" as TranslationKey)}</span>
                   <span className="font-medium">{formatPrice(remainingAmount)}</span>
                 </div>
-                <p className="text-xs text-purple-600/80 mt-2 italic">
+                <p className="text-xs text-rose-600/80 mt-2 italic">
                   {t("depositRequiredNotice" as TranslationKey)}
                 </p>
               </div>
@@ -557,7 +557,7 @@ export const OrderSummary = ({
             )}
           </span>
           <motion.span 
-            className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100"
+            className="absolute inset-0 bg-gradient-to-r from-rose-600 to-pink-600 opacity-0 group-hover:opacity-100"
             initial={{ x: "-100%" }}
             whileHover={{ x: 0 }}
             transition={{ duration: 0.4 }}

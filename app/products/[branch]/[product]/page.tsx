@@ -910,7 +910,7 @@ export default function ProductDetailPage() {
                             <div className="flex items-center space-x-2">
                               <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
                               {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !rentalPrice && (
-                                <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full mt-1">
+                                <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
                                   Starting at (Cat A)
                                 </span>
                               )}

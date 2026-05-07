@@ -106,7 +106,7 @@ export default function FavoritesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-light tracking-wider mb-2">{t("myFavorites")}</h1>
-                <motion.div initial={{ width: 0 }} animate={{ width: "100px" }} transition={{ duration: 0.8, delay: 0.3 }} className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mb-4 rounded-full" />
+                <motion.div initial={{ width: 0 }} animate={{ width: "100px" }} transition={{ duration: 0.8, delay: 0.3 }} className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mb-4 rounded-full" />
                 <p className="text-gray-600">{favoritesState.count === 0 ? t("noFavoritesDesc") : `${favoritesState.count} ${favoritesState.count === 1 ? t("itemLabel") : t("itemsLabel")}`}</p>
               </div>
               {favoritesState.count > 0 && (
@@ -129,8 +129,8 @@ export default function FavoritesPage() {
 
           {favoritesState.count === 0 ? (
             <div className="text-center py-16">
-              <div className="relative mx-auto mb-6 flex justify-center"><div className="w-28 h-28 bg-gradient-to-r from-pink-50 to-purple-50 rounded-full flex items-center justify-center"><Heart className="h-14 w-14 text-purple-400" /></div></div>
-              <h2 className="text-2xl font-light tracking-wider mb-4 text-purple-700">{t("noFavoritesYet")}</h2>
+              <div className="relative mx-auto mb-6 flex justify-center"><div className="w-28 h-28 bg-gradient-to-r from-pink-50 to-rose-50 rounded-full flex items-center justify-center"><Heart className="h-14 w-14 text-rose-400" /></div></div>
+              <h2 className="text-2xl font-light tracking-wider mb-4 text-rose-700">{t("noFavoritesYet")}</h2>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">{t("noFavoritesDesc")}</p>
               <Link href="/soiree/products"><Button className="bg-black text-white hover:bg-gray-800 rounded-full px-8 py-6">{t("exploreCollections")}</Button></Link>
             </div>
@@ -185,7 +185,7 @@ export default function FavoritesPage() {
                                     ) : (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                         {isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 && (
-                                          <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                          <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                             Starting at (Cat A)
                                           </span>
                                         )}

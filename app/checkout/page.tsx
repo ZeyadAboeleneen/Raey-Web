@@ -497,12 +497,12 @@ export default function CheckoutPage() {
                 <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-4">
                   {t("yourCartIsEmpty")}
                 </h1>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "100px" }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto my-6 rounded-full"
-                />
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "100px" }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
+                    className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mx-auto my-6 rounded-full"
+                  />
                 <p className="text-gray-600 mb-8">
                   {t("cartEmptyDesc")}
                 </p>
@@ -516,7 +516,7 @@ export default function CheckoutPage() {
                   <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-8 py-6 relative overflow-hidden group">
                     <span className="relative z-10">{t("continueShopping")}</span>
                     <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100"
+                      className="absolute inset-0 bg-gradient-to-r from-rose-600 to-pink-600 opacity-0 group-hover:opacity-100"
                       initial={{ x: "-100%" }}
                       whileHover={{ x: 0 }}
                       transition={{ duration: 0.4 }}
@@ -558,7 +558,7 @@ export default function CheckoutPage() {
               initial={{ width: 0 }}
               animate={{ width: "100px" }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="h-1 bg-gradient-to-r from-purple-400 to-pink-400 mb-4 rounded-full"
+              className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mb-4 rounded-full"
             />
             <p className="text-gray-600 text-sm sm:text-base">{t("completeOrderDetails")}</p>
           </motion.div>
@@ -575,7 +575,7 @@ export default function CheckoutPage() {
                 >
                   <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
                     <motion.div
-                      className="absolute -inset-4 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg -z-10"
+                      className="absolute -inset-4 bg-gradient-to-r from-rose-400/20 to-pink-400/20 rounded-lg -z-10"
                       animate={{
                         rotate: [0, 2, 0, -2, 0],
                       }}
@@ -586,7 +586,7 @@ export default function CheckoutPage() {
                       }}
                     />
                     <motion.div
-                      className="absolute -inset-2 bg-gradient-to-r from-purple-300/30 to-pink-300/30 rounded-lg -z-10"
+                      className="absolute -inset-2 bg-gradient-to-r from-rose-300/30 to-pink-300/30 rounded-lg -z-10"
                       animate={{
                         rotate: [0, -1, 0, 1, 0],
                       }}
@@ -598,7 +598,7 @@ export default function CheckoutPage() {
                     />
                     <CardHeader className="pb-4">
                       <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
-                        <MapPin className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        <MapPin className={`h-5 w-5 text-rose-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
                         {t("shippingInformation")}
                       </CardTitle>
                     </CardHeader>
@@ -613,7 +613,7 @@ export default function CheckoutPage() {
                             value={formData.firstName}
                             onChange={(e) => handleInputChange("firstName", e.target.value)}
                             required
-                            className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                           />
                         </div>
                         <div>
@@ -625,7 +625,7 @@ export default function CheckoutPage() {
                             value={formData.lastName}
                             onChange={(e) => handleInputChange("lastName", e.target.value)}
                             required
-                            className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                           />
                         </div>
                       </div>
@@ -641,7 +641,7 @@ export default function CheckoutPage() {
                             value={formData.email}
                             onChange={(e) => handleInputChange("email", e.target.value)}
                             required
-                            className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                           />
                         </div>
                         <div>
@@ -655,7 +655,7 @@ export default function CheckoutPage() {
                                 setPhoneCountry(e.target.value)
                                 setPhoneCountrySynced(false)
                               }}
-                              className="flex h-10 w-32 rounded-md border border-gray-200 bg-background px-2 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex h-10 w-32 rounded-md border border-gray-200 bg-background px-2 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {PHONE_COUNTRY_OPTIONS.map((option) => (
                                 <option key={option.code} value={option.code}>
@@ -669,7 +669,7 @@ export default function CheckoutPage() {
                               onChange={(e) => handleInputChange("phone", e.target.value)}
                               placeholder="Enter phone number"
                               required
-                              className="flex-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500 placeholder:text-xs sm:placeholder:text-sm"
+                              className="flex-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500 placeholder:text-xs sm:placeholder:text-sm"
                             />
                           </div>
                         </div>
@@ -687,7 +687,7 @@ export default function CheckoutPage() {
                                 setAltPhoneCountry(e.target.value)
                                 setAltPhoneCountrySynced(false)
                               }}
-                              className="flex h-10 w-32 rounded-md border border-gray-200 bg-background px-2 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex h-10 w-32 rounded-md border border-gray-200 bg-background px-2 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {PHONE_COUNTRY_OPTIONS.map((option) => (
                                 <option key={option.code} value={option.code}>
@@ -701,7 +701,7 @@ export default function CheckoutPage() {
                               onChange={(e) => handleInputChange("altPhone", e.target.value)}
                               placeholder="Enter secondary phone number"
                               required
-                              className="flex-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500 placeholder:text-xs sm:placeholder:text-sm"
+                              className="flex-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500 placeholder:text-xs sm:placeholder:text-sm"
                             />
                           </div>
                         </div>
@@ -716,7 +716,7 @@ export default function CheckoutPage() {
                           value={formData.address}
                           onChange={(e) => handleInputChange("address", e.target.value)}
                           required
-                          className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                          className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                         />
                       </div>
 
@@ -730,7 +730,7 @@ export default function CheckoutPage() {
                             value={formData.city}
                             onChange={(e) => handleInputChange("city", e.target.value)}
                             required
-                            className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                           />
                         </div>
                         <div>
@@ -742,7 +742,7 @@ export default function CheckoutPage() {
                             value={formData.country}
                             onChange={(e) => handleInputChange("country", e.target.value)}
                             required
-                            className="mt-1 flex h-10 w-full rounded-md border border-gray-200 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="mt-1 flex h-10 w-full rounded-md border border-gray-200 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <option value="">Select a country</option>
                             <option value="United States">United States</option>
@@ -768,7 +768,7 @@ export default function CheckoutPage() {
                             id="postalCode"
                             value={formData.postalCode}
                             onChange={(e) => handleInputChange("postalCode", e.target.value)}
-                            className="mt-1 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="mt-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500"
                           />
                         </div>
                       </div>
@@ -785,7 +785,7 @@ export default function CheckoutPage() {
                   <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
                     <CardHeader className="pb-4">
                       <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
-                        <Truck className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        <Truck className={`h-5 w-5 text-rose-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
                         {t("deliveryMethod" as any)}
                       </CardTitle>
                     </CardHeader>
@@ -798,16 +798,16 @@ export default function CheckoutPage() {
                       >
                         {/* Home Shipping - Only for Sell Dresses */}
                         {!hasRental && (
-                          <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "shipping" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                          <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "shipping" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                             <div className="flex items-center space-x-3 p-4">
-                              <RadioGroupItem value="shipping" id="shipping" className="text-purple-600" />
+                              <RadioGroupItem value="shipping" id="shipping" className="text-rose-600" />
                               <Label htmlFor="shipping" className="flex-1 cursor-pointer">
                                 <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                   <div>
                                     <p className="font-medium text-sm sm:text-base">{t("homeShipping" as any)}</p>
                                     <p className="text-xs text-gray-600">{t("allPricesIncludeShipping")}</p>
                                   </div>
-                                  <Truck className="h-5 w-5 text-purple-400" />
+                                  <Truck className="h-5 w-5 text-rose-400" />
                                 </div>
                               </Label>
                             </div>
@@ -815,16 +815,16 @@ export default function CheckoutPage() {
                         )}
 
                         {/* Pickup from Branch */}
-                        <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "pickup" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                        <div className={`relative border rounded-lg transition-all duration-300 ${deliveryMethod === "pickup" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                           <div className="flex items-center space-x-3 p-4">
-                            <RadioGroupItem value="pickup" id="pickup" className="text-purple-600" />
+                            <RadioGroupItem value="pickup" id="pickup" className="text-rose-600" />
                             <Label htmlFor="pickup" className="flex-1 cursor-pointer">
                               <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                 <div>
                                   <p className="font-medium text-sm sm:text-base">{t("pickupFromBranch" as any)}</p>
                                   <p className="text-xs text-gray-600">Free pickup from our stores</p>
                                 </div>
-                                <MapPin className="h-5 w-5 text-purple-400" />
+                                <MapPin className="h-5 w-5 text-rose-400" />
                               </div>
                             </Label>
                           </div>
@@ -832,8 +832,8 @@ export default function CheckoutPage() {
                       </RadioGroup>
 
                       {hasRental && (
-                        <Alert className="bg-purple-50 border-purple-100">
-                          <AlertDescription className="text-purple-800 text-xs sm:text-sm">
+                        <Alert className="bg-rose-50 border-rose-100">
+                          <AlertDescription className="text-rose-800 text-xs sm:text-sm">
                             Rental items are only available for pickup from our branches to ensure quality check.
                           </AlertDescription>
                         </Alert>
@@ -854,9 +854,9 @@ export default function CheckoutPage() {
                                 const address = BRANCH_ADDRESSES[branchKey]?.[settings.language] || BRANCH_ADDRESSES["el-raey-1"][settings.language];
                                 return (
                                   <div key={idx} className="flex items-start gap-2 pb-2 border-b border-gray-200 last:border-0 last:pb-0">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                                    <div className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
                                     <div>
-                                      <p className="text-[10px] sm:text-xs font-medium text-purple-700 uppercase tracking-wider">{item.name}</p>
+                                      <p className="text-[10px] sm:text-xs font-medium text-rose-700 uppercase tracking-wider">{item.name}</p>
                                       <p className="text-[11px] sm:text-sm text-gray-600 leading-relaxed">{address}</p>
                                       {item.type === "rent" && item.rentStart && (
                                         <p className="text-[10px] sm:text-xs font-bold text-green-600 mt-1 italic">
@@ -883,7 +883,7 @@ export default function CheckoutPage() {
                 >
                   <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
                     <motion.div
-                      className="absolute -inset-4 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg -z-10"
+                      className="absolute -inset-4 bg-gradient-to-r from-rose-400/20 to-pink-400/20 rounded-lg -z-10"
                       animate={{
                         rotate: [0, -2, 0, 2, 0],
                       }}
@@ -894,7 +894,7 @@ export default function CheckoutPage() {
                       }}
                     />
                     <motion.div
-                      className="absolute -inset-2 bg-gradient-to-r from-purple-300/30 to-pink-300/30 rounded-lg -z-10"
+                      className="absolute -inset-2 bg-gradient-to-r from-rose-300/30 to-pink-300/30 rounded-lg -z-10"
                       animate={{
                         rotate: [0, 1, 0, -1, 0],
                       }}
@@ -906,7 +906,7 @@ export default function CheckoutPage() {
                     />
                     <CardHeader className="pb-4">
                       <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
-                        <CreditCard className={`h-5 w-5 text-purple-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        <CreditCard className={`h-5 w-5 text-rose-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
                         {t("paymentMethod")}
                       </CardTitle>
                     </CardHeader>
@@ -917,16 +917,16 @@ export default function CheckoutPage() {
                         className="space-y-3"
                       >
                         {/* Instapay */}
-                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "instapay" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "instapay" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                           <div className="flex items-center space-x-3 p-4">
-                            <RadioGroupItem value="instapay" id="instapay" className="text-purple-600" />
+                            <RadioGroupItem value="instapay" id="instapay" className="text-rose-600" />
                             <Label htmlFor="instapay" className="flex-1 cursor-pointer">
                               <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                 <div>
                                   <p className="font-medium text-sm sm:text-base">Instapay</p>
                                   <p className="text-xs sm:text-sm text-gray-600">Pay via Instapay transfer link</p>
                                 </div>
-                                <Smartphone className="h-5 w-5 text-purple-400" />
+                                <Smartphone className="h-5 w-5 text-rose-400" />
                               </div>
                             </Label>
                           </div>
@@ -936,16 +936,16 @@ export default function CheckoutPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="px-4 pb-4 border-t border-purple-200"
+                              className="px-4 pb-4 border-t border-rose-200"
                             >
                               <div className="pt-3 space-y-3">
-                                <div className="bg-white rounded-lg p-4 border border-purple-100">
+                                <div className="bg-white rounded-lg p-4 border border-rose-100">
                                   <p className="text-sm text-gray-700 mb-2">Click the link below to complete your payment:</p>
                                   <a
                                     href="https://ipn.eg/S/zeyadaboeleneen/instapay/9KXW3j"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:from-rose-700 hover:to-pink-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
                                   >
                                     <ExternalLink className="h-4 w-4" />
                                     Open Instapay Payment Link
@@ -958,16 +958,16 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* Bank Transfer */}
-                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "bank_transfer" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "bank_transfer" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                           <div className="flex items-center space-x-3 p-4">
-                            <RadioGroupItem value="bank_transfer" id="bank_transfer" className="text-purple-600" />
+                            <RadioGroupItem value="bank_transfer" id="bank_transfer" className="text-rose-600" />
                             <Label htmlFor="bank_transfer" className="flex-1 cursor-pointer">
                               <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                 <div>
                                   <p className="font-medium text-sm sm:text-base">Bank Transfer</p>
                                   <p className="text-xs sm:text-sm text-gray-600">Transfer to our bank account</p>
                                 </div>
-                                <Landmark className="h-5 w-5 text-purple-400" />
+                                <Landmark className="h-5 w-5 text-rose-400" />
                               </div>
                             </Label>
                           </div>
@@ -977,12 +977,12 @@ export default function CheckoutPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="px-4 pb-4 border-t border-purple-200"
+                              className="px-4 pb-4 border-t border-rose-200"
                             >
                               <div className="pt-3 space-y-3">
-                                <div className="bg-white rounded-lg p-4 border border-purple-100 space-y-2.5">
+                                <div className="bg-white rounded-lg p-4 border border-rose-100 space-y-2.5">
                                   <h4 className="font-semibold text-sm text-gray-800 mb-3 flex items-center gap-2">
-                                    <Landmark className="h-4 w-4 text-purple-600" />
+                                    <Landmark className="h-4 w-4 text-rose-600" />
                                     Bank Account Details
                                   </h4>
                                   <div className="grid grid-cols-1 gap-2 text-sm">
@@ -1024,16 +1024,16 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* Vodafone Cash */}
-                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "vodafone_cash" ? "border-purple-400 bg-purple-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"}`}>
+                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "vodafone_cash" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                           <div className="flex items-center space-x-3 p-4">
-                            <RadioGroupItem value="vodafone_cash" id="vodafone_cash" className="text-purple-600" />
+                            <RadioGroupItem value="vodafone_cash" id="vodafone_cash" className="text-rose-600" />
                             <Label htmlFor="vodafone_cash" className="flex-1 cursor-pointer">
                               <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                 <div>
                                   <p className="font-medium text-sm sm:text-base">Vodafone Cash</p>
                                   <p className="text-xs sm:text-sm text-gray-600">Send via Vodafone Cash</p>
                                 </div>
-                                <Phone className="h-5 w-5 text-purple-400" />
+                                <Phone className="h-5 w-5 text-rose-400" />
                               </div>
                             </Label>
                           </div>
@@ -1043,10 +1043,10 @@ export default function CheckoutPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="px-4 pb-4 border-t border-purple-200"
+                              className="px-4 pb-4 border-t border-rose-200"
                             >
                               <div className="pt-3 space-y-3">
-                                <div className="bg-white rounded-lg p-4 border border-purple-100">
+                                <div className="bg-white rounded-lg p-4 border border-rose-100">
                                   <p className="text-sm text-gray-700 mb-2">Send the payment to this Vodafone Cash number:</p>
                                   <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border border-red-200">
                                     <Phone className="h-5 w-5 text-red-600" />
@@ -1063,7 +1063,7 @@ export default function CheckoutPage() {
                       {/* Payment Screenshot Upload */}
                       <div className="mt-6 pt-4 border-t border-gray-200">
                         <Label className="text-sm font-semibold text-gray-800 flex items-center gap-2 mb-3">
-                          <Upload className="h-4 w-4 text-purple-600" />
+                          <Upload className="h-4 w-4 text-rose-600" />
                           Upload Payment Screenshot *
                         </Label>
                         <p className="text-xs text-gray-500 mb-3">Upload a screenshot of your payment confirmation as proof.</p>
@@ -1071,12 +1071,12 @@ export default function CheckoutPage() {
                         {!paymentScreenshot ? (
                           <label
                             htmlFor="payment-screenshot"
-                            className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-purple-300 rounded-xl cursor-pointer bg-purple-50/30 hover:bg-purple-50 hover:border-purple-400 transition-all duration-300 group"
+                            className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-rose-300 rounded-xl cursor-pointer bg-rose-50/30 hover:bg-rose-50 hover:border-rose-400 transition-all duration-300 group"
                           >
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Upload className="h-8 w-8 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+                              <Upload className="h-8 w-8 text-rose-400 mb-2 group-hover:scale-110 transition-transform" />
                               <p className="text-sm text-gray-600">
-                                <span className="font-semibold text-purple-600">Click to upload</span> or drag & drop
+                                <span className="font-semibold text-rose-600">Click to upload</span> or drag & drop
                               </p>
                               <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (Max 5MB)</p>
                             </div>
@@ -1180,7 +1180,7 @@ export default function CheckoutPage() {
         transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         className="fixed bottom-8 left-8 z-10"
       >
-        <Sparkles className="h-6 w-6 text-purple-400" />
+        <Sparkles className="h-6 w-6 text-rose-400" />
       </motion.div>
 
       <motion.div

@@ -107,7 +107,7 @@ export function CartItem({
     >
       <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
         <motion.div 
-          className="absolute -inset-4 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-lg -z-10"
+          className="absolute -inset-4 bg-gradient-to-r from-rose-400/10 to-pink-400/10 rounded-lg -z-10"
           animate={{
             rotate: [0, 0.5, 0, -0.5, 0],
           }}
@@ -118,7 +118,7 @@ export function CartItem({
           }}
         />
         <motion.div 
-          className="absolute -inset-2 bg-gradient-to-r from-purple-300/15 to-pink-300/15 rounded-lg -z-10"
+          className="absolute -inset-2 bg-gradient-to-r from-rose-300/15 to-pink-300/15 rounded-lg -z-10"
           animate={{
             rotate: [0, -0.3, 0, 0.3, 0],
           }}
@@ -197,19 +197,19 @@ export function CartItem({
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuantityChange(item.quantity - 1)}
-                  className="h-8 w-8 p-0 border-purple-200 hover:border-purple-400 hover:bg-purple-50"
+                  className="h-8 w-8 p-0 border-rose-200 hover:border-rose-400 hover:bg-rose-50"
                 >
-                  <Minus className="h-4 w-4 text-purple-600" />
+                  <Minus className="h-4 w-4 text-rose-600" />
                 </Button>
-                <span className="w-8 text-center text-sm font-medium text-purple-800">{item.quantity}</span>
+                <span className="w-8 text-center text-sm font-medium text-rose-800">{item.quantity}</span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuantityChange(item.quantity + 1)}
                   disabled={item.stockCount !== undefined && item.stockCount !== null && item.quantity >= item.stockCount}
-                  className="h-8 w-8 p-0 border-purple-200 hover:border-purple-400 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-8 w-8 p-0 border-rose-200 hover:border-rose-400 hover:bg-rose-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Plus className="h-4 w-4 text-purple-600" />
+                  <Plus className="h-4 w-4 text-rose-600" />
                 </Button>
               </div>
 
@@ -308,19 +308,19 @@ export function CartItem({
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuantityChange(item.quantity - 1)}
-                className="h-8 w-8 p-0 border-purple-200 hover:border-purple-400 hover:bg-purple-50"
+                className="h-8 w-8 p-0 border-rose-200 hover:border-rose-400 hover:bg-rose-50"
               >
-                <Minus className="h-4 w-4 text-purple-600" />
+                <Minus className="h-4 w-4 text-rose-600" />
               </Button>
-              <span className="w-8 text-center text-purple-800 font-medium">{item.quantity}</span>
+              <span className="w-8 text-center text-rose-800 font-medium">{item.quantity}</span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuantityChange(item.quantity + 1)}
                 disabled={item.stockCount !== undefined && item.stockCount !== null && item.quantity >= item.stockCount}
-                className="h-8 w-8 p-0 border-purple-200 hover:border-purple-400 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-8 w-8 p-0 border-rose-200 hover:border-rose-400 hover:bg-rose-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="h-4 w-4 text-purple-600" />
+                <Plus className="h-4 w-4 text-rose-600" />
               </Button>
             </div>
 

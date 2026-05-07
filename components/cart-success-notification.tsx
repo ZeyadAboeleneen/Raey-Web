@@ -26,7 +26,7 @@ export function CartSuccessNotification() {
           <Card className="shadow-xl border-0 bg-white relative overflow-hidden">
             {/* Purple transparent rectangles */}
             <motion.div 
-              className="absolute -inset-4 bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-lg -z-10"
+              className="absolute -inset-4 bg-gradient-to-r from-rose-400/15 to-pink-400/15 rounded-lg -z-10"
               animate={{
                 rotate: [0, 0.3, 0, -0.3, 0],
               }}
@@ -37,7 +37,7 @@ export function CartSuccessNotification() {
               }}
             />
             <motion.div 
-              className="absolute -inset-2 bg-gradient-to-r from-purple-300/20 to-pink-300/20 rounded-lg -z-10"
+              className="absolute -inset-2 bg-gradient-to-r from-rose-300/20 to-pink-300/20 rounded-lg -z-10"
               animate={{
                 rotate: [0, -0.2, 0, 0.2, 0],
               }}
@@ -50,15 +50,15 @@ export function CartSuccessNotification() {
             <CardContent className="p-4">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center">
-                    <Check className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full flex items-center justify-center">
+                    <Check className="w-5 h-5 text-rose-600" />
                   </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-purple-900 mb-1">Added to cart!</p>
+                      <p className="text-sm font-medium text-rose-900 mb-1">Added to cart!</p>
                       <div className="flex items-center space-x-3">
                         <Image
                           src={state.lastAddedItem.image || "/placeholder.svg"}
@@ -95,7 +95,7 @@ export function CartSuccessNotification() {
                       size="sm"
                       variant="outline"
                       onClick={hideNotification}
-                      className="text-xs px-4 py-2 border-purple-300 bg-transparent text-purple-700 hover:bg-purple-50 hover:border-purple-500 rounded-full"
+                      className="text-xs px-4 py-2 border-rose-300 bg-transparent text-rose-700 hover:bg-rose-50 hover:border-rose-500 rounded-full"
                     >
                       Continue Shopping
                     </Button>

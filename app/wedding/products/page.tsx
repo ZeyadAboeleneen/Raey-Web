@@ -508,7 +508,7 @@ export default function WeddingProductsPage() {
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               {product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0 && (
-                                <span className="text-[9px] text-purple-300 font-medium mb-0.5">
+                                <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                   Starting at (Cat A)
                                 </span>
                               )}
@@ -1061,7 +1061,7 @@ export default function WeddingProductsPage() {
         transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         className="fixed bottom-8 left-8 z-10"
       >
-        <Sparkles className="h-6 w-6 text-purple-400" />
+        <Sparkles className="h-6 w-6 text-rose-400" />
       </motion.div>
 
       <motion.div
