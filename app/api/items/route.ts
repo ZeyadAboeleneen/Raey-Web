@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
         b.BranchID,
         s.Store_name  AS StoreName,
         istore.Branch_ID AS ItemStoreBranchID,
-        istore.Store_name AS ItemStoreName
+        istore.Store_name AS ItemStoreName,
+        fallback.FallbackStoreName
       FROM Items i
       LEFT JOIN Category c ON i.Category_id = c.ID
       LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID AND b.ReturnDate >= CAST(GETDATE() AS DATE)
@@ -112,6 +113,13 @@ export async function GET(request: NextRequest) {
           FROM ItemStores itemst 
           JOIN Stores st ON itemst.StoreID = st.ID
       ) istore ON istore.ItemID = i.ID
+      OUTER APPLY (
+          SELECT TOP 1 s2.Store_name AS FallbackStoreName
+          FROM Booking b2
+          JOIN Stores s2 ON b2.BranchID = s2.Branch_ID
+          WHERE b2.ModelTypeID = i.ID
+          ORDER BY b2.ID DESC
+      ) fallback
       WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
     `;
 

@@ -37,7 +37,7 @@ export const translations = {
     noProductSelected: "No product selected",
     unknownSize: "Unknown size",
     noProductName: "No product name",
-    
+
     // Checkout Form
     checkoutTitle: "Checkout",
     backToCart: "Back to Cart",
@@ -77,7 +77,7 @@ export const translations = {
     return1DayLater: "Return 1 day later",
     unavailableDateBooked: "Unavailable – date is booked",
     unavailable: "Unavailable",
-    
+
     // Cart Item
     rentLabel: "Rent",
     buyLabel: "Buy",
@@ -461,7 +461,7 @@ export const translations = {
     return1DayLater: "إرجاع بعد بيوم",
     unavailableDateBooked: "غير متاح – التاريخ محجوز",
     unavailable: "غير متاح",
-    
+
     // Cart Item
     rentLabel: "إيجار",
     buyLabel: "شراء",
@@ -619,7 +619,7 @@ export const translations = {
 
     // Collections/Products Page
     collectionsTitle: "المجموعات",
-    collectionsDesc: "اكتشفي فساتيننا المنتقاة وبدلات القفز والإكسسوارات—كل واحدة مصممة لإبراز فرديتك في كل احتفال.",
+    collectionsDesc: "اكتشفي فساتيننا المنتقاة —كل واحدة مصممة لإبراز فرديتك في كل احتفال.",
     soireeCollectionsTitle: "مجموعات السواريه",
     soireeCollectionsDesc: "اكتشفي مجموعتنا المذهلة من فساتين السهرة والسواريه لكل مناسبة خاصة.",
     weddingCollectionsTitle: "مجموعات الزفاف",

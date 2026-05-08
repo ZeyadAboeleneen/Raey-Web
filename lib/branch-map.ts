@@ -60,11 +60,19 @@ export function mapBranchSlugToBranchId(slug: string | null | undefined): number
   }
 }
 
-/** Numeric Branch_ID from Booking (ERP) — only 15 is defined here; rest use store name. */
+/** Map numeric Stores.Branch_ID → storefront slug. */
+const BRANCH_ID_TO_CODE: Record<number, string> = {
+  3: "E",   // el-raey-1
+  9: "M",   // mona-saleh
+  7: "D",   // el-raey-2
+  5: "R",   // el-raey-the-yard
+  1: "15",  // sell-dresses
+};
+
 export function mapBookingBranchIdToSlug(branchId: number | null | undefined): string | null {
   if (branchId === null || branchId === undefined) return null;
-  if (branchId === 15) return branchMap["15"];
-  return null;
+  const code = BRANCH_ID_TO_CODE[branchId];
+  return code ? (branchMap[code] ?? null) : null;
 }
 
 /**
@@ -74,20 +82,30 @@ export function mapBookingBranchIdToSlug(branchId: number | null | undefined): s
 export function resolveBranchSlugFromErpRow(row: {
   BranchID?: number | null;
   StoreName?: string | null;
+  Item_name?: string | null;
 }): string | null {
   const fromId = mapBookingBranchIdToSlug(row.BranchID ?? null);
   if (fromId) return fromId;
 
   const raw = (row.StoreName || "").trim();
-  if (!raw) return null;
+  if (raw) {
+    const upper = raw.toUpperCase();
+    if (branchMap[upper]) return branchMap[upper];
+    if (branchMap[raw]) return branchMap[raw];
 
-  const upper = raw.toUpperCase();
-  if (branchMap[upper]) return branchMap[upper];
-  if (branchMap[raw]) return branchMap[raw];
+    const letter = upper.charAt(0);
+    if (branchMap[letter]) return branchMap[letter];
+  }
 
-  const letter = upper.charAt(0);
-  if (branchMap[letter]) return branchMap[letter];
+  // Last resort: Fallback to first letter of item name (e.g. "R123" -> "el-raey-the-yard")
+  const itemName = (row.Item_name || "").trim().toUpperCase();
+  if (itemName) {
+    const firstLetter = itemName.charAt(0);
+    if (branchMap[firstLetter]) return branchMap[firstLetter];
+  }
 
-  console.warn("Unknown branch value:", { BranchID: row.BranchID, StoreName: row.StoreName });
+  if (row.BranchID || row.StoreName) {
+    console.warn("Unknown branch value:", { BranchID: row.BranchID, StoreName: row.StoreName });
+  }
   return null;
 }

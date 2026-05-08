@@ -74,6 +74,7 @@ export interface ErpItemRow {
   StoreName: string | null;
   ItemStoreBranchID?: number | null;
   ItemStoreName?: string | null;
+  FallbackStoreName?: string | null;
 }
 
 /**
@@ -86,12 +87,13 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
     const id = row.ItemID;
 
     if (!itemMap.has(id)) {
-      const branchIdToUse = row.ItemStoreBranchID != null ? row.ItemStoreBranchID : row.BranchID;
-      const storeNameToUse = row.ItemStoreName != null ? row.ItemStoreName : row.StoreName;
+      const branchIdToUse = row.ItemStoreBranchID ?? row.BranchID ?? null;
+      const storeNameToUse = row.ItemStoreName ?? row.StoreName ?? row.FallbackStoreName ?? null;
 
       const branch = resolveBranchSlugFromErpRow({
         BranchID: branchIdToUse,
         StoreName: storeNameToUse,
+        Item_name: row.Item_name,
       });
       itemMap.set(id, {
         id,
