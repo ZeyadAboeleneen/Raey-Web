@@ -387,6 +387,12 @@ export default function ProductDetailPage() {
     bookDay.setHours(0, 0, 0, 0)
     
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
+
+    // If date is past 45 days, pricing is not available online
+    if (d > 45) {
+      setRentalPrice(null)
+      return
+    }
     
     // Assume n=0 for speculative pricing
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
@@ -429,6 +435,19 @@ export default function ProductDetailPage() {
     fetchPrice()
     return () => controller.abort()
   }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter])
+
+  // Check if the selected rental date is more than 45 days away.
+  // When true, pricing is not available online — user must contact branch via WhatsApp.
+  const isPast45Days = (() => {
+    if (!isRentBranch || !rentEventDate) return false
+    const msPerDay = 1000 * 60 * 60 * 24
+    const rs = new Date(rentEventDate)
+    rs.setDate(rs.getDate() - 1)
+    const sd = new Date(rs); sd.setHours(0, 0, 0, 0)
+    const bd = new Date(); bd.setHours(0, 0, 0, 0)
+    const d = Math.max(1, Math.round((sd.getTime() - bd.getTime()) / msPerDay))
+    return d > 45
+  })()
 
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
@@ -1107,7 +1126,7 @@ export default function ProductDetailPage() {
                         const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
                         const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
                         return selectedDate < earliestBooking
-                      })() && (
+                      })() && !isPast45Days && (
                         <div
                           className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
                             isExclusive
@@ -1141,7 +1160,7 @@ export default function ProductDetailPage() {
                       )}
 
                       {/* Extra Days Options — show after user selects a date */}
-                      {rentEventDate && (
+                      {rentEventDate && !isPast45Days && (
                         <div className="space-y-2">
                           <p className="font-medium text-gray-900 text-sm">{t("extraDays" as TranslationKey)} <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
                           <div className="grid grid-cols-2 gap-2">
@@ -1201,10 +1220,35 @@ export default function ProductDetailPage() {
                         </div>
                       )}
 
-                      {/* Rental Price Display */}
+                      {/* Rental Price Display / Contact Branch (past 45 days) */}
                       {rentEventDate && (
                         <div className="border rounded-lg p-4 bg-white">
-                          {rentalPriceLoading ? (
+                          {isPast45Days ? (
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium text-amber-800">
+                                    Price not available online
+                                  </p>
+                                  <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                    The selected date is more than 45 days away. Please contact the branch directly for pricing.
+                                  </p>
+                                </div>
+                              </div>
+                              <a
+                                href={`https://wa.me/201094448044?text=${encodeURIComponent(
+                                  `Hello, I'm interested in renting:\n\nDress: ${product.name}\nProduct ID: ${product.id}\nBranch: ${collectionDetails[branch]?.titleKey ? t(collectionDetails[branch].titleKey) : branch}\nOccasion Date: ${rentEventDate.toLocaleDateString('en-GB')}\n\nThe date I selected is beyond 45 days. Please provide the rental price.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#25D366] hover:bg-[#1da851] text-white font-medium rounded-lg transition-colors duration-200"
+                              >
+                                <MessageCircle className="h-5 w-5" />
+                                Contact Branch via WhatsApp
+                              </a>
+                            </div>
+                          ) : rentalPriceLoading ? (
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
                               Calculating rental price...
@@ -1233,6 +1277,7 @@ export default function ProductDetailPage() {
                       )}
                     </div>
                   )}
+                  {!isPast45Days && (
                   <div className="mt-4 flex justify-center">
                     <Button
                       className={`px-6 py-3 rounded-full flex items-center ${isRentBranch && availabilityResult && !availabilityResult.available
@@ -1282,6 +1327,7 @@ export default function ProductDetailPage() {
                           : t("buyNowLabel" as TranslationKey)}
                     </Button>
                   </div>
+                  )}
                 </div>
               )}
             </motion.div>
