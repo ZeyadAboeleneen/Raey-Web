@@ -116,7 +116,7 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<number>(0)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const { occasionDate, setOccasionDate } = useDateContext()
+  const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
   const [rentEventDate, setRentEventDate] = useState<Date | undefined>(occasionDate || undefined)
   const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
   const [checkingAvailability, setCheckingAvailability] = useState(false)
@@ -438,8 +438,13 @@ export default function ProductDetailPage() {
 
   // Check if the selected rental date is more than 45 days away.
   // When true, pricing is not available online — user must contact branch via WhatsApp.
+  // Uses BOTH: the in-page calendar (rentEventDate) AND the global popup date (isOccasionPast45Days).
   const isPast45Days = (() => {
-    if (!isRentBranch || !rentEventDate) return false
+    if (!isRentBranch) return false
+    // Global popup date already flagged as past 45 days
+    if (isOccasionPast45Days) return true
+    // In-page calendar date check
+    if (!rentEventDate) return false
     const msPerDay = 1000 * 60 * 60 * 24
     const rs = new Date(rentEventDate)
     rs.setDate(rs.getDate() - 1)
@@ -926,8 +931,8 @@ export default function ProductDetailPage() {
                   </div>
                   {(() => {
                     const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
-                    const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
-                    const clientRentalPrice = isRentBranch && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
+                    const showProductPrice = (showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)) && !(isRentBranch && isPast45Days)
+                    const clientRentalPrice = isRentBranch && !isPast45Days && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
                     if (!showProductPrice && !clientRentalPrice) return null
                     if (!showProductPrice && clientRentalPrice) {
                       const displayPrice = rentalPrice ? rentalPrice.total : clientRentalPrice
@@ -1221,7 +1226,7 @@ export default function ProductDetailPage() {
                       )}
 
                       {/* Rental Price Display / Contact Branch (past 45 days) */}
-                      {rentEventDate && (
+                      {(rentEventDate || isPast45Days) && (
                         <div className="border rounded-lg p-4 bg-white">
                           {isPast45Days ? (
                             <div className="space-y-3">
@@ -1238,7 +1243,7 @@ export default function ProductDetailPage() {
                               </div>
                               <a
                                 href={`https://wa.me/201094448044?text=${encodeURIComponent(
-                                  `Hello, I'm interested in renting:\n\nDress: ${product.name}\nProduct ID: ${product.id}\nBranch: ${collectionDetails[branch]?.titleKey ? t(collectionDetails[branch].titleKey) : branch}\nOccasion Date: ${rentEventDate.toLocaleDateString('en-GB')}\n\nThe date I selected is beyond 45 days. Please provide the rental price.`
+                                  `Hello, I'm interested in renting:\n\nDress: ${product.name}\nProduct ID: ${product.id}\nBranch: ${collectionDetails[branch]?.titleKey ? t(collectionDetails[branch].titleKey) : branch}\nOccasion Date: ${(rentEventDate || occasionDate)?.toLocaleDateString('en-GB') || 'Not specified'}\n\nThe date I selected is beyond 45 days. Please provide the rental price.`
                                 )}`}
                                 target="_blank"
                                 rel="noopener noreferrer"

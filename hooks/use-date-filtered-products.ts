@@ -6,7 +6,7 @@ import type { CachedProduct as Product } from "@/lib/products-cache"
 import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
 
 export function useDateFilteredProducts(products: Product[]) {
-  const { occasionDate, isBrowsingOnly } = useDateContext()
+  const { occasionDate, isBrowsingOnly, isOccasionPast45Days } = useDateContext()
   const [dynamicPrices, setDynamicPrices] = useState<Record<string, number>>({})
   const [loadingPrices, setLoadingPrices] = useState(false)
 
@@ -54,7 +54,7 @@ export function useDateFilteredProducts(products: Product[]) {
   
   // 2. Fetch dynamic prices for specific products
   const fetchPricesForIds = useCallback(async (productIds: string[]) => {
-    if (!occasionDate || isBrowsingOnly) {
+    if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
       setDynamicPrices(prev => Object.keys(prev).length === 0 ? prev : {})
       return
     }
@@ -97,7 +97,7 @@ export function useDateFilteredProducts(products: Product[]) {
 
   // Reset prices when date changes OR calculate speculative prices instantly
   useEffect(() => {
-    if (!occasionDate || isBrowsingOnly) {
+    if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
       setDynamicPrices({})
       fetchingIdsRef.current.clear()
       return
@@ -142,6 +142,7 @@ export function useDateFilteredProducts(products: Product[]) {
     fetchPricesForPage,
     fetchPricesForIds,
     occasionDate,
-    isBrowsingOnly
+    isBrowsingOnly,
+    isOccasionPast45Days
   }
 }

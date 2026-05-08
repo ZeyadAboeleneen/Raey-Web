@@ -252,7 +252,7 @@ export default function BranchProductsPage() {
     return kept.map(x => x.p)
   }, [products, debouncedQuery])
 
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate } = useDateFilteredProducts(filteredProducts)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(filteredProducts)
 
   const paginatedProducts = useMemo(() => {
     return sortedProducts.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
@@ -498,8 +498,8 @@ export default function BranchProductsPage() {
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                         {(() => {
                                           const isWeddingOrSoiree = (product as any).collection?.toLowerCase().includes("wedding") || (product as any).collection?.toLowerCase().includes("soiree")
-                                          const showProductPrice = showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)
-                                          const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+                                          const showProductPrice = (showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)) && !(isRentBranch && isOccasionPast45Days)
+                                          const clientRentalPrice = isRentBranch && !isOccasionPast45Days && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
                                           return (
                                             <>
                                               {(showProductPrice || clientRentalPrice) ? (
