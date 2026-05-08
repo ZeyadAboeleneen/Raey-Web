@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import { Star, Heart, ShoppingCart, X, AlertCircle, Package } from "lucide-react"
+import { Star, Heart, ShoppingCart, X, AlertCircle, Package, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast"
 import type { SizeChartRow } from "@/components/custom-size-form"
 import type { CachedProduct as Product, ProductSize } from "@/lib/products-cache"
 import { useRouter } from "next/navigation"
+import { useDateContext } from "@/lib/date-context"
 
 const CustomSizeForm = dynamic(
   () => import("@/components/custom-size-form").then((m) => m.CustomSizeForm),
@@ -43,6 +44,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
+  const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
   
   const {
     isCustomSizeMode,
@@ -72,12 +74,23 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
 
   const isRentBranch = product?.branch !== "sell-dresses"
 
+  const isPast45Days = (() => {
+    if (!isRentBranch || !rentEventDate) return false
+    const msPerDay = 1000 * 60 * 60 * 24
+    const rs = new Date(rentEventDate)
+    rs.setDate(rs.getDate() - 1)
+    const sd = new Date(rs); sd.setHours(0, 0, 0, 0)
+    const bd = new Date(); bd.setHours(0, 0, 0, 0)
+    const d = Math.max(1, Math.round((sd.getTime() - bd.getTime()) / msPerDay))
+    return d > 45
+  })()
+
   // Reset state when product changes or modal opens
   useEffect(() => {
     if (isOpen && product) {
       setSelectedSize(null)
       setQuantity(1)
-      setRentEventDate(undefined)
+      setRentEventDate(occasionDate || undefined)
       setIsExclusive(false)
       setExtraDayBefore(false)
       setExtraDayAfter(false)
@@ -466,7 +479,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                       <Calendar
                         mode="single"
                         selected={rentEventDate}
-                        onSelect={(date) => setRentEventDate(date ?? undefined)}
+                        onSelect={(date) => {
+                          const newDate = date ?? undefined
+                          setRentEventDate(newDate)
+                          setOccasionDate(newDate || null)
+                        }}
                         disabled={(date) => {
                           const today = new Date()
                           today.setHours(0, 0, 0, 0)
@@ -570,67 +587,94 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                   </div>
                 )}
 
-                <div className="flex justify-between items-center py-4 border-t border-gray-100">
-                  <div className="flex flex-col">
-                    {isRentBranch ? (
-                      rentEventDate ? (
-                        rentalPriceLoading ? (
-                          <span className="text-sm text-gray-400">Calculating...</span>
-                        ) : rentalPrice ? (
-                          <>
-                            <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
-                            <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
-                            <span className="text-[10px] text-rose-600 font-medium">Category {rentalPrice.category}</span>
-                          </>
-                        ) : (
-                          <div className="flex flex-col">
-                            {!showPrices && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (
+                <div className="flex flex-col space-y-4 py-4 border-t border-gray-100">
+                  {isPast45Days ? (
+                    <div className="space-y-3 w-full">
+                      <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">Price not available online</p>
+                          <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                            The selected date is more than 45 days away. Please contact the branch directly for pricing.
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={`https://wa.me/201094448044?text=${encodeURIComponent(
+                          `Hello, I'm interested in renting:\n\nDress: ${product.name}\nProduct ID: ${product.id}\nBranch: ${product.branch}\nOccasion Date: ${(rentEventDate || occasionDate)?.toLocaleDateString('en-GB') || 'Not specified'}\n\nThe date I selected is beyond 45 days. Please provide the rental price.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#25D366] hover:bg-[#1da851] text-white font-medium rounded-lg transition-colors duration-200"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                        Contact Branch via WhatsApp
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex flex-col">
+                        {isRentBranch ? (
+                          rentEventDate ? (
+                            rentalPriceLoading ? (
+                              <span className="text-sm text-gray-400">Calculating...</span>
+                            ) : rentalPrice ? (
                               <>
-                                <span className="text-[10px] text-rose-600 font-medium">Starting from</span>
-                                <span className="text-xl font-bold text-black">
-                                  {formatPrice((product as any).rentalPriceC)}
-                                </span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
+                                <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
+
                               </>
                             ) : (
-                              <>
-                                <span className="text-[10px] text-rose-600 font-medium">Starting at (Cat A)</span>
-                                <span className="text-xl font-bold text-black">
-                                  {product.rentalPriceA && product.rentalPriceA > 0 
-                                    ? formatPrice(product.rentalPriceA) 
-                                    : formatPrice(getSmallestPrice(product.sizes))}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        )
-                      ) : (
-                        <div className="flex flex-col">
-                          <span className="text-sm text-gray-500 italic">Select a date to view pricing</span>
-                        </div>
-                      )
-                    ) : (
-                      (() => {
-                        const referenceSize = selectedSize || product.sizes[0]
-                        const price = referenceSize?.discountedPrice || referenceSize?.originalPrice || 0
-                        return <span className="text-xl font-bold">{formatPrice(price * quantity)}</span>
-                      })()
-                    )}
-                  </div>
+                              <div className="flex flex-col">
+                                {!showPrices && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (
+                                  <>
+                                    <span className="text-[10px] text-rose-600 font-medium">Starting from</span>
+                                    <span className="text-xl font-bold text-black">
+                                      {formatPrice((product as any).rentalPriceC)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-[10px] text-rose-600 font-medium">Starting at (Cat A)</span>
+                                    <span className="text-xl font-bold text-black">
+                                      {product.rentalPriceA && product.rentalPriceA > 0 
+                                        ? formatPrice(product.rentalPriceA) 
+                                        : formatPrice(getSmallestPrice(product.sizes))}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex flex-col">
+                              <span className="text-sm text-gray-500 italic">Select a date to view pricing</span>
+                            </div>
+                          )
+                        ) : (
+                          (() => {
+                            const referenceSize = selectedSize || product.sizes[0]
+                            const price = referenceSize?.discountedPrice || referenceSize?.originalPrice || 0
+                            return <span className="text-xl font-bold">{formatPrice(price * quantity)}</span>
+                          })()
+                        )}
+                      </div>
 
-                  <Button
-                    onClick={() => {
-                      if (isCustomSizeMode && isMeasurementsValid) {
-                        setShowCustomSizeConfirmation(true)
-                      } else {
-                        handleAddToCart()
-                      }
-                    }}
-                    className={`rounded-full px-6 ${product.isOutOfStock ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'}`}
-                    disabled={product.isOutOfStock || (isRentBranch && !rentEventDate)}
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    {isRentBranch ? (rentEventDate ? t("rentNowLabel" as TranslationKey) : t("selectDateLabel" as TranslationKey)) : t("buyNowLabel" as TranslationKey)}
-                  </Button>
+                      <Button
+                        onClick={() => {
+                          if (isCustomSizeMode && isMeasurementsValid) {
+                            setShowCustomSizeConfirmation(true)
+                          } else {
+                            handleAddToCart()
+                          }
+                        }}
+                        className={`rounded-full px-6 ${product.isOutOfStock ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'}`}
+                        disabled={product.isOutOfStock || (isRentBranch && !rentEventDate)}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        {isRentBranch ? (rentEventDate ? t("rentNowLabel" as TranslationKey) : t("selectDateLabel" as TranslationKey)) : t("buyNowLabel" as TranslationKey)}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

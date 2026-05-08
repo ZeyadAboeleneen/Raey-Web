@@ -274,7 +274,7 @@ export default function SoireePage() {
     return result
   }, [allProducts, selectedCollection, debouncedQuery])
 
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate } = useDateFilteredProducts(candidateProducts)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
 
   const finalFilteredProducts = useMemo(() => {
     let result = sortedProducts
@@ -409,11 +409,11 @@ export default function SoireePage() {
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
-                  {(showProductPrice || clientRentalPrice) ? (
+                  {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
                     <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{product.name}</h3>
                   ) : null}
                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                    {(!showProductPrice && !clientRentalPrice) ? (
+                    {((!showProductPrice && !clientRentalPrice) || isOccasionPast45Days) ? (
                       <div className="flex-1 min-w-0">
                         <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                           {product.name}
@@ -422,19 +422,19 @@ export default function SoireePage() {
                     ) : !showProductPrice && clientRentalPrice ? (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                         <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                          {exactDynamicPrice ? "" : "Starting from"}
+                          {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                         </span>
                         <span className="text-xs sm:text-sm font-semibold">
-                          {(occasionDate && !exactDynamicPrice && !loadingPrices) ? (
+                          {(occasionDate && !exactDynamicPrice && !loadingPrices && !isOccasionPast45Days) ? (
                             <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
                           ) : formatPrice(clientRentalPrice)}
                         </span>
                       </div>
                     ) : (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                        {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && !exactDynamicPrice && (
+                        {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
                           <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                            Starting at (Cat A)
+                            {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                           </span>
                         )}
                         {hasDiscount ? (
@@ -444,7 +444,7 @@ export default function SoireePage() {
                           </>
                         ) : (
                           <span className="text-xs sm:text-sm font-semibold">
-                            {(occasionDate && !exactDynamicPrice && !loadingPrices && isRentBranch && !isGift) ? (
+                            {(occasionDate && !exactDynamicPrice && !loadingPrices && isRentBranch && !isGift && !isOccasionPast45Days) ? (
                               <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
                             ) : formatPrice(price)}
                           </span>

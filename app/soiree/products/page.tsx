@@ -250,7 +250,7 @@ export default function SoireeProductsPage() {
     }
   }, [isCustomSizeMode, selectedProduct, selectedSize])
 
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate } = useDateFilteredProducts(products)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(products)
 
   // Eagerly fetch ALL soiree prices if a date is selected
   useEffect(() => {
@@ -495,19 +495,19 @@ export default function SoireeProductsPage() {
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                   {(() => {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
-                    const clientRentalPrice = product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+                    const clientRentalPrice = priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
                     const isRent = product.branch !== "sell-dresses"
                     
                     return (
                       <>
-                        {(showProductPrice || clientRentalPrice) ? (
+                        {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
                           <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                             {product.name}
                           </h3>
                         ) : null}
 
                         <div className={priceRowClassName}>
-                          {(!showProductPrice && !clientRentalPrice) ? (
+                          {((!showProductPrice && !clientRentalPrice) || isOccasionPast45Days) ? (
                             <div className="flex-1 min-w-0">
                               <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                 {product.name}
@@ -516,19 +516,19 @@ export default function SoireeProductsPage() {
                           ) : !showProductPrice && clientRentalPrice ? (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                {priceData.exactDynamicPrice ? "" : "Starting from"}
+                                {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                               </span>
                               <span className="text-xs sm:text-sm font-semibold">
-                                {(occasionDate && !priceData.exactDynamicPrice && !loadingPrices && isRent && !product.isGiftPackage) ? (
+                                {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
                                   <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
-                                ) : formatPrice(priceData.exactDynamicPrice || clientRentalPrice)}
+                                ) : formatPrice(clientRentalPrice)}
                               </span>
                             </div>
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                  Starting at (Cat A)
+                                  {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                                 </span>
                               )}
                               {hasDiscount ? (
@@ -542,7 +542,7 @@ export default function SoireeProductsPage() {
                                 </>
                               ) : (
                                 <span className="text-xs sm:text-sm font-semibold">
-                                  {(occasionDate && !priceData.exactDynamicPrice && !loadingPrices && isRent && !product.isGiftPackage) ? (
+                                  {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
                                     <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
                                   ) : formatPrice(priceData.price)}
                                 </span>

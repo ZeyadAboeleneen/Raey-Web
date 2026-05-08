@@ -21,6 +21,7 @@ import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -249,6 +250,18 @@ export default function WeddingProductsPage() {
     }
   }, [isCustomSizeMode, selectedProduct, selectedSize])
 
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(products)
+
+  // Eagerly fetch ALL wedding prices if a date is selected
+  useEffect(() => {
+    if (occasionDate && products.length > 0) {
+      const ids = products
+        .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage)
+        .map(p => p.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, products, fetchPricesForIds])
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (showSizeSelector || showGiftPackageSelector) {
@@ -372,19 +385,21 @@ export default function WeddingProductsPage() {
   }
 
   const ProductCard = ({ product, layout, section, index }: ProductCardProps) => {
-    const priceData = useMemo(() => {
-      if (product.isGiftPackage) {
-        const price = product.packagePrice || 0
-        const original = product.packageOriginalPrice || 0
-        return { price, original }
+      // Dynamic price logic
+      let exactDynamicPrice: number | null = null
+      const isRentBranch = product.branch !== "sell-dresses"
+      if (occasionDate && isRentBranch && !product.isGiftPackage) {
+        if (dynamicPrices[product.id]) {
+          exactDynamicPrice = dynamicPrices[product.id]
+        }
       }
 
-      const price = (product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0)
+      const price = exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
         ? product.rentalPriceA
-        : getSmallestPrice(product.sizes)
+        : getSmallestPrice(product.sizes))
       const original = getSmallestOriginalPrice(product.sizes)
-      return { price, original }
-    }, [product])
+      return { price, original, exactDynamicPrice }
+    }, [product, dynamicPrices, occasionDate])
 
     const hasDiscount = product.branch === "sell-dresses" && priceData.original > 0 && priceData.price < priceData.original
 
@@ -480,17 +495,19 @@ export default function WeddingProductsPage() {
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
                   {(() => {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
-                    const clientRentalPrice = product.branch !== "sell-dresses" && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
+                    const clientRentalPrice = priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
+                    const isRent = product.branch !== "sell-dresses"
+                    
                     return (
                       <>
-                        {(showProductPrice || clientRentalPrice) ? (
+                        {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
                           <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                             {product.name}
                           </h3>
                         ) : null}
 
                         <div className={priceRowClassName}>
-                          {(!showProductPrice && !clientRentalPrice) ? (
+                          {((!showProductPrice && !clientRentalPrice) || isOccasionPast45Days) ? (
                             <div className="flex-1 min-w-0">
                               <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                 {product.name}
@@ -499,17 +516,19 @@ export default function WeddingProductsPage() {
                           ) : !showProductPrice && clientRentalPrice ? (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                Starting from
+                                {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                               </span>
                               <span className="text-xs sm:text-sm font-semibold">
-                                {formatPrice(clientRentalPrice)}
+                                {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
+                                  <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                ) : formatPrice(clientRentalPrice)}
                               </span>
                             </div>
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
-                              {product.branch !== "sell-dresses" && product.rentalPriceA && product.rentalPriceA > 0 && (
+                              {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                  Starting at (Cat A)
+                                  {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                                 </span>
                               )}
                               {hasDiscount ? (
@@ -523,7 +542,9 @@ export default function WeddingProductsPage() {
                                 </>
                               ) : (
                                 <span className="text-xs sm:text-sm font-semibold">
-                                  {formatPrice(priceData.price)}
+                                  {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
+                                    <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                  ) : formatPrice(priceData.price)}
                                 </span>
                               )}
                             </div>

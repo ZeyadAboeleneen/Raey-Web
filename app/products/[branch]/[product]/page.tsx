@@ -440,11 +440,7 @@ export default function ProductDetailPage() {
   // When true, pricing is not available online — user must contact branch via WhatsApp.
   // Uses BOTH: the in-page calendar (rentEventDate) AND the global popup date (isOccasionPast45Days).
   const isPast45Days = (() => {
-    if (!isRentBranch) return false
-    // Global popup date already flagged as past 45 days
-    if (isOccasionPast45Days) return true
-    // In-page calendar date check
-    if (!rentEventDate) return false
+    if (!isRentBranch || !rentEventDate) return false
     const msPerDay = 1000 * 60 * 60 * 24
     const rs = new Date(rentEventDate)
     rs.setDate(rs.getDate() - 1)

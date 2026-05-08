@@ -14,7 +14,8 @@ export function GlobalDateModal() {
   const isRelevantRoute = pathname ? (
     pathname.startsWith("/wedding") || 
     pathname.startsWith("/soiree") || 
-    pathname.startsWith("/products")
+    pathname.startsWith("/products") ||
+    pathname.startsWith("/favorites")
   ) : false;
 
   useEffect(() => {

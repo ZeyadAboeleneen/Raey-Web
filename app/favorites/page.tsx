@@ -17,6 +17,7 @@ import { QuickAddModal } from "@/components/quick-add-modal"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useTranslation } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 
 // WhatsApp ordering removed — using cart-based checkout
@@ -24,6 +25,17 @@ import { useLocale } from "@/lib/locale-context"
 export default function FavoritesPage() {
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
   const { dispatch: cartDispatch } = useCart()
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
+
+  // Fetch prices for all favorites when a date is selected
+  useEffect(() => {
+    if (occasionDate && favoritesState.items.length > 0) {
+      const ids = favoritesState.items
+        .filter(item => item.branch !== "sell-dresses" && !item.isGiftPackage)
+        .map(item => item.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, favoritesState.items, fetchPricesForIds])
   const { formatPrice, showPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
@@ -156,18 +168,28 @@ export default function FavoritesPage() {
                               const isWeddingOrSoiree = item.collection?.toLowerCase().includes("wedding") || item.collection?.toLowerCase().includes("soiree") || item.name?.toLowerCase().includes("wedding") || item.name?.toLowerCase().includes("soiree")
                               const showProductPrice = showPrices || (item.branch === "sell-dresses" && isWeddingOrSoiree)
                               const isRentBranch = item.branch !== "sell-dresses"
-                              const price = item.isGiftPackage ? (item.packagePrice || 0) : (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0) ? item.rentalPriceA : getSmallestPrice(item.sizes || [])
-                              const originalPrice = item.isGiftPackage ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
+                              const isGift = item.isGiftPackage
+
+                              // Dynamic price logic
+                              let exactDynamicPrice: number | null = null
+                              if (occasionDate && isRentBranch && !isGift) {
+                                if (dynamicPrices[item.id]) {
+                                  exactDynamicPrice = dynamicPrices[item.id]
+                                }
+                              }
+
+                              const price = isGift ? (item.packagePrice || 0) : (exactDynamicPrice || (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 ? item.rentalPriceA : getSmallestPrice(item.sizes || [])))
+                              const originalPrice = isGift ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
                               const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
-                              const clientRentalPrice = isRentBranch && item.rentalPriceC && item.rentalPriceC > 0 ? item.rentalPriceC : null
+                              const clientRentalPrice = exactDynamicPrice || (isRentBranch && item.rentalPriceC && item.rentalPriceC > 0 ? item.rentalPriceC : null)
 
                               return (
                                 <>
-                                  {(showProductPrice || clientRentalPrice) ? (
+                                  {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
                                     <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">{item.name}</h3>
                                   ) : null}
                                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                                    {(!showProductPrice && !clientRentalPrice) ? (
+                                    {((!showProductPrice && !clientRentalPrice) || isOccasionPast45Days) ? (
                                       <div className="flex-1 min-w-0">
                                         <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                           {item.name}
@@ -176,17 +198,19 @@ export default function FavoritesPage() {
                                     ) : !showProductPrice && clientRentalPrice ? (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                         <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                          Starting from
+                                          {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                                         </span>
                                         <span className="text-xs sm:text-sm font-semibold">
-                                          {formatPrice(clientRentalPrice)}
+                                          {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
+                                            <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                          ) : formatPrice(clientRentalPrice)}
                                         </span>
                                       </div>
                                     ) : (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                                        {isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 && (
+                                        {isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 && !exactDynamicPrice && (
                                           <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                            Starting at (Cat A)
+                                            {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                                           </span>
                                         )}
                                         {hasDiscount ? (
@@ -195,7 +219,11 @@ export default function FavoritesPage() {
                                             <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
                                           </>
                                         ) : (
-                                          <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                                          <span className="text-xs sm:text-sm font-semibold">
+                                            {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
+                                              <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                            ) : formatPrice(price)}
+                                          </span>
                                         )}
                                       </div>
                                     )}

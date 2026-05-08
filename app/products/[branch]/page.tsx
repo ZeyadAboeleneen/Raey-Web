@@ -518,17 +518,19 @@ export default function BranchProductsPage() {
                                                 ) : !showProductPrice && clientRentalPrice ? (
                                                   <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                     <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                      Starting from
+                                                      {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                                                     </span>
                                                     <span className="text-xs sm:text-sm font-semibold">
-                                                      {formatPrice(clientRentalPrice)}
+                                                      {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
+                                                        <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                                      ) : formatPrice(clientRentalPrice)}
                                                     </span>
                                                   </div>
                                                 ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !exactDynamicPrice && (
+                                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
                                                   <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                    Starting at (Cat A)
+                                                    {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                                                   </span>
                                                 )}
                                                 {hasDiscount ? (
@@ -542,7 +544,7 @@ export default function BranchProductsPage() {
                                                   </>
                                                 ) : (
                                                   <span className="text-xs sm:text-sm font-semibold">
-                                                    {(occasionDate && !exactDynamicPrice && !loadingPrices && isRentBranch && !isGift) ? (
+                                                    {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
                                                       <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
                                                     ) : formatPrice(price)}
                                                   </span>

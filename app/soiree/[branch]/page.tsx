@@ -28,35 +28,8 @@ import { useTranslation } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
 import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useProductsCache } from "@/lib/products-cache"
-
-interface ProductSize {
-  size: string
-  volume: string
-  originalPrice?: number
-  discountedPrice?: number
-  stockCount?: number
-}
-
-interface Product {
-  _id: string
-  id: string
-  name: string
-  description: string
-  images: string[]
-  rating: number
-  reviews: number
-  branch: string
-  collection?: string
-  isNew?: boolean
-  isBestseller?: boolean
-  isOutOfStock?: boolean
-  sizes: ProductSize[]
-  isGiftPackage?: boolean
-  packagePrice?: number
-  packageOriginalPrice?: number
-  giftPackageSizes?: any[]
-}
+import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
+import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
   "mona-saleh": { titleKey: "monaSalehCollection", descKey: "monaSalehDesc" },
@@ -79,8 +52,8 @@ export default function SoireeBranchPage() {
     [getByCollection, branch]
   )
 
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
   const [quantity, setQuantity] = useState(1)
@@ -90,7 +63,9 @@ export default function SoireeBranchPage() {
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
-  const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(allProducts as any)
+
+
 
   const {
     isCustomSizeMode,
@@ -198,10 +173,10 @@ export default function SoireeBranchPage() {
   // Use cached products instead of fetching
   useEffect(() => {
     if (!cacheLoading) {
-      setProducts(allProducts as Product[])
       setLoading(false)
     }
-  }, [cacheLoading, allProducts])
+  }, [cacheLoading])
+
 
   // Reset page when branch changes
   useEffect(() => {
@@ -209,6 +184,17 @@ export default function SoireeBranchPage() {
       setPage(1)
     }
   }, [branch])
+
+
+  useEffect(() => {
+    if (occasionDate && allProducts.length > 0) {
+      const ids = allProducts
+        .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage)
+        .map(p => p.id)
+      fetchPricesForIds(ids)
+    }
+  }, [occasionDate, allProducts, fetchPricesForIds])
+
 
   // Debounce search query for better UX
   useEffect(() => {
@@ -271,7 +257,7 @@ export default function SoireeBranchPage() {
         .replace(/[\u0300-\u036f]/g, '')
 
     const q = normalize(debouncedQuery.trim())
-    if (!q) return products
+    if (!q) return sortedProducts
 
     const terms = q.split(/\s+/).filter(Boolean)
 
@@ -311,11 +297,20 @@ export default function SoireeBranchPage() {
       return score
     }
 
-    const scored = products.map(p => ({ p, s: scoreProduct(p) }))
+    const scored = (sortedProducts as Product[]).map(p => ({ p, s: scoreProduct(p) }))
     const kept = scored.filter(x => x.s > 0)
     kept.sort((a, b) => b.s - a.s)
     return kept.map(x => x.p)
-  }, [products, debouncedQuery])
+  }, [sortedProducts, debouncedQuery])
+
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
+  }, [filteredProducts, page])
+
+  useEffect(() => {
+    fetchPricesForPage(paginatedProducts as any)
+  }, [paginatedProducts, fetchPricesForPage])
+
 
   const details = collectionDetails[branch as keyof typeof collectionDetails];
 
@@ -408,15 +403,15 @@ export default function SoireeBranchPage() {
             </div>
             <div className="mt-4 text-sm text-gray-500 text-center">
               {debouncedQuery
-                ? `Showing ${filteredProducts.length} of ${products.length}`
-                : `Showing all ${products.length} products`}
+                ? `Showing ${filteredProducts.length} of ${sortedProducts.length}`
+                : `Showing all ${sortedProducts.length} products`}
             </div>
           </div>
-          {(debouncedQuery && filteredProducts.length === 0 && products.length > 0) ? (
+          {(debouncedQuery && filteredProducts.length === 0 && sortedProducts.length > 0) ? (
             <div className="text-center py-16">
               <p className="text-gray-600 text-lg">No products match your search.</p>
             </div>
-          ) : products.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-600 text-lg">No products found in this branch.</p>
               <Link href="/soiree/products">
@@ -427,15 +422,25 @@ export default function SoireeBranchPage() {
             <>
               <div id="products-grid" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-8">
 
-                {filteredProducts
-                  .slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
+                {paginatedProducts
                   .map((product, index) => {
                     const isGift = product.isGiftPackage
+                    // Dynamic price logic
+                    let exactDynamicPrice: number | null = null
+                    if (occasionDate && isRentBranch && !isGift) {
+                      if (dynamicPrices[product.id]) {
+                        exactDynamicPrice = dynamicPrices[product.id]
+                      }
+                    }
+
                     const price = isGift
                       ? product.packagePrice || 0
-                      : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
+                      : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
                         ? (product as any).rentalPriceA
-                        : getSmallestPrice(product.sizes)
+                        : getSmallestPrice(product.sizes)))
+
+                    const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
+                    const available = isAvailable(product as any)
                     const originalPrice = isGift
                       ? product.packageOriginalPrice || 0
                       : getSmallestOriginalPrice(product.sizes)
@@ -449,7 +454,7 @@ export default function SoireeBranchPage() {
                         transition={{ duration: 0.8, delay: index * 0.1 }}
                         viewport={{ once: true }}
                         whileHover={{ y: -10 }}
-                        className="relative h-full"
+                        className={`relative h-full ${!available ? "opacity-60 grayscale hover:grayscale-0 transition-all duration-300" : ""}`}
                       >
                         <div className="group relative h-full">
                           {/* Favorite Button */}
@@ -531,17 +536,16 @@ export default function SoireeBranchPage() {
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                     {(() => {
                                       const showProductPrice = showPrices || product.branch === "sell-dresses"
-                                      const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
                                       return (
                                         <>
-                                          {(showProductPrice || clientRentalPrice) ? (
+                                          {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
                                             <h3 className="text-xs sm:text-sm font-medium mb-1 line-clamp-2">
                                               {product.name}
                                             </h3>
                                           ) : null}
 
                                           <div className="mt-0.5 flex items-center justify-between gap-2">
-                                            {(!showProductPrice && !clientRentalPrice) ? (
+                                            {((!showProductPrice && !clientRentalPrice) || isOccasionPast45Days) ? (
                                               <div className="flex-1 min-w-0">
                                                 <div className="text-sm sm:text-base font-semibold tracking-wide leading-snug line-clamp-2">
                                                   {product.name}
@@ -550,17 +554,19 @@ export default function SoireeBranchPage() {
                                             ) : !showProductPrice && clientRentalPrice ? (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                  Starting from
+                                                  {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                                                 </span>
                                                 <span className="text-xs sm:text-sm font-semibold">
-                                                  {formatPrice(clientRentalPrice)}
+                                                  {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
+                                                    <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                                  ) : formatPrice(clientRentalPrice)}
                                                 </span>
                                               </div>
                                             ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
-                                                {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
+                                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
                                                   <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                    Starting at (Cat A)
+                                                    {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
                                                   </span>
                                                 )}
                                                 {hasDiscount ? (
@@ -574,7 +580,9 @@ export default function SoireeBranchPage() {
                                                   </>
                                                 ) : (
                                                   <span className="text-xs sm:text-sm font-semibold">
-                                                    {formatPrice(price)}
+                                                    {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
+                                                      <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                                    ) : formatPrice(price)}
                                                   </span>
                                                 )}
                                               </div>
