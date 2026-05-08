@@ -47,6 +47,8 @@ interface OrderSummaryProps {
     rentStart?: string
     rentEnd?: string
     branch?: string
+    extraDayBefore?: boolean
+    extraDayAfter?: boolean
   }>
   subtotal: number
   total: number
@@ -232,6 +234,9 @@ export const OrderSummary = ({
                             <div className="ml-4 space-y-1 border-l border-rose-100 pl-2">
                               <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
                               <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                              {(item.extraDayBefore || item.extraDayAfter) && (
+                                <div className="text-rose-600"><span className="font-medium">{t("extraDays" as TranslationKey)}:</span> {[item.extraDayBefore && t("dayBefore" as TranslationKey), item.extraDayAfter && t("dayAfter" as TranslationKey)].filter(Boolean).join(", ")}</div>
+                              )}
                             </div>
                           )
                         })()}
@@ -352,6 +357,9 @@ export const OrderSummary = ({
                         <div className="ml-4 space-y-1 border-l border-rose-100 pl-2">
                           <div><span className="font-medium">{t("branchAddress")}</span> {getBranchAddress(item.branch)}</div>
                           <div><span className="font-medium">{t("pickupDate")}</span> {rStart.toLocaleDateString(settings.language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                          {(item.extraDayBefore || item.extraDayAfter) && (
+                            <div className="text-rose-600"><span className="font-medium">{t("extraDays" as TranslationKey)}:</span> {[item.extraDayBefore && t("dayBefore" as TranslationKey), item.extraDayAfter && t("dayAfter" as TranslationKey)].filter(Boolean).join(", ")}</div>
+                          )}
                         </div>
                       )
                     })()}

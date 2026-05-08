@@ -12,9 +12,13 @@ import { Separator } from "@/components/ui/separator"
 import { Package, ShoppingCart, User, MapPin, ArrowLeft, Eye } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { useLocale } from "@/lib/locale-context"
+import { useTranslation, TranslationKey } from "@/lib/translations"
 
 export default function UserDashboard() {
   const { state: authState } = useAuth()
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
   const router = useRouter()
   const [userOrders, setUserOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +71,7 @@ export default function UserDashboard() {
           <div className="container mx-auto px-6">
             <div className="text-center py-16">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading dashboard...</p>
+              <p className="text-gray-600">{t("loadingDashboard" as TranslationKey)}</p>
             </div>
           </div>
         </section>
@@ -96,13 +100,13 @@ export default function UserDashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-light tracking-wider mb-2">My Dashboard</h1>
-                <p className="text-gray-600">Welcome back, {authState.user?.name}</p>
+                <h1 className="text-3xl font-light tracking-wider mb-2">{t("myDashboard" as TranslationKey)}</h1>
+                <p className="text-gray-600">{t("welcomeBackName" as TranslationKey, { name: authState.user?.name || "" })}</p>
               </div>
               <Link href="/soiree/products">
                 <Button className="bg-black text-white hover:bg-gray-800">
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  Continue Shopping
+                  {t("continueShopping" as TranslationKey) || "Continue Shopping"}
                 </Button>
               </Link>
             </div>
@@ -119,7 +123,7 @@ export default function UserDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Total Orders</p>
+                      <p className="text-sm text-gray-600">{t("totalOrders" as TranslationKey)}</p>
                       <p className="text-2xl font-light">{totalOrders}</p>
                     </div>
                     <Package className="h-8 w-8 text-blue-600" />
@@ -137,7 +141,7 @@ export default function UserDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Total Spent</p>
+                      <p className="text-sm text-gray-600">{t("totalSpent" as TranslationKey)}</p>
                       <p className="text-2xl font-light">${totalSpent.toFixed(2)}</p>
                     </div>
                     <ShoppingCart className="h-8 w-8 text-green-600" />
@@ -155,8 +159,8 @@ export default function UserDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Account Status</p>
-                      <p className="text-2xl font-light">Active</p>
+                      <p className="text-sm text-gray-600">{t("accountStatus" as TranslationKey)}</p>
+                      <p className="text-2xl font-light">{t("activeStatus" as TranslationKey)}</p>
                     </div>
                     <User className="h-8 w-8 text-rose-600" />
                   </div>
@@ -176,25 +180,25 @@ export default function UserDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <User className="mr-2 h-5 w-5" />
-                    Profile Information
+                    {t("profileInformation" as TranslationKey)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="text-sm text-gray-600">{t("name" as TranslationKey)}</p>
                     <p className="font-medium">{authState.user?.name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="text-sm text-gray-600">{t("email" as TranslationKey)}</p>
                     <p className="font-medium">{authState.user?.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Account Type</p>
+                    <p className="text-sm text-gray-600">{t("accountType" as TranslationKey)}</p>
                     <Badge variant="secondary">{authState.user?.role}</Badge>
                   </div>
                   <Separator />
                   <Button variant="outline" className="w-full bg-transparent">
-                    Edit Profile
+                    {t("editProfile" as TranslationKey)}
                   </Button>
                 </CardContent>
               </Card>
@@ -211,21 +215,21 @@ export default function UserDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Package className="mr-2 h-5 w-5" />
-                    Order History
+                    {t("orderHistory" as TranslationKey)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                      <p className="text-gray-600">Loading orders...</p>
+                      <p className="text-gray-600">{t("loadingOrders" as TranslationKey)}</p>
                     </div>
                   ) : userOrders.length === 0 ? (
                     <div className="text-center py-8">
                       <Package className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                      <p className="text-gray-600 mb-4">No orders yet</p>
+                      <p className="text-gray-600 mb-4">{t("noOrdersYet" as TranslationKey)}</p>
                       <Link href="/soiree/products">
-                        <Button className="bg-black text-white hover:bg-gray-800">Start Shopping</Button>
+                        <Button className="bg-black text-white hover:bg-gray-800">{t("startShopping" as TranslationKey)}</Button>
                       </Link>
                     </div>
                   ) : (
@@ -234,7 +238,7 @@ export default function UserDashboard() {
                         <div key={order.id} className="border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-4">
                             <div>
-                              <p className="font-medium">Order #{order.id}</p>
+                              <p className="font-medium">{t("orderId" as TranslationKey, { id: order.id })}</p>
                               <p className="text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</p>
                             </div>
                             <div className="text-right">
@@ -249,7 +253,10 @@ export default function UserDashboard() {
                                         : "outline"
                                 }
                               >
-                                {order.status || "pending"}
+                                {order.status === "delivered" ? t("statusDelivered" as TranslationKey) : 
+                                 order.status === "shipped" ? t("statusShipped" as TranslationKey) : 
+                                 order.status === "cancelled" ? t("statusCancelled" as TranslationKey) : 
+                                 t("statusPending" as TranslationKey)}
                               </Badge>
                               <p className="text-sm font-medium mt-1">${(order.total || 0).toFixed(2)}</p>
                             </div>
@@ -276,7 +283,7 @@ export default function UserDashboard() {
                                     <div className="mt-1 text-xs text-gray-500">
                                       <div className="flex items-center space-x-1 mb-1">
                                         <Package className="h-3 w-3" />
-                                        <span>Package Contents:</span>
+                                        <span>{t("packageContents" as TranslationKey)}</span>
                                       </div>
                                       <div className="space-y-1 ml-4">
                                         {item.packageDetails.sizes.map((sizeInfo: any, sizeIndex: number) => (
@@ -286,6 +293,13 @@ export default function UserDashboard() {
                                           </div>
                                         ))}
                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Extra Days Details */}
+                                  {(item.extraDayBefore || item.extraDayAfter) && (
+                                    <div className="mt-2 text-xs text-rose-600 font-medium">
+                                      {t("extraDays" as TranslationKey)}: {[item.extraDayBefore && t("dayBefore" as TranslationKey), item.extraDayAfter && t("dayAfter" as TranslationKey)].filter(Boolean).join(", ")}
                                     </div>
                                   )}
                                 </div>
@@ -304,7 +318,7 @@ export default function UserDashboard() {
                             <Link href={`/account/review/${order.id || order.order_id || order._id}`}>
                               <Button size="sm" variant="outline">
                                 <Eye className="h-4 w-4 mr-1" />
-                                View Details
+                                {t("viewDetails" as TranslationKey)}
                               </Button>
                             </Link>
                           </div>

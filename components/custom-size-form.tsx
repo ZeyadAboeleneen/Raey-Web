@@ -4,6 +4,8 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { Input } from "@/components/ui/input"
 import { measurementLabels, MeasurementFields, MeasurementUnit, useCustomSize } from "@/hooks/use-custom-size"
+import { useTranslation, TranslationKey } from "@/lib/translations"
+import { useLocale } from "@/lib/locale-context"
 
 export interface SizeChartRow {
   label: string
@@ -58,11 +60,14 @@ export const CustomSizeForm = ({
     onMeasurementChange,
   } = controller
 
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
+
   return (
     <div className="space-y-5 overflow-x-hidden">
       <div className="space-y-5">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-2">Units</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-2">{t("units" as TranslationKey)}</p>
           <div className="flex gap-2">
             {["cm", "inch"].map((unit) => (
               <button
@@ -75,7 +80,7 @@ export const CustomSizeForm = ({
                     : "border-gray-200 hover:border-gray-400"
                 }`}
               >
-                {unit.toUpperCase()}
+                {unit === "cm" ? t("cm" as TranslationKey) : t("inch" as TranslationKey)}
               </button>
             ))}
           </div>
@@ -84,18 +89,18 @@ export const CustomSizeForm = ({
         <div className="grid grid-cols-2 gap-3">
           {(Object.keys(measurementLabels) as MeasurementFields[]).map((field) => (
             <div key={field} className="space-y-1">
-              <label className="text-xs uppercase tracking-[0.3em] text-gray-500">{measurementLabels[field]}</label>
+              <label className="text-xs uppercase tracking-[0.3em] text-gray-500">{t(field as TranslationKey) || measurementLabels[field]}</label>
               <Input
                 value={measurements[field]}
                 onChange={(e) => onMeasurementChange(field, e.target.value)}
-                placeholder={measurementUnit === "cm" ? "cm" : "inch"}
+                placeholder={measurementUnit === "cm" ? t("cm" as TranslationKey) : t("inch" as TranslationKey)}
               />
             </div>
           ))}
         </div>
 
         <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-medium text-gray-500">Custom size guide</p>
+          <p className="text-[11px] font-medium text-gray-500">{t("customSizeGuide" as TranslationKey)}</p>
           <div className="flex justify-center">
             <Image
               src="/size-guide.PNG"

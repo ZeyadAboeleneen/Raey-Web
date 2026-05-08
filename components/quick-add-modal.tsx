@@ -12,7 +12,7 @@ import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
-import { useTranslation } from "@/lib/translations"
+import { useTranslation, TranslationKey } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
 import { toast } from "@/hooks/use-toast"
 import type { SizeChartRow } from "@/components/custom-size-form"
@@ -461,7 +461,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
 
                 {isRentBranch && (
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <p className="font-medium text-gray-900 text-sm">Select Event Date</p>
+                    <p className="font-medium text-gray-900 text-sm">{t("selectOccasionDate" as TranslationKey)}</p>
                     <div className="flex justify-center border rounded-xl p-2 bg-gray-50">
                       <Calendar
                         mode="single"
@@ -522,7 +522,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                     {/* Extra Days Options — show after user selects a date */}
                     {rentEventDate && (
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-900">Extra Days <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
+                        <p className="text-sm font-medium text-gray-900">{t("extraDays" as TranslationKey)} <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
                         <div className="grid grid-cols-2 gap-2">
                           <div
                             className={`border rounded-lg p-2.5 transition-all ${
@@ -537,9 +537,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                             <label className={`flex items-center gap-2 ${canAddExtraDayBefore ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                               <input type="checkbox" checked={extraDayBefore} disabled={!canAddExtraDayBefore} readOnly className="h-3.5 w-3.5 accent-black" />
                               <div>
-                                <p className="text-xs font-medium">Extra Day Before</p>
+                                <p className="text-xs font-medium">{t("extraDayBeforeTitle" as TranslationKey)}</p>
                                 <p className="text-[10px] text-gray-500">
-                                  {canAddExtraDayBefore ? 'Receive 1 day earlier' : 'Unavailable'}
+                                  {canAddExtraDayBefore ? t("receive1DayEarlier" as TranslationKey) : t("unavailable" as TranslationKey)}
                                 </p>
                               </div>
                             </label>
@@ -557,9 +557,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                             <label className={`flex items-center gap-2 ${canAddExtraDayAfter ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                               <input type="checkbox" checked={extraDayAfter} disabled={!canAddExtraDayAfter} readOnly className="h-3.5 w-3.5 accent-black" />
                               <div>
-                                <p className="text-xs font-medium">Extra Day After</p>
+                                <p className="text-xs font-medium">{t("extraDayAfterTitle" as TranslationKey)}</p>
                                 <p className="text-[10px] text-gray-500">
-                                  {canAddExtraDayAfter ? 'Return 1 day later' : 'Unavailable'}
+                                  {canAddExtraDayAfter ? t("return1DayLater" as TranslationKey) : t("unavailable" as TranslationKey)}
                                 </p>
                               </div>
                             </label>
@@ -578,7 +578,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           <span className="text-sm text-gray-400">Calculating...</span>
                         ) : rentalPrice ? (
                           <>
-                            <span className="text-xs text-gray-500 uppercase tracking-wider">Rental Total</span>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
                             <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
                             <span className="text-[10px] text-rose-600 font-medium">Category {rentalPrice.category}</span>
                           </>
@@ -629,7 +629,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                     disabled={product.isOutOfStock || (isRentBranch && !rentEventDate)}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
-                    {isRentBranch ? (rentEventDate ? "Rent Now" : "Select Date") : "Buy Now"}
+                    {isRentBranch ? (rentEventDate ? t("rentNowLabel" as TranslationKey) : t("selectDateLabel" as TranslationKey)) : t("buyNowLabel" as TranslationKey)}
                   </Button>
                 </div>
               </div>

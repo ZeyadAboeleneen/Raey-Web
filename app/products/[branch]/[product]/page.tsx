@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
 import { toast } from "@/hooks/use-toast"
-import { useTranslation } from "@/lib/translations"
+import { useTranslation, TranslationKey } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { SizeChartRow } from "@/components/custom-size-form"
@@ -901,7 +901,7 @@ export default function ProductDetailPage() {
                         ))}
                       </div>
                       <span className="text-sm sm:text-base text-gray-600">
-                        ({product.rating}) • {product.reviews} reviews
+                        ({product.rating}) • {product.reviews} {t("reviews" as TranslationKey)}
                       </span>
                     </div>
                   </div>
@@ -1001,7 +1001,7 @@ export default function ProductDetailPage() {
                       onClick={() => setShowFullDescription(true)}
                       className="text-sm font-medium text-black mt-3 flex items-center hover:text-gray-700 transition-colors w-full sm:w-auto justify-center sm:justify-start"
                     >
-                      Read more <ChevronDown className="ml-1 h-4 w-4" />
+                      {t("readMore" as TranslationKey)} <ChevronDown className="ml-1 h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -1009,7 +1009,7 @@ export default function ProductDetailPage() {
               {/* Size selection & add to cart */}
               {!product.isGiftPackage && (
                 <div className="space-y-4">
-                  <h3 className="text-base sm:text-lg font-medium mb-4 text-gray-900">Select Size to {isRentBranch ? "Rent" : "Buy"}</h3>
+                  <h3 className="text-base sm:text-lg font-medium mb-4 text-gray-900">{isRentBranch ? t("selectSizeToRent" as TranslationKey) : t("selectSizeToBuy" as TranslationKey)}</h3>
                   <CustomSizeForm
                     controller={{
                       isCustomSizeMode,
@@ -1050,7 +1050,7 @@ export default function ProductDetailPage() {
                   />
                   {isRentBranch && (
                     <div className="mt-4 space-y-3">
-                      <p className="font-medium text-gray-900">Select Event Date</p>
+                      <p className="font-medium text-gray-900">{t("selectOccasionDate" as TranslationKey)}</p>
                       <div className="w-full max-w-sm">
                         <div className="border rounded-lg overflow-hidden place-items-center p-2 bg-white flex justify-center">
                           <Calendar
@@ -1143,7 +1143,7 @@ export default function ProductDetailPage() {
                       {/* Extra Days Options — show after user selects a date */}
                       {rentEventDate && (
                         <div className="space-y-2">
-                          <p className="font-medium text-gray-900 text-sm">Extra Days <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
+                          <p className="font-medium text-gray-900 text-sm">{t("extraDays" as TranslationKey)} <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
                           <div className="grid grid-cols-2 gap-2">
                             <div
                               className={`border rounded-lg p-3 transition-all duration-200 select-none ${
@@ -1164,9 +1164,9 @@ export default function ProductDetailPage() {
                                   className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black accent-black"
                                 />
                                 <div>
-                                  <p className="text-xs font-medium text-gray-900">Extra Day Before</p>
+                                  <p className="text-xs font-medium text-gray-900">{t("extraDayBeforeTitle" as TranslationKey)}</p>
                                   <p className="text-[10px] text-gray-500">
-                                    {canAddExtraDayBefore ? 'Receive dress 1 day earlier' : 'Unavailable – date is booked'}
+                                    {canAddExtraDayBefore ? t("receive1DayEarlier" as TranslationKey) : t("unavailableDateBooked" as TranslationKey)}
                                   </p>
                                 </div>
                               </label>
@@ -1190,9 +1190,9 @@ export default function ProductDetailPage() {
                                   className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black accent-black"
                                 />
                                 <div>
-                                  <p className="text-xs font-medium text-gray-900">Extra Day After</p>
+                                  <p className="text-xs font-medium text-gray-900">{t("extraDayAfterTitle" as TranslationKey)}</p>
                                   <p className="text-[10px] text-gray-500">
-                                    {canAddExtraDayAfter ? 'Return dress 1 day later' : 'Unavailable – date is booked'}
+                                    {canAddExtraDayAfter ? t("return1DayLater" as TranslationKey) : t("unavailableDateBooked" as TranslationKey)}
                                   </p>
                                 </div>
                               </label>
@@ -1213,7 +1213,7 @@ export default function ProductDetailPage() {
                             <div>
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Rental Price</p>
+                                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">{t("rentalPrice" as TranslationKey)}</p>
                                   <p className="text-2xl font-light text-gray-900">{formatPrice(rentalPrice.total)}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
@@ -1222,7 +1222,7 @@ export default function ProductDetailPage() {
                                   )}
                                   {(extraDayBefore || extraDayAfter) && (
                                     <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded-full">
-                                      +{((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200} EGP extra days
+                                      +{((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200} EGP {t("extraDays" as TranslationKey)}
                                     </span>
                                   )}
                                 </div>
@@ -1272,14 +1272,14 @@ export default function ProductDetailPage() {
                     >
                       <ShoppingCart className="mr-2 h-5 w-5" />
                       {product.isOutOfStock
-                        ? "Out of Stock"
+                        ? t("outOfStockLabel" as TranslationKey)
                         : isRentBranch
                           ? (checkingAvailability
-                            ? "Loading..."
+                            ? t("loadingLabel" as TranslationKey)
                             : !rentEventDate
-                              ? "Select Event Date"
-                              : "Rent Now")
-                          : "Buy Now"}
+                              ? t("selectDateLabel" as TranslationKey)
+                              : t("rentNowLabel" as TranslationKey))
+                          : t("buyNowLabel" as TranslationKey)}
                     </Button>
                   </div>
                 </div>

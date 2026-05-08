@@ -31,6 +31,8 @@ interface OrderDetails {
     type?: string
     rentStart?: string
     rentEnd?: string
+    extraDayBefore?: boolean
+    extraDayAfter?: boolean
     isGiftPackage?: boolean
     customMeasurements?: {
       unit: "cm" | "inch"
@@ -321,6 +323,11 @@ export default function AdminOrderDetailsPage() {
                           {(item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch) && (
                             <p className="text-sm text-gray-500 mt-1">
                               Duration: {item.rentStart && item.rentEnd ? `${new Date(item.rentStart).toLocaleDateString()} - ${new Date(item.rentEnd).toLocaleDateString()}` : "Not Selected/Legacy Order"}
+                            </p>
+                          )}
+                          {(item.extraDayBefore || item.extraDayAfter) && (
+                            <p className="text-sm font-medium text-rose-600 mt-1">
+                              Extra Days: {[item.extraDayBefore && "+1 Day Before", item.extraDayAfter && "+1 Day After"].filter(Boolean).join(", ")}
                             </p>
                           )}
                           {item.customMeasurements && (
