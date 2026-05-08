@@ -122,6 +122,8 @@ export default function ProductDetailPage() {
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message?: string } | null>(null)
   const [isExclusive, setIsExclusive] = useState(false)
+  const [extraDayBefore, setExtraDayBefore] = useState(false)
+  const [extraDayAfter, setExtraDayAfter] = useState(false)
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
@@ -390,7 +392,8 @@ export default function ProductDetailPage() {
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
     if (costBase > 0) {
       const res = calculateRentalPrice(costBase, d, 0, isExclusive)
-      setRentalPrice({ total: res.total, category: "Speculative" })
+      const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
+      setRentalPrice({ total: res.total + extraDaysFee, category: "Speculative" })
     }
     // -------------------------------------
 
@@ -411,7 +414,8 @@ export default function ProductDetailPage() {
         })
         if (res.ok) {
           const data = await res.json()
-          setRentalPrice({ total: data.total, category: data.category })
+          const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
+          setRentalPrice({ total: data.total + extraDaysFee, category: data.category })
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
@@ -424,7 +428,7 @@ export default function ProductDetailPage() {
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventTime, isExclusive])
+  }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter])
 
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
@@ -444,6 +448,45 @@ export default function ProductDetailPage() {
       setIsExclusive(false)
     }
   }, [product, isRentBranch, bookedRanges, rentEventDate, isExclusive])
+
+  // Check if extra days are available (not conflicting with bookings)
+  const canAddExtraDayBefore = (() => {
+    if (!rentEventDate || bookedRanges.length === 0) return true
+    // Extra day before = eventDate - 2 (standard start is eventDate - 1)
+    const extraDate = new Date(rentEventDate)
+    extraDate.setDate(extraDate.getDate() - 2)
+    extraDate.setHours(0, 0, 0, 0)
+    for (const booking of bookedRanges) {
+      const bStart = new Date(booking.from)
+      bStart.setHours(0, 0, 0, 0)
+      const bEnd = new Date(booking.to)
+      bEnd.setHours(23, 59, 59, 999)
+      if (extraDate >= bStart && extraDate <= bEnd) return false
+    }
+    return true
+  })()
+
+  const canAddExtraDayAfter = (() => {
+    if (!rentEventDate || bookedRanges.length === 0) return true
+    // Extra day after = eventDate + 2 (standard end is eventDate + 1)
+    const extraDate = new Date(rentEventDate)
+    extraDate.setDate(extraDate.getDate() + 2)
+    extraDate.setHours(0, 0, 0, 0)
+    for (const booking of bookedRanges) {
+      const bStart = new Date(booking.from)
+      bStart.setHours(0, 0, 0, 0)
+      const bEnd = new Date(booking.to)
+      bEnd.setHours(23, 59, 59, 999)
+      if (extraDate >= bStart && extraDate <= bEnd) return false
+    }
+    return true
+  })()
+
+  // Reset extra day selections if they become unavailable
+  useEffect(() => {
+    if (extraDayBefore && !canAddExtraDayBefore) setExtraDayBefore(false)
+    if (extraDayAfter && !canAddExtraDayAfter) setExtraDayAfter(false)
+  }, [canAddExtraDayBefore, canAddExtraDayAfter])
 
   // Handle adding to cart with custom size support
   const handleAddToCart = async () => {
@@ -477,12 +520,12 @@ export default function ProductDetailPage() {
       }
 
       const start = new Date(rentEventDate)
-      start.setDate(start.getDate() - 1)
+      start.setDate(start.getDate() - 1 - (extraDayBefore ? 1 : 0))
       start.setHours(0, 0, 0, 0)
       rentStartStr = formatLocalDate(start)
 
       const end = new Date(rentEventDate)
-      end.setDate(end.getDate() + 1)
+      end.setDate(end.getDate() + 1 + (extraDayAfter ? 1 : 0))
       end.setHours(23, 59, 59, 999)
       rentEndStr = formatLocalDate(end)
 
@@ -540,6 +583,8 @@ export default function ProductDetailPage() {
           rentStart: rentStartStr,
           rentEnd: rentEndStr,
           isExclusive: isRentBranch ? isExclusive : undefined,
+          extraDayBefore: isRentBranch ? extraDayBefore : undefined,
+          extraDayAfter: isRentBranch ? extraDayAfter : undefined,
           customMeasurements: {
             unit: measurementUnit,
             values: measurements,
@@ -588,6 +633,8 @@ export default function ProductDetailPage() {
           rentStart: rentStartStr,
           rentEnd: rentEndStr,
           isExclusive: isRentBranch ? isExclusive : undefined,
+          extraDayBefore: isRentBranch ? extraDayBefore : undefined,
+          extraDayAfter: isRentBranch ? extraDayAfter : undefined,
         },
       })
     }
@@ -1092,6 +1139,68 @@ export default function ProductDetailPage() {
                           </label>
                         </div>
                       )}
+
+                      {/* Extra Days Options — show after user selects a date */}
+                      {rentEventDate && (
+                        <div className="space-y-2">
+                          <p className="font-medium text-gray-900 text-sm">Extra Days <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div
+                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${
+                                !canAddExtraDayBefore
+                                  ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                  : extraDayBefore
+                                    ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
+                                    : 'border-gray-200 hover:border-gray-400 cursor-pointer'
+                              }`}
+                              onClick={() => canAddExtraDayBefore && setExtraDayBefore(!extraDayBefore)}
+                            >
+                              <label className={`flex items-center gap-2 ${canAddExtraDayBefore ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={extraDayBefore}
+                                  disabled={!canAddExtraDayBefore}
+                                  onChange={(e) => canAddExtraDayBefore && setExtraDayBefore(e.target.checked)}
+                                  className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black accent-black"
+                                />
+                                <div>
+                                  <p className="text-xs font-medium text-gray-900">Extra Day Before</p>
+                                  <p className="text-[10px] text-gray-500">
+                                    {canAddExtraDayBefore ? 'Receive dress 1 day earlier' : 'Unavailable – date is booked'}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                            <div
+                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${
+                                !canAddExtraDayAfter
+                                  ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                  : extraDayAfter
+                                    ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
+                                    : 'border-gray-200 hover:border-gray-400 cursor-pointer'
+                              }`}
+                              onClick={() => canAddExtraDayAfter && setExtraDayAfter(!extraDayAfter)}
+                            >
+                              <label className={`flex items-center gap-2 ${canAddExtraDayAfter ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={extraDayAfter}
+                                  disabled={!canAddExtraDayAfter}
+                                  onChange={(e) => canAddExtraDayAfter && setExtraDayAfter(e.target.checked)}
+                                  className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black accent-black"
+                                />
+                                <div>
+                                  <p className="text-xs font-medium text-gray-900">Extra Day After</p>
+                                  <p className="text-[10px] text-gray-500">
+                                    {canAddExtraDayAfter ? 'Return dress 1 day later' : 'Unavailable – date is booked'}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Rental Price Display */}
                       {rentEventDate && (
                         <div className="border rounded-lg p-4 bg-white">
@@ -1101,14 +1210,23 @@ export default function ProductDetailPage() {
                               Calculating rental price...
                             </div>
                           ) : rentalPrice ? (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Rental Price</p>
-                                <p className="text-2xl font-light text-gray-900">{formatPrice(rentalPrice.total)}</p>
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Rental Price</p>
+                                  <p className="text-2xl font-light text-gray-900">{formatPrice(rentalPrice.total)}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {isExclusive && (
+                                    <span className="text-xs bg-black text-white px-2 py-1 rounded-full">Exclusive</span>
+                                  )}
+                                  {(extraDayBefore || extraDayAfter) && (
+                                    <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded-full">
+                                      +{((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200} EGP extra days
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              {isExclusive && (
-                                <span className="text-xs bg-black text-white px-2 py-1 rounded-full">Exclusive</span>
-                              )}
                             </div>
                           ) : null}
                         </div>

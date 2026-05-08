@@ -63,6 +63,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [isExclusive, setIsExclusive] = useState(false)
+  const [extraDayBefore, setExtraDayBefore] = useState(false)
+  const [extraDayAfter, setExtraDayAfter] = useState(false)
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
@@ -77,6 +79,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       setQuantity(1)
       setRentEventDate(undefined)
       setIsExclusive(false)
+      setExtraDayBefore(false)
+      setExtraDayAfter(false)
       setRentalPrice(null)
       setIsCustomSizeMode(true)
       resetMeasurements()
@@ -137,7 +141,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         })
         if (res.ok) {
           const data = await res.json()
-          setRentalPrice({ total: data.total, category: data.category })
+          const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
+          setRentalPrice({ total: data.total + extraDaysFee, category: data.category })
         } else {
           setRentalPrice(null)
         }
@@ -153,7 +158,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventDate, isExclusive])
+  }, [isRentBranch, product?.id, rentEventDate, isExclusive, extraDayBefore, extraDayAfter])
 
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
@@ -173,6 +178,43 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       setIsExclusive(false)
     }
   }, [product, isRentBranch, bookedRanges, rentEventDate, isExclusive])
+
+  // Check if extra days are available (not conflicting with bookings)
+  const canAddExtraDayBefore = (() => {
+    if (!rentEventDate || bookedRanges.length === 0) return true
+    const extraDate = new Date(rentEventDate)
+    extraDate.setDate(extraDate.getDate() - 2)
+    extraDate.setHours(0, 0, 0, 0)
+    for (const booking of bookedRanges) {
+      const bStart = new Date(booking.from)
+      bStart.setHours(0, 0, 0, 0)
+      const bEnd = new Date(booking.to)
+      bEnd.setHours(23, 59, 59, 999)
+      if (extraDate >= bStart && extraDate <= bEnd) return false
+    }
+    return true
+  })()
+
+  const canAddExtraDayAfter = (() => {
+    if (!rentEventDate || bookedRanges.length === 0) return true
+    const extraDate = new Date(rentEventDate)
+    extraDate.setDate(extraDate.getDate() + 2)
+    extraDate.setHours(0, 0, 0, 0)
+    for (const booking of bookedRanges) {
+      const bStart = new Date(booking.from)
+      bStart.setHours(0, 0, 0, 0)
+      const bEnd = new Date(booking.to)
+      bEnd.setHours(23, 59, 59, 999)
+      if (extraDate >= bStart && extraDate <= bEnd) return false
+    }
+    return true
+  })()
+
+  // Reset extra day selections if they become unavailable
+  useEffect(() => {
+    if (extraDayBefore && !canAddExtraDayBefore) setExtraDayBefore(false)
+    if (extraDayAfter && !canAddExtraDayAfter) setExtraDayAfter(false)
+  }, [canAddExtraDayBefore, canAddExtraDayAfter])
 
   const getSmallestPrice = (sizes: ProductSize[]) => {
     if (!sizes || sizes.length === 0) return 0
@@ -220,12 +262,12 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       }
 
       const start = new Date(rentEventDate)
-      start.setDate(start.getDate() - 1)
+      start.setDate(start.getDate() - 1 - (extraDayBefore ? 1 : 0))
       start.setHours(0, 0, 0, 0)
       const rentStartStr = formatLocalDate(start)
 
       const end = new Date(rentEventDate)
-      end.setDate(end.getDate() + 1)
+      end.setDate(end.getDate() + 1 + (extraDayAfter ? 1 : 0))
       end.setHours(23, 59, 59, 999)
       const rentEndStr = formatLocalDate(end)
 
@@ -264,6 +306,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           rentStart: rentStartStr,
           rentEnd: rentEndStr,
           isExclusive,
+          extraDayBefore,
+          extraDayAfter,
           customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
         }
       })
@@ -472,6 +516,55 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           <span className="text-sm font-medium">Exclusive Hold</span>
                         </div>
                         <p className="text-[10px] text-gray-500 mt-1 ml-6">Reserve this dress exclusively for your event.</p>
+                      </div>
+                    )}
+
+                    {/* Extra Days Options — show after user selects a date */}
+                    {rentEventDate && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-900">Extra Days <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div
+                            className={`border rounded-lg p-2.5 transition-all ${
+                              !canAddExtraDayBefore
+                                ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                : extraDayBefore
+                                  ? 'border-black bg-gray-50 cursor-pointer'
+                                  : 'border-gray-200 cursor-pointer'
+                            }`}
+                            onClick={() => canAddExtraDayBefore && setExtraDayBefore(!extraDayBefore)}
+                          >
+                            <label className={`flex items-center gap-2 ${canAddExtraDayBefore ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                              <input type="checkbox" checked={extraDayBefore} disabled={!canAddExtraDayBefore} readOnly className="h-3.5 w-3.5 accent-black" />
+                              <div>
+                                <p className="text-xs font-medium">Extra Day Before</p>
+                                <p className="text-[10px] text-gray-500">
+                                  {canAddExtraDayBefore ? 'Receive 1 day earlier' : 'Unavailable'}
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                          <div
+                            className={`border rounded-lg p-2.5 transition-all ${
+                              !canAddExtraDayAfter
+                                ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                : extraDayAfter
+                                  ? 'border-black bg-gray-50 cursor-pointer'
+                                  : 'border-gray-200 cursor-pointer'
+                            }`}
+                            onClick={() => canAddExtraDayAfter && setExtraDayAfter(!extraDayAfter)}
+                          >
+                            <label className={`flex items-center gap-2 ${canAddExtraDayAfter ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                              <input type="checkbox" checked={extraDayAfter} disabled={!canAddExtraDayAfter} readOnly className="h-3.5 w-3.5 accent-black" />
+                              <div>
+                                <p className="text-xs font-medium">Extra Day After</p>
+                                <p className="text-[10px] text-gray-500">
+                                  {canAddExtraDayAfter ? 'Return 1 day later' : 'Unavailable'}
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

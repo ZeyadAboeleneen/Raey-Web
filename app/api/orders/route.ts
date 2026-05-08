@@ -281,6 +281,10 @@ export async function POST(request: NextRequest) {
 
             const serverPrice = pricingResult.total
 
+            // Add extra day fees (200 EGP per extra day)
+            const extraDaysFee = ((item.extraDayBefore ? 1 : 0) + (item.extraDayAfter ? 1 : 0)) * 200
+            const finalPrice = serverPrice + extraDaysFee
+
             // 2. Double-booking check inside transaction
             const overlapCheck = await new sql.Request(txn)
               .input('ModelTypeID', sql.Int, modelTypeId)
@@ -300,9 +304,13 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            // 3. Build NoteItem with exclusive flag
+            // 3. Build NoteItem with exclusive flag and extra days
             const exclusivePrefix = item.isExclusive ? '[EXCLUSIVE] ' : ''
-            const noteItem = `${exclusivePrefix}Web Order: ${item.size} - Qty: ${item.quantity}`
+            const extraDayLabels = []
+            if (item.extraDayBefore) extraDayLabels.push('+1 day before')
+            if (item.extraDayAfter) extraDayLabels.push('+1 day after')
+            const extraDaySuffix = extraDayLabels.length > 0 ? ` [${extraDayLabels.join(', ')}]` : ''
+            const noteItem = `${exclusivePrefix}Web Order: ${item.size} - Qty: ${item.quantity}${extraDaySuffix}`
 
             // 4. INSERT booking with SERVER-CALCULATED price (never trust frontend)
             await new sql.Request(txn)
@@ -323,9 +331,9 @@ export async function POST(request: NextRequest) {
               .input('Emp_ID', sql.Int, 1)
               .input('CurrencyID', sql.Int, 1)
               .input('ExRate', sql.Decimal(18, 2), 1.0)
-              .input('Total', sql.Decimal(18, 2), serverPrice)
-              .input('Deposit', sql.Decimal(18, 2), serverPrice * 0.5)
-              .input('Remaining', sql.Decimal(18, 2), serverPrice * 0.5)
+              .input('Total', sql.Decimal(18, 2), finalPrice)
+              .input('Deposit', sql.Decimal(18, 2), finalPrice * 0.5)
+              .input('Remaining', sql.Decimal(18, 2), finalPrice * 0.5)
               .input('NoteItem', sql.NVarChar, noteItem.substring(0, 200))
               .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust).substring(0, 20) : '')
               .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist).substring(0, 20) : '')
@@ -372,11 +380,11 @@ export async function POST(request: NextRequest) {
 
             await txn.commit()
 
-            console.log(`✅ [Pricing] Item ${item.productId}: ${pricingResult.category} = ${serverPrice} EGP (${pricingResult.formula})`)
+            console.log(`✅ [Pricing] Item ${item.productId}: ${pricingResult.category} = ${finalPrice} EGP (base: ${serverPrice} + extra days: ${extraDaysFee}) (${pricingResult.formula})`)
 
             serverCalculatedPrices.push({
               productId: item.productId,
-              serverPrice,
+              serverPrice: finalPrice,
               category: pricingResult.category,
               formula: pricingResult.formula,
             })
