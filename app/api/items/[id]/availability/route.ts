@@ -29,7 +29,7 @@ export async function GET(
 
     const pool = await getMssqlPool();
 
-    // If no start/end provided, fetch ALL future bookings
+    // If no start/end provided, fetch ALL bookings to determine past rentals
     if (!start || !end) {
       const result = await pool
         .request()
@@ -39,14 +39,18 @@ export async function GET(
           SELECT 
             ID AS BookingID,
             ReceivedDate,
-            ReturnDate
+            ReturnDate,
+            CASE WHEN ReturnDate >= @today THEN 1 ELSE 0 END AS IsFuture
           FROM Booking
           WHERE ModelTypeID = @itemId
-            AND ReturnDate >= @today
         `);
 
+      const hasBeenRented = result.recordset.length > 0;
+      const futureBookings = result.recordset.filter((b: any) => b.IsFuture === 1);
+
       return NextResponse.json({
-        bookings: result.recordset.map((b: any) => ({
+        hasBeenRented,
+        bookings: futureBookings.map((b: any) => ({
           from: b.ReceivedDate,
           to: b.ReturnDate,
         })),

@@ -227,7 +227,7 @@ export default function AdminDashboard() {
         return
       }
 
-      let url = `/api/items?page=${page}&limit=${PRODUCTS_PER_PAGE}`
+      let url = `/api/items?page=${page}&limit=${PRODUCTS_PER_PAGE}&includeInactive=true`
       if (debouncedProductSearchQuery) {
         url += `&search=${encodeURIComponent(debouncedProductSearchQuery)}`
       }
@@ -285,8 +285,8 @@ export default function AdminDashboard() {
       const [discountCodesRes, offersRes, totalProdsRes, activeProdsRes] = await Promise.all([
         fetch("/api/discount-codes", fetchOptions),
         fetch("/api/offers", fetchOptions),
-        fetch("/api/items?page=1&limit=1", fetchOptions), // Used to get total products
-        fetch("/api/items?page=1&limit=1", fetchOptions), // Used to get active products
+        fetch("/api/items?page=1&limit=1&includeInactive=true", fetchOptions), // Used to get total products
+        fetch("/api/items?page=1&limit=1&includeInactive=true", fetchOptions), // Used to get active products
       ])
 
       if (totalProdsRes.ok && activeProdsRes.ok) {

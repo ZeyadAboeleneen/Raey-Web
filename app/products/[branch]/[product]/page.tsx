@@ -124,6 +124,7 @@ export default function ProductDetailPage() {
   const [isExclusive, setIsExclusive] = useState(false)
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
+  const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
   const { dispatch } = useCart()
   const { state: favoritesState, addToFavorites, removeFromFavorites } = useFavorites()
@@ -337,6 +338,9 @@ export default function ProductDetailPage() {
           to: new Date(b.to)
         })))
       }
+      if (data.hasBeenRented !== undefined) {
+        setHasBeenRentedDb(data.hasBeenRented)
+      }
     } catch (err) {
       console.error('Failed to fetch bookings:', err)
     } finally {
@@ -421,6 +425,25 @@ export default function ProductDetailPage() {
     fetchPrice()
     return () => controller.abort()
   }, [isRentBranch, product?.id, rentEventTime, isExclusive])
+
+  // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
+  useEffect(() => {
+    if (!product || !isRentBranch || !isExclusive) return
+    
+    const isValid = (() => {
+      const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
+      if (actuallyRented) return false
+      if (bookedRanges.length === 0) return true
+      if (!rentEventDate) return false
+      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
+      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+      return selectedDate < earliestBooking
+    })()
+
+    if (!isValid) {
+      setIsExclusive(false)
+    }
+  }, [product, isRentBranch, bookedRanges, rentEventDate, isExclusive])
 
   // Handle adding to cart with custom size support
   const handleAddToCart = async () => {
@@ -1023,8 +1046,21 @@ export default function ProductDetailPage() {
                         </div>
                       )}
 
-                      {/* Exclusive Hold Option */}
-                      {!product.hasBeenRented && (
+                      {/* Exclusive Hold Option — show if dress never rented, or user's
+                          selected date is before the earliest existing booking */}
+                      {(() => {
+                        const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
+                        // If dress has been physically rented in the past, no exclusive hold ever
+                        if (actuallyRented) return false
+                        // If no bookings at all, always show exclusive option
+                        if (bookedRanges.length === 0) return true
+                        // If user hasn't picked a date yet, wait for them to pick one
+                        if (!rentEventDate) return false
+                        // Check if user's date is strictly before the earliest booking
+                        const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
+                        const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+                        return selectedDate < earliestBooking
+                      })() && (
                         <div
                           className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
                             isExclusive

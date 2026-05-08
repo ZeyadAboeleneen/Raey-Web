@@ -63,12 +63,13 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get("search") || searchParams.get("q") || "").trim();
     const format = searchParams.get("format"); // "erp" for raw ERP shape, default = cached shape
     const includeInactive = searchParams.get("includeInactive") === "true" && (await isAdminRequest(request, "canViewProducts"));
+    const includeNoImages = searchParams.get("includeNoImages") === "true" && (await isAdminRequest(request, "canViewProducts"));
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 500);
     const hasPagination = searchParams.has("page") || searchParams.has("limit");
 
     // Build cache key
-    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${page}|${limit}|${hasPagination ? "paged" : "all"}`;
+    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${includeNoImages ? "allimg" : "img"}|${page}|${limit}|${hasPagination ? "paged" : "all"}`;
     const cached = getCached(cacheKey);
     if (cached) {
       console.log("⚡ [ERP] Served items from cache");
@@ -144,8 +145,9 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Public visibility: hide products without valid images ────────
-    // Admin requests bypass this filter so the dashboard sees everything.
-    if (!includeInactive) {
+    // `includeNoImages` lets the dashboard see all products regardless of images.
+    // `includeInactive` also bypasses this for backward compat.
+    if (!includeNoImages && !includeInactive) {
       finalProducts = filterPublicProducts(finalProducts);
     }
 

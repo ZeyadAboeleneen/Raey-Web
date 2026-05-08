@@ -223,17 +223,21 @@ export async function DELETE(
     }
 
     const pool = await getMssqlPool();
+    
+    // First remove from ItemStores to handle foreign key
     await pool
       .request()
       .input("itemId", sql.Int, itemId)
-      .query(`
-        UPDATE Items
-        SET Item_Isdisabled = 1
-        WHERE ID = @itemId
-      `);
+      .query(`DELETE FROM ItemStores WHERE ItemID = @itemId`);
+
+    // Then hard-delete from Items table
+    await pool
+      .request()
+      .input("itemId", sql.Int, itemId)
+      .query(`DELETE FROM Items WHERE ID = @itemId`);
 
     clearErpProductCaches();
-    return NextResponse.json({ success: true, message: "Product disabled successfully" });
+    return NextResponse.json({ success: true, message: "Product deleted permanently" });
   } catch (error: any) {
     console.error(`❌ [ERP] Error deleting item ${params.id}:`, error?.message || error);
     return errorResponse(500, "Failed to delete item from ERP");

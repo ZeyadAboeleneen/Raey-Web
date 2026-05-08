@@ -66,6 +66,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
+  const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
   const isRentBranch = product?.branch !== "sell-dresses"
 
@@ -97,6 +98,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           from: new Date(b.from),
           to: new Date(b.to)
         })))
+      }
+      if (data.hasBeenRented !== undefined) {
+        setHasBeenRentedDb(data.hasBeenRented)
       }
     } catch (err) {
       console.error('Failed to fetch bookings:', err)
@@ -150,6 +154,25 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
     fetchPrice()
     return () => controller.abort()
   }, [isRentBranch, product?.id, rentEventDate, isExclusive])
+
+  // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
+  useEffect(() => {
+    if (!product || !isRentBranch || !isExclusive) return
+    
+    const isValid = (() => {
+      const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
+      if (actuallyRented) return false
+      if (bookedRanges.length === 0) return true
+      if (!rentEventDate) return false
+      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
+      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+      return selectedDate < earliestBooking
+    })()
+
+    if (!isValid) {
+      setIsExclusive(false)
+    }
+  }, [product, isRentBranch, bookedRanges, rentEventDate, isExclusive])
 
   const getSmallestPrice = (sizes: ProductSize[]) => {
     if (!sizes || sizes.length === 0) return 0
@@ -424,7 +447,22 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                       </div>
                     )}
 
-                    {!product.hasBeenRented && (
+                    {/* Exclusive Hold: show if dress has never been rented, OR if the user's
+                        selected date is before the earliest existing booking (dress unworn at that point) */}
+                    {(() => {
+                      if (!isRentBranch) return false
+                      const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
+                      // If dress has been physically rented in the past, no exclusive hold ever
+                      if (actuallyRented) return false
+                      // If no bookings at all, always show exclusive option
+                      if (bookedRanges.length === 0) return true
+                      // If user hasn't picked a date yet, wait for them to pick one
+                      if (!rentEventDate) return false
+                      // Check if user's date is strictly before the earliest booking
+                      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
+                      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+                      return selectedDate < earliestBooking
+                    })() && (
                       <div 
                         className={`border rounded-lg p-3 cursor-pointer transition-all ${isExclusive ? 'border-black bg-gray-50' : 'border-gray-200'}`}
                         onClick={() => setIsExclusive(!isExclusive)}
