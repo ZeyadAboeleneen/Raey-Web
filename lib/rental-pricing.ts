@@ -110,7 +110,7 @@ export async function calculateRentalPrice(
       // Sliding scale: days 16–45
       const multiplier = 0.8 - (0.2 / 15) * (d - 15)
       category = d <= 30 ? "B" : "C"
-      total = round100(cost * multiplier)
+      total = Math.round((cost * multiplier) / 50) * 50
       formula = `cost(${cost}) × ${multiplier.toFixed(4)}`
     }
   } else {

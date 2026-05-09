@@ -37,7 +37,7 @@ export function calculateRentalPrice(
         } else {
             const multiplier = 0.8 - (0.2 / 15) * (d - 15)
             category = d <= 30 ? "B" : "C"
-            total = round100(cost * multiplier)
+            total = Math.round((cost * multiplier) / 50) * 50
             formula = `cost × ${multiplier.toFixed(4)}`
         }
     } else {
