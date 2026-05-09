@@ -217,8 +217,8 @@ export default function AdminOrderDetailsPage() {
   if (authState.isLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-32 flex justify-center">
+        
+        <div className="pt-20 flex justify-center">
           <div>
             <div className="animate-spin h-12 w-12 border-b-2 border-black rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600">Loading order details...</p>
@@ -233,8 +233,8 @@ export default function AdminOrderDetailsPage() {
   if (!order) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-32 flex justify-center">
+        
+        <div className="pt-20 flex justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-light mb-4">Order not found</h1>
             <Link href="/admin/dashboard">
@@ -257,18 +257,14 @@ export default function AdminOrderDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <section className="pt-32 pb-16">
+      <section className="pt-10 pb-16">
         <div className="container mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-8">
             <Link href="/admin/dashboard" className="inline-flex items-center text-gray-600 hover:text-black mb-6">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Link>
             <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-light tracking-wider mb-2">Order Details</h1>
-                <p className="text-gray-600">Order #{order.id}</p>
-              </div>
+              {/* Header hidden as requested */}
               <div className="flex items-center gap-4">
                 <Badge className={`px-3 py-1 text-sm font-medium ${statusColors[order.status]}`}>
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}

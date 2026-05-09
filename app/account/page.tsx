@@ -752,8 +752,8 @@ export default function MyAccountPage() {
               {/* Mobile handle bar */}
               <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden"></div>
               
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold truncate mr-4">Order Details #{selectedOrder.id}</h3>
+              <div className="flex justify-end items-center mb-4 sm:mb-6">
+                {/* Header hidden as requested */}
                 <button 
                   onClick={() => setOrderDetailsOpen(false)}
                   className="text-gray-500 hover:text-gray-700 p-1 flex-shrink-0"

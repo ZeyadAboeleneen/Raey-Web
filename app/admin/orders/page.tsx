@@ -107,8 +107,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <section className="py-16 sm:py-24">
+      <section className="py-10 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -122,8 +121,7 @@ export default function AdminOrdersPage() {
                 Back to Dashboard
               </Link>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-2">Order Management</h1>
-                <p className="text-gray-600 text-sm sm:text-base">View and manage all customer orders.</p>
+                {/* Header hidden as requested */}
               </div>
             </div>
           </motion.div>
