@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           })
 
           if (product) {
-            fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "https://www.alanoudalqadi.com"}/api/send-review-reminder`, {
+            fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "https://raey-web.vercel.app"}/api/send-review-reminder`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const customerEmail = order.shippingAddress.email
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alanoudalqadi.com'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://raey-web.vercel.app'
 
     // Create email content sections
     const greeting = createEmailSection({
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         </p>
         
         <p style="text-align: center;">
-          Have questions? Contact us at <a href="mailto:Raey@gmail.com">Raey@gmail.com</a> or WhatsApp: +971 50 299 6885
+          Have questions? Contact us at <a href="mailto:raey888@gmail.com">raey888@gmail.com</a> or WhatsApp: 01094448044
         </p>
         
         <p style="text-align: center; margin-top: 30px; font-weight: 600;">

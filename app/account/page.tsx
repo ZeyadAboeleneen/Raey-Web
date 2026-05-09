@@ -507,7 +507,14 @@ export default function MyAccountPage() {
                                         className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded flex-shrink-0"
                                       />
                                       <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium truncate">{item.name}</p>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium truncate">{item.name}</p>
+                                          {item.isExclusive && (
+                                            <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider border border-amber-200">
+                                              First Rental
+                                            </span>
+                                          )}
+                                        </div>
                                         <p className="text-xs text-gray-600">
                                           <span className="font-semibold text-amber-600 mr-1 capitalize">
                                             {item.collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") ? "Rent" : "Buy")}:
@@ -798,7 +805,14 @@ export default function MyAccountPage() {
                         className="w-16 h-16 object-cover rounded mr-4"
                       />
                       <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{item.name}</p>
+                          {item.isExclusive && (
+                            <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider border border-amber-200">
+                              First Rental
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">
                           <span className="font-semibold text-amber-600 mr-1 capitalize">
                             {item.collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") ? "Rent" : "Buy")}:

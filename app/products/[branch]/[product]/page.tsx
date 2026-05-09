@@ -1144,15 +1144,20 @@ export default function ProductDetailPage() {
                               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
                             />
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900 text-sm">Exclusive Hold</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-gray-900 text-sm">{t("exclusiveHold" as TranslationKey)}</p>
+                                <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                                  {t("firstRentalLabel" as TranslationKey)}
+                                </span>
+                              </div>
                               <div className="mt-1.5 space-y-1">
                                 <p className="text-xs text-gray-600 flex items-center gap-1.5">
                                   <span className="text-gray-400">✦</span>
-                                  The dress is reserved only for you
+                                  {t("exclusiveHoldNote1" as TranslationKey)}
                                 </p>
                                 <p className="text-xs text-gray-600 flex items-center gap-1.5">
                                   <span className="text-gray-400">✦</span>
-                                  No one else can rent it before your pickup
+                                  {t("exclusiveHoldNote2" as TranslationKey)}
                                 </p>
                               </div>
                             </div>

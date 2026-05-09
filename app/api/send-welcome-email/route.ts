@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         <div class="email-card" style="margin: 0;"><strong>Priority Access</strong> to new capsule drops and trunk shows</div>
         <div class="email-card" style="margin: 0;"><strong>Exclusive Lookbook</strong> delivered straight to your inbox each season</div>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://www.alanoudalqadi.com"}/products" class="btn btn-primary">Discover the Collections</a>
+          <a href={`${process.env.NEXT_PUBLIC_BASE_URL || "https://raey-web.vercel.app"}/products`} class="btn btn-primary">Discover the Collections</a>
         </div>
       `,
     })

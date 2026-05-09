@@ -27,6 +27,36 @@ export async function GET(
     const start = searchParams.get("start");
     const end = searchParams.get("end");
 
+    // 1. Fetch bookings from local Prisma (for instant updates before ERP sync)
+    const localOrders = await prisma.order.findMany({
+      where: {
+        status: { notIn: ["cancelled"] },
+      },
+      select: { items: true },
+    });
+
+    const localBookings: { from: Date; to: Date; isExclusive?: boolean }[] = [];
+    let earliestExclusiveDate: Date | null = null;
+
+    for (const order of localOrders) {
+      const items = (order.items as any[]) || [];
+      for (const item of items) {
+        if (String(item.productId) === String(itemId) && item.type === "rent" && item.rentStart && item.rentEnd) {
+          const from = new Date(item.rentStart);
+          const to = new Date(item.rentEnd);
+          const isExclusive = Boolean(item.isExclusive);
+
+          localBookings.push({ from, to, isExclusive });
+
+          if (isExclusive) {
+            if (!earliestExclusiveDate || from < earliestExclusiveDate) {
+              earliestExclusiveDate = from;
+            }
+          }
+        }
+      }
+    }
+
     const pool = await getMssqlPool();
 
     // If no start/end provided, fetch ALL bookings to determine past rentals
@@ -40,20 +70,49 @@ export async function GET(
             ID AS BookingID,
             ReceivedDate,
             ReturnDate,
+            NoteItem,
             CASE WHEN ReturnDate >= @today THEN 1 ELSE 0 END AS IsFuture
           FROM Booking
           WHERE ModelTypeID = @itemId
         `);
 
-      const hasBeenRented = result.recordset.length > 0;
-      const futureBookings = result.recordset.filter((b: any) => b.IsFuture === 1);
+      // Detect exclusive bookings from ERP
+      result.recordset.forEach((b: any) => {
+        if (b.NoteItem?.includes('[EXCLUSIVE]')) {
+          const receivedDate = new Date(b.ReceivedDate);
+          if (!earliestExclusiveDate || receivedDate < earliestExclusiveDate) {
+            earliestExclusiveDate = receivedDate;
+          }
+        }
+      });
+
+      const hasBeenRented = result.recordset.length > 0 || localBookings.length > 0;
+      const futureBookings = result.recordset.filter((b: any) => b.IsFuture === 1).map((b: any) => ({
+        from: b.ReceivedDate,
+        to: b.ReturnDate,
+      }));
+
+      // Combine ERP and Local bookings
+      const combinedBookings = [...futureBookings, ...localBookings.map(b => ({
+        from: b.from.toISOString(),
+        to: b.to.toISOString(),
+      }))];
+
+      // If an exclusive hold exists, block ALL dates from today (or even from the past) until that date.
+      if (earliestExclusiveDate) {
+        combinedBookings.push({
+          from: "2020-01-01", // Block everything from the past
+          to: earliestExclusiveDate.toISOString()
+        });
+      }
+
+      // If an exclusive hold exists, we don't necessarily block them in the "bookings" list
+      // because the calendar needs to show them as blocked.
+      // However, we will handle the "available" check below.
 
       return NextResponse.json({
         hasBeenRented,
-        bookings: futureBookings.map((b: any) => ({
-          from: b.ReceivedDate,
-          to: b.ReturnDate,
-        })),
+        bookings: combinedBookings,
       });
     }
 
@@ -93,7 +152,19 @@ export async function GET(
       `);
 
     const conflicting = result.recordset;
-    const available = conflicting.length === 0;
+    
+    // Check local conflicts
+    const localConflict = localBookings.some(b => 
+      startDate < b.to && endDate >= b.from
+    );
+
+    // EXCLUSIVE HOLD LOGIC: If a future exclusive hold exists, block all dates before it.
+    let exclusiveConflict = false;
+    if (earliestExclusiveDate && startDate < earliestExclusiveDate) {
+      exclusiveConflict = true;
+    }
+
+    const available = conflicting.length === 0 && !localConflict && !exclusiveConflict;
 
     return NextResponse.json({
       available,

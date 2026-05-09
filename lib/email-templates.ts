@@ -57,7 +57,7 @@ export function createEmailTemplate(options: {
 }) {
   const { title, preheader = '', theme = { mode: 'light' }, content, includeUnsubscribe = true } = options
   const colors = getEmailColors(theme)
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alanoudalqadi.com'
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://raey-web.vercel.app'
 
   return `
 <!DOCTYPE html>
@@ -405,7 +405,7 @@ export function createEmailTemplate(options: {
       <!-- Footer -->
       <div class="email-footer">
         <p style="margin: 0 0 15px 0;">
-          © 2025 Raey. All rights reserved.
+          © 2026 Raey. All rights reserved.
         </p>
         <p style="margin: 0;">
           <a href="${baseUrl}/contact">Contact Us</a> • 

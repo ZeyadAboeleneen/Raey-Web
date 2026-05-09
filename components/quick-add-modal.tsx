@@ -530,9 +530,14 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                       >
                         <div className="flex items-center gap-2">
                           <input type="checkbox" checked={isExclusive} readOnly className="h-4 w-4 accent-black" />
-                          <span className="text-sm font-medium">Exclusive Hold</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{t("exclusiveHold" as TranslationKey)}</span>
+                            <span className="bg-amber-100 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                              {t("firstRentalLabel" as TranslationKey)}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 ml-6">Reserve this dress exclusively for your event.</p>
+                        <p className="text-[10px] text-gray-500 mt-1 ml-6">{t("exclusiveHoldQuickNote" as TranslationKey)}</p>
                       </div>
                     )}
 
@@ -686,7 +691,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Custom Size</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription asChild>
               <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm mt-2">
                 <div className="grid grid-cols-2 gap-2">
                   <span><strong>Shoulder:</strong> {measurements.shoulder} {measurementUnit}</span>

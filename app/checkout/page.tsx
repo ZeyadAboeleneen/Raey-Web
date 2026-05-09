@@ -21,6 +21,7 @@ import { OrderSummary } from "@/components/order-summary"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
+import imageCompression from 'browser-image-compression'
 
 // Country name to code mapping
 const COUNTRY_CODE_MAP: Record<string, string> = {
@@ -442,7 +443,7 @@ export default function CheckoutPage() {
           })) : null
         },
         paymentMethod: formData.paymentMethod,
-        paymentScreenshot: paymentScreenshot,
+        // paymentScreenshot: paymentScreenshot, // Send in background sync to keep checkout instant
         discountCode: appliedDiscount?.code,
         discountAmount: appliedDiscount?.discountAmount,
         depositAmount,
@@ -464,11 +465,17 @@ export default function CheckoutPage() {
         const order = orderResponse.order || orderResponse
 
         // Send confirmation email with the original order data to ensure country code is preserved
+        const orderId = (order && (order.id || order._id || order.order_id || order.order?.id)) || ""
+
+        // Save screenshot to localStorage for the success page to pick up and sync
+        // We do this because large payloads (>64KB) fail with keepalive: true
+        if (paymentScreenshot && orderId) {
+          localStorage.setItem(`pending_screenshot_${orderId}`, paymentScreenshot)
+        }
 
         // Clear cart
         cartDispatch({ type: "CLEAR_CART" })
         // Redirect to success page
-        const orderId = (order && (order.id || order._id || order.order_id || order.order?.id)) || ""
         router.push(`/checkout/success?orderId=${orderId}`)
       } else {
         const errorData = await response.json()
@@ -1085,19 +1092,37 @@ export default function CheckoutPage() {
                               type="file"
                               accept="image/png,image/jpeg,image/jpg,image/webp"
                               className="hidden"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0]
                                 if (!file) return
-                                if (file.size > 5 * 1024 * 1024) {
-                                  setError("Screenshot file size must be less than 5MB")
-                                  return
-                                }
+                                
+                                // Show filename immediately
                                 setScreenshotFileName(file.name)
-                                const reader = new FileReader()
-                                reader.onloadend = () => {
-                                  setPaymentScreenshot(reader.result as string)
+                                
+                                try {
+                                  // Compress image to ~800KB max to speed up upload significantly
+                                  const options = {
+                                    maxSizeMB: 0.8,
+                                    maxWidthOrHeight: 1280,
+                                    useWebWorker: true
+                                  }
+                                  
+                                  const compressedFile = await imageCompression(file, options)
+                                  
+                                  const reader = new FileReader()
+                                  reader.onloadend = () => {
+                                    setPaymentScreenshot(reader.result as string)
+                                  }
+                                  reader.readAsDataURL(compressedFile)
+                                } catch (compressionError) {
+                                  console.error("Compression error:", compressionError)
+                                  // Fallback to original file if compression fails
+                                  const reader = new FileReader()
+                                  reader.onloadend = () => {
+                                    setPaymentScreenshot(reader.result as string)
+                                  }
+                                  reader.readAsDataURL(file)
                                 }
-                                reader.readAsDataURL(file)
                               }}
                             />
                           </label>

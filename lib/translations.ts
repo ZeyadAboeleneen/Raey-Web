@@ -37,6 +37,14 @@ export const translations = {
     noProductSelected: "No product selected",
     unknownSize: "Unknown size",
     noProductName: "No product name",
+    orderConfirmed: "Order Confirmed!",
+    thankYouPurchase: "Thank you for your purchase. Your order has been successfully placed.",
+    confirmationEmail: "Confirmation Email",
+    confirmationEmailSent: "We've sent you an email with your order details",
+    orderProcessing: "Processing",
+    orderProcessingNotice: "Your order is being prepared for shipment",
+    trackYourOrder: "Track Your Order",
+    needHelpContactUs: "Need help? Contact us at {email} or on WhatsApp at {whatsapp}",
 
     // Checkout Form
     checkoutTitle: "Checkout",
@@ -77,6 +85,11 @@ export const translations = {
     return1DayLater: "Return 1 day later",
     unavailableDateBooked: "Unavailable – date is booked",
     unavailable: "Unavailable",
+    exclusiveHold: "Be the first to wear",
+    firstRentalLabel: "First Rental",
+    exclusiveHoldNote1: "The dress is reserved only for you",
+    exclusiveHoldNote2: "No one else can rent it before your pickup",
+    exclusiveHoldQuickNote: "Reserve this dress exclusively for your event.",
 
     // Cart Item
     rentLabel: "Rent",
@@ -421,6 +434,14 @@ export const translations = {
     noProductSelected: "لم يتم تحديد منتج",
     unknownSize: "مقاس غير معروف",
     noProductName: "بدون اسم منتج",
+    orderConfirmed: "تم تأكيد الطلب!",
+    thankYouPurchase: "شكراً لك على شرائك. تم تقديم طلبك بنجاح.",
+    confirmationEmail: "بريد التأكيد",
+    confirmationEmailSent: "لقد أرسلنا لك بريداً إلكترونياً يتضمن تفاصيل طلبك",
+    orderProcessing: "جاري المعالجة",
+    orderProcessingNotice: "طلبك قيد التحضير للشحن",
+    trackYourOrder: "تتبع طلبك",
+    needHelpContactUs: "هل تحتاج للمساعدة؟ اتصل بنا على {email} أو عبر واتساب على {whatsapp}",
 
     // Checkout Form
     checkoutTitle: "إتمام الطلب",
@@ -461,6 +482,11 @@ export const translations = {
     return1DayLater: "إرجاع بعد بيوم",
     unavailableDateBooked: "غير متاح – التاريخ محجوز",
     unavailable: "غير متاح",
+    exclusiveHold: "كوني أول من ترتديه",
+    firstRentalLabel: "لبسة أولى",
+    exclusiveHoldNote1: "الفستان محجوز لكِ فقط",
+    exclusiveHoldNote2: "لا يمكن لأي شخص آخر استئجاره قبل موعد استلامكِ",
+    exclusiveHoldQuickNote: "احجز هذا الفستان حصرياً لمناسبتكِ.",
 
     // Cart Item
     rentLabel: "إيجار",

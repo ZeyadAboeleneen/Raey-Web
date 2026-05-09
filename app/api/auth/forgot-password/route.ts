@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         <hr class="divider">
         
         <p style="text-align: center;">
-          Still having trouble? Contact us at <a href="mailto:Raey@gmail.com">Raey@gmail.com</a> or WhatsApp: +971 50 299 6885
+          Still having trouble? Contact us at <a href="mailto:raey888@gmail.com">raey888@gmail.com</a> or WhatsApp: 01094448044
         </p>
       `,
     })

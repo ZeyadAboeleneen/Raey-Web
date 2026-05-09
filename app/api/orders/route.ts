@@ -104,311 +104,113 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Items, total, and shipping address are required" }, { status: 400 })
     }
 
-    // Validate stock for each item
-    for (const item of items) {
-      if (!item.productId || !item.size || item.quantity === undefined) continue
-
-      const product = await prisma.product.findUnique({ where: { productId: item.productId } })
-
-      // Sell dresses are unique pieces — reject if already sold
-      if (item.branch === "sell-dresses" || (product as any)?.branch === "sell-dresses") {
-        if (product?.isOutOfStock) {
-          return NextResponse.json({
-            error: `"${product.name}" has already been sold and is no longer available.`,
-            outOfStock: true, productId: item.productId,
-          }, { status: 400 })
-        }
-        continue // No further stock checks needed for sell dresses
-      }
-
-      if (!product) continue
-
-      const sizes = product.sizes as any[]
-      const sizeEntry = sizes?.find((s: any) =>
-        s.size === item.size || s.volume === item.size || s.size === item.volume || s.volume === item.volume
-      )
-
-      if (sizeEntry !== undefined && sizeEntry.stockCount !== null && sizeEntry.stockCount !== undefined) {
-        if (sizeEntry.stockCount < item.quantity) {
-          return NextResponse.json({
-            error: `Insufficient stock for ${product.name} (${item.size}). Available: ${sizeEntry.stockCount}`,
-            outOfStock: true, productId: item.productId,
-          }, { status: 400 })
-        }
-      }
-    }
-
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    const finalPaymentScreenshot = paymentScreenshot || null
 
-    // Upload payment screenshot to Cloudinary if it's a base64 string
-    let finalPaymentScreenshot = paymentScreenshot || null
-    if (paymentScreenshot && paymentScreenshot.startsWith("data:image/")) {
-      try {
-        console.log("📸 [API] Uploading payment screenshot to Cloudinary...")
-        finalPaymentScreenshot = await uploadDataUrlToCloudinary(
-          paymentScreenshot,
-          "payments",
-          `order-${orderId}`
-        )
-        console.log("✅ [API] Payment screenshot uploaded:", finalPaymentScreenshot)
-      } catch (uploadError) {
-        console.error("❌ [API] Failed to upload payment screenshot to Cloudinary:", uploadError)
-        // We'll continue with the base64 if upload fails, or we could throw an error
-        // Given the requirement, let's assume we want it to succeed even if upload fails
-        // but it's better to store it as is than to lose it.
-      }
-    }
-
-    // Build order data
-    const orderData: any = {
-      orderId,
-      items: items.map((item: any) => ({ ...item, reviewed: false })),
-      total, shippingAddress,
-      paymentMethod: paymentMethod || "instapay",
-      paymentDetails: paymentDetails || null,
-      paymentScreenshot: finalPaymentScreenshot,
-      discountCode: discountCode || null,
-      discountAmount: discountAmount || 0,
-      depositAmount: depositAmount || 0,
-      remainingAmount: remainingAmount || 0,
-      status: "pending",
-      userId: isLoggedIn ? userId : "guest",
-    }
-
-    // If logged-in user, attach relation
-    let order: any
-    if (isLoggedIn && userId !== "guest") {
-      order = await prisma.order.create({ data: orderData })
-    } else {
-      // Guest orders don't have a userId relation
-      order = await prisma.order.create({ data: { ...orderData, userId: null } as any })
-    }
-
-    // Update stock for each item
-    for (const item of items) {
-      if (!item.productId || !item.size || item.quantity === undefined) continue
-
-      const product = await prisma.product.findUnique({ where: { productId: item.productId } })
-
-      // Sell dresses are unique one-of-a-kind pieces — mark as out of stock immediately after purchase
-      const isSellDress = (product as any)?.branch === "sell-dresses" || item.branch === "sell-dresses"
-      if (isSellDress) {
-        // Upsert: if the product doesn't exist locally yet (ERP-only), create a minimal record
-        await prisma.product.upsert({
-          where: { productId: item.productId },
-          update: { isOutOfStock: true },
-          create: {
-            productId: item.productId,
-            name: item.name || "Sell Dress",
-            branch: "sell-dresses",
-            isOutOfStock: true,
-          },
-        })
-        // Invalidate server-side cache so subsequent listing requests reflect sold-out status
-        clearErpProductCaches()
-        continue
-      }
-
-      if (!product) continue
-
-      const sizes = product.sizes as any[]
-      const updatedSizes = sizes?.map((s: any) => {
-        const matches = s.size === item.size || s.volume === item.size || s.size === item.volume || s.volume === item.volume
-        if (matches && s.stockCount !== null && s.stockCount !== undefined) {
-          return { ...s, stockCount: Math.max(0, s.stockCount - item.quantity) }
-        }
-        return s
-      })
-
-      if (updatedSizes) {
-        const isOutOfStock = (updatedSizes as any[]).every((s: any) => !s.stockCount && s.stockCount !== undefined)
-        await prisma.product.update({
-          where: { productId: item.productId },
-          data: { sizes: updatedSizes, isOutOfStock },
-        })
-      }
-    }
-
-    // ── Sync rental bookings to MSSQL ERP with TRANSACTIONAL PRICING ──
-    // Race-condition safe: pricing read + booking insert happen inside a transaction.
-    // Server-calculated price ALWAYS overrides frontend price.
-    const serverCalculatedPrices: Array<{
-      productId: string
-      serverPrice: number
-      category: string
-      formula: string
-    }> = []
-
-    try {
-      const pool = await getMssqlPool()
-
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Validate stock for each item inside the transaction
       for (const item of items) {
-        if (item.type === "rent" && item.rentStart && item.rentEnd) {
-          const branchId = mapBranchSlugToBranchId(item.branch) || 15
-          const modelTypeId = parseInt(item.productId, 10)
+        if (!item.productId || !item.size || item.quantity === undefined) continue
 
-          if (isNaN(modelTypeId)) continue
+        const product = await tx.product.findUnique({ where: { productId: item.productId } })
 
-          // ── Validate dates ────────────────────────────────────
-          const rentStartDate = new Date(item.rentStart)
-          const rentEndDate = new Date(item.rentEnd)
-
-          if (isNaN(rentStartDate.getTime()) || isNaN(rentEndDate.getTime())) {
-            console.error(`Invalid rental dates for item ${item.productId}`)
-            continue
+        const isSellDress = (product as any)?.branch === "sell-dresses" || item.branch === "sell-dresses"
+        if (isSellDress) {
+          if (product?.isOutOfStock) {
+            throw new Error(`"${product.name || item.name}" has already been sold.`)
           }
+          continue 
+        }
 
-          if (rentEndDate <= rentStartDate) {
-            console.error(`rentEnd must be after rentStart for item ${item.productId}`)
-            continue
-          }
+        if (!product) continue
 
-          // ── BEGIN TRANSACTION: price calculation + booking insert ──
-          const txn = new sql.Transaction(pool)
-          await txn.begin(sql.ISOLATION_LEVEL.SERIALIZABLE)
+        const sizes = product.sizes as any[]
+        const sizeEntry = sizes?.find((s: any) =>
+          s.size === item.size || s.volume === item.size || s.size === item.volume || s.volume === item.volume
+        )
 
-          try {
-            // 1. Calculate server-side price (reads Item_buypric + rental count inside txn)
-            const pricingResult = await calculateRentalPrice(
-              {
-                productId: item.productId,
-                rentStart: rentStartDate,
-                rentEnd: rentEndDate,
-                isExclusive: Boolean(item.isExclusive),
-              },
-              txn,
-            )
-
-            const serverPrice = pricingResult.total
-
-            // Add extra day fees (200 EGP per extra day)
-            const extraDaysFee = ((item.extraDayBefore ? 1 : 0) + (item.extraDayAfter ? 1 : 0)) * 200
-            const finalPrice = serverPrice + extraDaysFee
-
-            // 2. Double-booking check inside transaction
-            const overlapCheck = await new sql.Request(txn)
-              .input('ModelTypeID', sql.Int, modelTypeId)
-              .input('requestedStart', sql.DateTime, rentStartDate)
-              .input('requestedEnd', sql.DateTime, rentEndDate)
-              .query(`
-                SELECT COUNT(*) AS cnt
-                FROM Booking
-                WHERE ModelTypeID = @ModelTypeID
-                  AND @requestedStart < ReturnDate
-                  AND @requestedEnd >= ReceivedDate
-              `)
-
-            if (overlapCheck.recordset[0].cnt > 0) {
-              await txn.rollback()
-              console.error(`Double-booking detected for item ${item.productId}`)
-              continue
-            }
-
-            // 3. Build NoteItem with exclusive flag and extra days
-            const exclusivePrefix = item.isExclusive ? '[EXCLUSIVE] ' : ''
-            const extraDayLabels = []
-            if (item.extraDayBefore) extraDayLabels.push('+1 day before')
-            if (item.extraDayAfter) extraDayLabels.push('+1 day after')
-            const extraDaySuffix = extraDayLabels.length > 0 ? ` [${extraDayLabels.join(', ')}]` : ''
-            const noteItem = `${exclusivePrefix}Web Order: ${item.size} - Qty: ${item.quantity}${extraDaySuffix}`
-
-            // 4. INSERT booking with SERVER-CALCULATED price (never trust frontend)
-            await new sql.Request(txn)
-              .input('invoice_code', sql.NVarChar, `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50))
-              .input('Cust_Name', sql.NVarChar, (shippingAddress.name || '').substring(0, 50))
-              .input('Cust_Tel', sql.NVarChar, (shippingAddress.secondaryPhone || '').substring(0, 50))
-              .input('Cust_Mobile', sql.NVarChar, (shippingAddress.phone || '').substring(0, 50))
-              .input('Cust_Address', sql.NVarChar, (shippingAddress.address || '').substring(0, 50))
-              .input('DeviceTypeID', sql.Int, 0)
-              .input('ModelTypeID', sql.Int, modelTypeId)
-              .input('Scarves', sql.Bit, 0)
-              .input('CashMayo', sql.Bit, 0)
-              .input('Other', sql.Bit, 0)
-              .input('OtheNote', sql.NVarChar, '')
-              .input('BookingDate', sql.DateTime, new Date())
-              .input('ReceivedDate', sql.DateTime, rentStartDate)
-              .input('ReturnDate', sql.DateTime, rentEndDate)
-              .input('Emp_ID', sql.Int, 1)
-              .input('CurrencyID', sql.Int, 1)
-              .input('ExRate', sql.Decimal(18, 2), 1.0)
-              .input('Total', sql.Decimal(18, 2), finalPrice)
-              .input('Deposit', sql.Decimal(18, 2), finalPrice * 0.5)
-              .input('Remaining', sql.Decimal(18, 2), finalPrice * 0.5)
-              .input('NoteItem', sql.NVarChar, noteItem.substring(0, 200))
-              .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust).substring(0, 20) : '')
-              .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist).substring(0, 20) : '')
-              .input('ButtocksSize', sql.NVarChar, item.customMeasurements?.values?.hips ? String(item.customMeasurements.values.hips).substring(0, 20) : '')
-              .input('SleeveSize', sql.NVarChar, item.customMeasurements?.values?.sleeve ? String(item.customMeasurements.values.sleeve).substring(0, 20) : '')
-              .input('ApprovedID', sql.Int, 1)
-              .input('Desc_Customer', sql.NVarChar, '')
-              .input('BranchID', sql.Int, branchId)
-              .input('UserID', sql.Int, 1)
-              .input('CariedOver', sql.Bit, 0)
-              .input('LastUpdate', sql.DateTime, new Date())
-              .input('Transfer', sql.Bit, 0)
-              .input('Paid', sql.Decimal(18, 2), 0)
-              .input('PersonalityinvestigationId', sql.Int, 0)
-              .input('GuaranteeAmount', sql.Decimal(18, 2), 0)
-              .input('GuaranteeNote', sql.NVarChar, '')
-              .input('ReturnNote', sql.NVarChar, '')
-              .input('AdditionalCost', sql.Decimal(18, 2), 0)
-              .input('First', sql.Bit, 1)
-              .input('OccasionDate', sql.DateTime, new Date(rentStartDate.getTime() + 24 * 60 * 60 * 1000))
-              .query(`
-                INSERT INTO Booking (
-                  invoice_code, Cust_Name, Cust_Tel, Cust_Mobile, Cust_Address,
-                  DeviceTypeID, ModelTypeID, Scarves, CashMayo, Other, OtheNote,
-                  BookingDate, ReceivedDate, ReturnDate, Emp_ID, CurrencyID,
-                  ExRate, Total, Deposit, Remaining, NoteItem,
-                  BreastSize, WaistSize, ButtocksSize, SleeveSize,
-                  ApprovedID, Desc_Customer, BranchID, UserID, CariedOver,
-                  LastUpdate, Transfer, Paid, PersonalityinvestigationId,
-                  GuaranteeAmount, GuaranteeNote, ReturnNote, AdditionalCost,
-                  First, OccasionDate
-                ) VALUES (
-                  @invoice_code, @Cust_Name, @Cust_Tel, @Cust_Mobile, @Cust_Address,
-                  @DeviceTypeID, @ModelTypeID, @Scarves, @CashMayo, @Other, @OtheNote,
-                  @BookingDate, @ReceivedDate, @ReturnDate, @Emp_ID, @CurrencyID,
-                  @ExRate, @Total, @Deposit, @Remaining, @NoteItem,
-                  @BreastSize, @WaistSize, @ButtocksSize, @SleeveSize,
-                  @ApprovedID, @Desc_Customer, @BranchID, @UserID, @CariedOver,
-                  @LastUpdate, @Transfer, @Paid, @PersonalityinvestigationId,
-                  @GuaranteeAmount, @GuaranteeNote, @ReturnNote, @AdditionalCost,
-                  @First, @OccasionDate
-                )
-              `)
-
-            await txn.commit()
-
-            console.log(`✅ [Pricing] Item ${item.productId}: ${pricingResult.category} = ${finalPrice} EGP (base: ${serverPrice} + extra days: ${extraDaysFee}) (${pricingResult.formula})`)
-
-            serverCalculatedPrices.push({
-              productId: item.productId,
-              serverPrice: finalPrice,
-              category: pricingResult.category,
-              formula: pricingResult.formula,
-            })
-          } catch (txnError: any) {
-            // Rollback on any error inside the transaction
-            try { await txn.rollback() } catch { /* already rolled back */ }
-            console.error(`Failed to process rental booking for item ${item.productId}:`, txnError)
+        if (sizeEntry !== undefined && sizeEntry.stockCount !== null && sizeEntry.stockCount !== undefined) {
+          if (sizeEntry.stockCount < item.quantity) {
+            throw new Error(`Insufficient stock for ${product.name} (${item.size}). Available: ${sizeEntry.stockCount}`)
           }
         }
       }
-    } catch (erpError) {
-      console.error("Failed to sync bookings to ERP:", erpError)
-      // Do not block the primary checkout success if the local order succeeded
-    }
+
+      // 2. Create the order
+      const orderData: any = {
+        orderId,
+        items: items.map((item: any) => ({ ...item, reviewed: false })),
+        total, shippingAddress,
+        paymentMethod: paymentMethod || "instapay",
+        paymentDetails: paymentDetails || null,
+        paymentScreenshot: finalPaymentScreenshot,
+        discountCode: discountCode || null,
+        discountAmount: discountAmount || 0,
+        depositAmount: depositAmount || 0,
+        remainingAmount: remainingAmount || 0,
+        status: "pending",
+        userId: isLoggedIn ? userId : null,
+      }
+
+      const order = await tx.order.create({ data: orderData })
+
+      // 3. Update local stock immediately
+      for (const item of items) {
+        if (!item.productId || !item.size || item.quantity === undefined) continue
+
+        const product = await tx.product.findUnique({ where: { productId: item.productId } })
+
+        const isSellDress = (product as any)?.branch === "sell-dresses" || item.branch === "sell-dresses"
+        if (isSellDress) {
+          await tx.product.upsert({
+            where: { productId: item.productId },
+            update: { isOutOfStock: true },
+            create: {
+              productId: item.productId,
+              name: item.name || "Sell Dress",
+              branch: "sell-dresses",
+              isOutOfStock: true,
+            },
+          })
+          continue
+        }
+
+        if (!product) continue
+
+        const sizes = product.sizes as any[]
+        const updatedSizes = sizes?.map((s: any) => {
+          const matches = s.size === item.size || s.volume === item.size || s.size === item.volume || s.volume === item.volume
+          if (matches && s.stockCount !== null && s.stockCount !== undefined) {
+            return { ...s, stockCount: Math.max(0, s.stockCount - item.quantity) }
+          }
+          return s
+        })
+
+        if (updatedSizes) {
+          const isOutOfStock = (updatedSizes as any[]).every((s: any) => !s.stockCount && s.stockCount !== undefined)
+          await tx.product.update({
+            where: { productId: item.productId },
+            data: { sizes: updatedSizes, isOutOfStock },
+          })
+        }
+      }
+
+      return order
+    }, { timeout: 30000 })
+
+    // 4. Invalidate caches after successful transaction
+    clearErpProductCaches()
 
     return NextResponse.json({
       success: true,
-      order: transformOrder(order),
-      orderId: order.orderId,
-      // Return server-calculated rental prices so frontend can display them
-      ...(serverCalculatedPrices.length > 0 && { serverCalculatedPrices }),
+      order: transformOrder(result),
+      orderId: result.orderId,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create order error:", error)
+    if (error.message?.includes("sold") || error.message?.includes("stock")) {
+      return NextResponse.json({ error: error.message, outOfStock: true }, { status: 400 })
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

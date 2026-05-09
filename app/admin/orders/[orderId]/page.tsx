@@ -313,7 +313,14 @@ export default function AdminOrderDetailsPage() {
                       <div key={index} className="flex space-x-4 p-4 border rounded-lg">
                         <Image src={item.image || "/placeholder.svg"} alt={item.name} width={80} height={80} className="rounded-lg object-cover" />
                         <div className="flex-1">
-                          <h3 className="font-medium text-lg">{item.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-lg">{item.name}</h3>
+                            {item.isExclusive && (
+                              <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider border border-amber-200">
+                                First Rental
+                              </span>
+                            )}
+                          </div>
                           <p className="text-gray-600">
                             <span className="font-semibold text-amber-600 mr-1 capitalize">
                               {(item as any).collection || (item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch ? "Rent" : "Buy")}:

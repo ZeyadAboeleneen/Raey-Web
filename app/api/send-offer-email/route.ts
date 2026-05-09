@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.alanoudalqadi.com"
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://raey-web.vercel.app"
 
     // Create email content sections
     const greeting = createEmailSection({
