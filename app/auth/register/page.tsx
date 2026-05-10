@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation } from "@/lib/translations"
 
-export default function RegisterPage() {
+function RegisterContent() {
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const [formData, setFormData] = useState({
@@ -210,5 +210,17 @@ export default function RegisterPage() {
         </div>
       </section>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   )
 }

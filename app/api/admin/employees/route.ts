@@ -1,12 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
+import { withPipeline } from "@/lib/api-pipeline"
 
-/**
- * Helper: extract permission booleans from an Employee record
- * and return them as a nested "permissions" object matching the frontend shape.
- */
 function formatEmployeeForClient(emp: any) {
   const {
     passwordHash,
@@ -25,7 +21,7 @@ function formatEmployeeForClient(emp: any) {
 
   return {
     ...rest,
-    name: fullName, // Frontend expects "name"
+    name: fullName,
     permissions: {
       canAddProducts,
       canEditProducts,
@@ -40,88 +36,34 @@ function formatEmployeeForClient(emp: any) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    // Auth check
-    const authHeader = request.headers.get("Authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+export const GET = withPipeline(async (request) => {
+  const employees = await prisma.employee.findMany({
+    orderBy: { createdAt: "desc" },
+  })
+  return NextResponse.json(employees.map(formatEmployeeForClient))
+}, { role: "admin" })
 
-    const token = authHeader.split(" ")[1]
-    let decoded: any
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!)
-    } catch (e) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
+import { OutboxService } from "@/services/outbox.service"
+import { getRequestMetadata } from "@/lib/audit"
 
-    // Only admin can list employees
-    if (decoded.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const POST = withPipeline(async (request, currentEmployee) => {
+  const body = await request.json()
+  const { name, email, password, phone, role, isActive, permissions } = body
 
-    const employees = await prisma.employee.findMany({
-      orderBy: { createdAt: "desc" },
-    })
-
-    // Format for frontend (nest permissions, rename fullName → name, remove passwordHash)
-    const safeEmployees = employees.map(formatEmployeeForClient)
-
-    return NextResponse.json(safeEmployees)
-  } catch (error: any) {
-    console.error("Error fetching employees:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    )
+  if (!name || !email || !password) {
+    return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 })
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get("Authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  const passwordHash = await bcrypt.hash(password, 10)
 
-    const token = authHeader.split(" ")[1]
-    let decoded: any
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!)
-    } catch (e) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
+  // ATOMIC TRANSACTION: Business Data + Outbox Event
+  const newEmployee = await prisma.$transaction(async (tx) => {
+    // 1. Check uniqueness
+    const existing = await tx.employee.findUnique({ where: { email } })
+    if (existing) throw new Error("Employee with this email already exists")
 
-    if (decoded.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { name, email, password, phone, role, isActive, permissions } = body
-
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Name, email and password are required" },
-        { status: 400 }
-      )
-    }
-
-    // Check if email already exists in employees
-    const existingEmployee = await prisma.employee.findUnique({
-      where: { email },
-    })
-
-    if (existingEmployee) {
-      return NextResponse.json(
-        { error: "Employee with this email already exists" },
-        { status: 400 }
-      )
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10)
-
-    const newEmployee = await prisma.employee.create({
+    // 2. Create record
+    const emp = await tx.employee.create({
       data: {
         fullName: name,
         email,
@@ -130,8 +72,6 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         role: role || "staff",
         isActive: isActive !== undefined ? isActive : true,
-
-        // Permission booleans (flat fields)
         canAddProducts: permissions?.canAddProducts || false,
         canEditProducts: permissions?.canEditProducts || false,
         canDeleteProducts: permissions?.canDeleteProducts || false,
@@ -139,20 +79,26 @@ export async function POST(request: NextRequest) {
         canViewOrders: permissions?.canViewOrders || false,
         canUpdateOrders: permissions?.canUpdateOrders || false,
         canDeleteOrders: permissions?.canDeleteOrders || false,
-        canViewPricesInDashboard:
-          permissions?.canViewPricesInDashboard || false,
+        canViewPricesInDashboard: permissions?.canViewPricesInDashboard || false,
         canViewPricesOnWebsite: permissions?.canViewPricesOnWebsite || false,
+        canManageDiscountCodes: permissions?.canManageDiscountCodes || false,
+        canManageOffers: permissions?.canManageOffers || false,
+        favorites: [],
       },
     })
 
-    return NextResponse.json(formatEmployeeForClient(newEmployee), {
-      status: 201,
-    })
-  } catch (error: any) {
-    console.error("Error creating employee:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+    // 3. Enqueue Audit Event into Outbox (Transactional)
+    await OutboxService.enqueue("AUDIT_LOG", {
+      action: "EMPLOYEE_CREATE",
+      actorId: currentEmployee.id,
+      entity: "Employee",
+      entityId: emp.id,
+      after: formatEmployeeForClient(emp),
+      metadata: getRequestMetadata(request)
+    }, tx)
+
+    return emp
+  })
+
+  return NextResponse.json(formatEmployeeForClient(newEmployee), { status: 201 })
+}, { role: "admin", idempotent: true })

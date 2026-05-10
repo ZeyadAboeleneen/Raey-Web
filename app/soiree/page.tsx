@@ -148,7 +148,7 @@ export default function SoireePage() {
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const { heroImages } = useSiteSettings()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
 
   const sizeChart: SizeChartRow[] = [
     { label: "XL", shoulderIn: "16", waistIn: "32", bustIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", bustCm: "101", hipsCm: "106", sleeveCm: "58" },
@@ -434,7 +434,7 @@ export default function SoireePage() {
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                         {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
                           <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                            {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
+                            {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
                           </span>
                         )}
                         {hasDiscount ? (
@@ -654,3 +654,4 @@ export default function SoireePage() {
     </div>
   )
 }
+

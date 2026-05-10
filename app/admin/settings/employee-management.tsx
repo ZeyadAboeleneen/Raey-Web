@@ -240,7 +240,7 @@ export function EmployeeManagement() {
                   <TableCell className="font-medium">{employee.name}</TableCell>
                   <TableCell>{employee.email}</TableCell>
                   <TableCell>
-                    <Badge variant={employee.role === "admin" ? "default" : "secondary"} className="capitalize">
+                    <Badge variant={employee.role === "admin" ? "default" : employee.role === "manager" ? "default" : "secondary"} className={`capitalize ${employee.role === "manager" ? "bg-purple-100 text-purple-800 hover:bg-purple-100" : ""}`}>
                       {employee.role}
                     </Badge>
                   </TableCell>
@@ -278,17 +278,19 @@ export function EmployeeManagement() {
                 <h3 className="font-semibold border-b pb-2">Account Details</h3>
                 
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Full Name</Label>
                   <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Email Address</Label>
+                  <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Email Address</Label>
                   <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>{editingId ? "New Password (leave blank to keep current)" : "Password"}</Label>
+                  <Label className={!editingId ? "after:content-['*'] after:ml-0.5 after:text-red-500" : ""}>
+                    {editingId ? "New Password (leave blank to keep current)" : "Password"}
+                  </Label>
                   <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required={!editingId} />
                 </div>
                 
@@ -298,13 +300,14 @@ export function EmployeeManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Role</Label>
                   <Select value={formData.role} onValueChange={v => setFormData({...formData, role: v})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="custom">Custom</SelectItem>
                     </SelectContent>

@@ -21,6 +21,7 @@ import { Loader2, Plus, Edit2, Trash2, Shield, AlertTriangle } from "lucide-reac
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { cn } from "@/lib/utils"
 
 type Employee = any // Will use proper type later if needed, but 'any' is fine for rapid UI.
 
@@ -194,195 +195,234 @@ export function EmployeeManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-lg font-medium">Employee Accounts</h2>
-          <p className="text-sm text-gray-500">Manage dashboard access and permissions for your team.</p>
+          <h2 className="text-xl font-semibold tracking-tight">Employee Accounts</h2>
+          <p className="text-sm text-gray-500 mt-1">Configure dashboard access levels and permissions</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-black text-white hover:bg-gray-800">
+        <Button onClick={() => handleOpenDialog()} className="bg-black text-white hover:bg-gray-800 rounded-xl px-6">
           <Plus className="mr-2 h-4 w-4" /> Add Employee
         </Button>
       </div>
 
-      <Card>
+      <div className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+          <TableHeader className="bg-gray-50/50">
+            <TableRow className="hover:bg-transparent border-0">
+              <TableHead className="py-4 font-medium text-gray-600">Employee Details</TableHead>
+              <TableHead className="py-4 font-medium text-gray-600">Role</TableHead>
+              <TableHead className="py-4 font-medium text-gray-600">Access</TableHead>
+              <TableHead className="py-4 text-right font-medium text-gray-600 pr-6">Manage</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                  No employees found.
+                <TableCell colSpan={4} className="text-center py-12 text-gray-400">
+                  <div className="flex flex-col items-center gap-2">
+                    <Shield className="h-8 w-8 opacity-20" />
+                    <p className="text-sm">No employee accounts found</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
               employees.map((emp) => (
-                <TableRow key={emp.id}>
-                  <TableCell>
-                    <div className="font-medium">{emp.fullName}</div>
-                    <div className="text-sm text-gray-500">{emp.email} • {emp.username}</div>
+                <TableRow key={emp.id} className="group hover:bg-gray-50/50 transition-colors border-gray-50">
+                  <TableCell className="py-4">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-gray-900">{emp.fullName}</span>
+                      <span className="text-xs text-gray-500">{emp.email} • <span className="font-mono">{emp.username}</span></span>
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={emp.role === "admin" ? "default" : "secondary"}>
+                  <TableCell className="py-4">
+                    <Badge variant="outline" className={cn(
+                      "capitalize font-medium border-0 px-3 py-1",
+                      emp.role === "admin" ? "bg-black text-white" : 
+                      emp.role === "manager" ? "bg-purple-100 text-purple-700" :
+                      "bg-gray-100 text-gray-700"
+                    )}>
                       {emp.role}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-4">
                     <Switch
                       checked={emp.isActive}
                       onCheckedChange={(c) => handleToggleActive(emp, c)}
+                      className="data-[state=checked]:bg-green-500"
                     />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(emp)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => {
-                      setSelectedEmployee(emp)
-                      setDeleteDialogOpen(true)
-                    }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <TableCell className="text-right py-4 pr-6">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600" onClick={() => handleOpenDialog(emp)}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-600" onClick={() => {
+                        setSelectedEmployee(emp)
+                        setDeleteDialogOpen(true)
+                      }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-      </Card>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedEmployee ? "Edit Employee" : "Add Employee"}</DialogTitle>
-            <DialogDescription>
-              Configure employee details and set granular access permissions.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-            {/* Account Details */}
-            <div className="space-y-4">
-              <h3 className="font-semibold flex items-center gap-2"><Shield className="h-4 w-4" /> Account Details</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name <span className="text-red-500">*</span></Label>
-                <Input id="fullName" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
-                <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username">Username <span className="text-red-500">*</span></Label>
-                <Input id="username" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password {selectedEmployee ? "(Leave blank to keep current)" : "<span className='text-red-500'>*</span>"}</Label>
-                <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone (Optional)</Label>
-                <Input id="phone" value={formData.phone || ""} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formData.role === "admin" && (
-                  <p className="text-xs text-amber-600 mt-1">Admin role bypasses all permission checks.</p>
-                )}
-              </div>
-            </div>
-
-            {/* Permissions */}
-            <div className="space-y-6">
-              <h3 className="font-semibold">Permissions</h3>
-              
-              <div className={formData.role === "admin" ? "opacity-50 pointer-events-none" : ""}>
-                <div className="space-y-1 mb-4">
-                  <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Products</h4>
-                  <Card className="p-3">
-                    <PermissionToggle field="canViewProducts" label="View Products" />
-                    <PermissionToggle field="canAddProducts" label="Add Products" />
-                    <PermissionToggle field="canEditProducts" label="Edit Products" />
-                    <PermissionToggle field="canDeleteProducts" label="Delete Products" />
-                  </Card>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 shadow-2xl rounded-3xl">
+          <div className="bg-black p-8 text-white">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-10 w-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-white" />
                 </div>
-
-                <div className="space-y-1 mb-4">
-                  <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Orders</h4>
-                  <Card className="p-3">
-                    <PermissionToggle field="canViewOrders" label="View Orders" />
-                    <PermissionToggle field="canUpdateOrders" label="Update Orders" />
-                    <PermissionToggle field="canDeleteOrders" label="Delete Orders" />
-                  </Card>
-                </div>
-
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Pricing & Marketing</h4>
-                  <Card className="p-3">
-                    <PermissionToggle field="canViewPricesInDashboard" label="View Prices in Dashboard" />
-                    <PermissionToggle field="canViewPricesOnWebsite" label="View Prices on Website" />
-                    <PermissionToggle field="canManageDiscountCodes" label="Manage Discount Codes" />
-                    <PermissionToggle field="canManageOffers" label="Manage Offers" />
-                  </Card>
+                <div>
+                  <DialogTitle className="text-2xl text-white">{selectedEmployee ? "Modify Employee" : "New Account"}</DialogTitle>
+                  <DialogDescription className="text-white/60">
+                    Define access levels and security credentials
+                  </DialogDescription>
                 </div>
               </div>
-            </div>
+            </DialogHeader>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-black text-white hover:bg-gray-800">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {selectedEmployee ? "Save Changes" : "Create Employee"}
-            </Button>
-          </DialogFooter>
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {/* Account Details */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b pb-2">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Identity</h3>
+                </div>
+                
+                <div className="grid gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fullName" className="text-xs font-semibold text-gray-600 ml-1">Full Name</Label>
+                    <Input id="fullName" className="rounded-xl border-gray-100 focus:border-black transition-all" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email" className="text-xs font-semibold text-gray-600 ml-1">Email</Label>
+                      <Input id="email" type="email" className="rounded-xl border-gray-100 focus:border-black" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="username" className="text-xs font-semibold text-gray-600 ml-1">Username</Label>
+                      <Input id="username" className="rounded-xl border-gray-100 focus:border-black" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-xs font-semibold text-gray-600 ml-1">
+                      Password {selectedEmployee && <span className="text-[10px] text-gray-400 font-normal ml-2">(Keep empty to skip change)</span>}
+                    </Label>
+                    <Input id="password" type="password" className="rounded-xl border-gray-100 focus:border-black" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone" className="text-xs font-semibold text-gray-600 ml-1">Phone</Label>
+                      <Input id="phone" placeholder="+20..." className="rounded-xl border-gray-100 focus:border-black" value={formData.phone || ""} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-600 ml-1">Primary Role</Label>
+                      <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                        <SelectTrigger className="rounded-xl border-gray-100 focus:ring-0 focus:ring-offset-0">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                          <SelectItem value="admin" className="rounded-lg">Administrator</SelectItem>
+                          <SelectItem value="manager" className="rounded-lg">Manager</SelectItem>
+                          <SelectItem value="staff" className="rounded-lg">Staff Member</SelectItem>
+                          <SelectItem value="custom" className="rounded-lg">Custom Access</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b pb-2">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Permissions</h3>
+                </div>
+                
+                <div className={cn("space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar", formData.role === "admin" && "opacity-30 grayscale pointer-events-none")}>
+                  {formData.role === "admin" && (
+                    <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl flex items-center gap-3">
+                      <Shield className="h-4 w-4 text-amber-600" />
+                      <p className="text-[11px] text-amber-800 font-medium leading-tight">Admin role grants absolute authority and bypasses all granular permission checks.</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Inventory Control</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        <PermissionToggle field="canViewProducts" label="View Product Catalog" />
+                        <PermissionToggle field="canAddProducts" label="Create New Listings" />
+                        <PermissionToggle field="canEditProducts" label="Update Existing Products" />
+                        <PermissionToggle field="canDeleteProducts" label="Remove Items from Store" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Processing</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        <PermissionToggle field="canViewOrders" label="Review Order History" />
+                        <PermissionToggle field="canUpdateOrders" label="Modify Live Orders" />
+                        <PermissionToggle field="canDeleteOrders" label="Archive/Cancel Records" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Revenue & Marketing</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        <PermissionToggle field="canViewPricesInDashboard" label="Access Financial Data" />
+                        <PermissionToggle field="canViewPricesOnWebsite" label="Toggle Storefront Visibility" />
+                        <PermissionToggle field="canManageDiscountCodes" label="Issue Promotional Codes" />
+                        <PermissionToggle field="canManageOffers" label="Create Flash Sale Offers" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-10 pt-6 border-t border-gray-50">
+              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl px-8 text-gray-500">Cancel</Button>
+              <Button onClick={handleSave} disabled={saving} className="bg-black text-white hover:bg-gray-800 rounded-xl px-10 shadow-lg shadow-black/10">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {selectedEmployee ? "Update Account" : "Initialize Account"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-3xl border-0 shadow-2xl p-8 max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Employee</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {selectedEmployee?.fullName}? This action cannot be undone.
+            <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+            </div>
+            <DialogTitle className="text-xl">Delete Account?</DialogTitle>
+            <DialogDescription className="text-gray-500">
+              You are about to remove <span className="font-bold text-gray-900">{selectedEmployee?.fullName}</span>. This will immediately revoke all access to the administration panel.
             </DialogDescription>
           </DialogHeader>
-          <Alert variant="destructive" className="mt-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Warning</AlertTitle>
-            <AlertDescription>
-              Deleting an employee immediately revokes their access.
-            </AlertDescription>
-          </Alert>
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
+          
+          <div className="flex flex-col gap-3 mt-8">
+            <Button variant="destructive" onClick={handleDelete} disabled={saving} className="rounded-xl h-12 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirm Deletion"}
             </Button>
-          </DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)} className="rounded-xl h-12 text-gray-500 hover:bg-gray-50">
+              Keep Account
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

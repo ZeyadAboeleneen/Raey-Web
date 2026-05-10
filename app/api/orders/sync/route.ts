@@ -71,19 +71,26 @@ export async function POST(request: NextRequest) {
           await txn.begin(sql.ISOLATION_LEVEL.SERIALIZABLE)
 
           try {
-            const pricingResult = await calculateRentalPrice(
-              {
-                productId: item.productId,
-                rentStart: rentStartDate,
-                rentEnd: rentEndDate,
-                isExclusive: Boolean(item.isExclusive),
-              },
-              txn,
-            )
-
-            const serverPrice = pricingResult.total
-            const extraDaysFee = ((item.extraDayBefore ? 1 : 0) + (item.extraDayAfter ? 1 : 0)) * 200
-            const finalPrice = serverPrice + extraDaysFee
+            // Use the price from the order (which may be staff-overridden) if available
+            // Otherwise, calculate server-side as a fallback
+            let finalPrice: number
+            if (item.price && item.price > 0) {
+              // Trust the price from the cart — it may have been overridden by staff
+              finalPrice = item.price
+            } else {
+              const pricingResult = await calculateRentalPrice(
+                {
+                  productId: item.productId,
+                  rentStart: rentStartDate,
+                  rentEnd: rentEndDate,
+                  isExclusive: Boolean(item.isExclusive),
+                },
+                txn,
+              )
+              const serverPrice = pricingResult.total
+              const extraDaysFee = ((item.extraDayBefore ? 1 : 0) + (item.extraDayAfter ? 1 : 0)) * 200
+              finalPrice = serverPrice + extraDaysFee
+            }
 
             const overlapCheck = await new sql.Request(txn)
               .input('ModelTypeID', sql.Int, modelTypeId)
@@ -176,7 +183,7 @@ export async function POST(request: NextRequest) {
               `)
 
             await txn.commit()
-            console.log(`✅ [Pricing/Sync] Item ${item.productId}: ${pricingResult.category} = ${finalPrice} EGP`)
+            console.log(`✅ [Pricing/Sync] Item ${item.productId}: ${item.price ? 'Cart Price' : 'Server Calc'} = ${finalPrice} EGP`)
           } catch (txnError: any) {
             try { await txn.rollback() } catch { /* already rolled back */ }
             console.error(`Failed to process rental booking for item ${item.productId}:`, txnError)

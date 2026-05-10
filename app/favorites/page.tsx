@@ -36,7 +36,7 @@ export default function FavoritesPage() {
       fetchPricesForIds(ids)
     }
   }, [occasionDate, favoritesState.items, fetchPricesForIds])
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -210,7 +210,7 @@ export default function FavoritesPage() {
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                         {isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 && !exactDynamicPrice && (
                                           <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                            {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
+                                            {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
                                           </span>
                                         )}
                                         {hasDiscount ? (
@@ -247,3 +247,4 @@ export default function FavoritesPage() {
     </div>
   )
 }
+

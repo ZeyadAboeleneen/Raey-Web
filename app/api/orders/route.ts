@@ -83,8 +83,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { getStoredResponse, storeResponse } from "@/lib/idempotency"
+
 export async function POST(request: NextRequest) {
   try {
+    // ── Idempotency Check ─────────────────────────────────────
+    const idempotencyKey = request.headers.get("Idempotency-Key")
+    if (idempotencyKey) {
+      const stored = await getStoredResponse(idempotencyKey)
+      if (stored) {
+        console.log(`[IDEMPOTENCY] Returning stored response for key: ${idempotencyKey}`)
+        return NextResponse.json(stored)
+      }
+    }
+
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
     let userId: string | "guest" = "guest"
     let isLoggedIn = false
@@ -201,11 +213,17 @@ export async function POST(request: NextRequest) {
     // 4. Invalidate caches after successful transaction
     clearErpProductCaches()
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       order: transformOrder(result),
       orderId: result.orderId,
-    })
+    }
+
+    if (idempotencyKey) {
+      await storeResponse(idempotencyKey, responseData)
+    }
+
+    return NextResponse.json(responseData)
   } catch (error: any) {
     console.error("Create order error:", error)
     if (error.message?.includes("sold") || error.message?.includes("stock")) {

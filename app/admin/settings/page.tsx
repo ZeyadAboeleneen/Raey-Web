@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -19,10 +19,9 @@ import {
   RefreshCw,
   X,
 } from "lucide-react"
-import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 import { EmployeeManagement } from "@/components/admin/employee-management"
 
 interface HeroImages {
@@ -35,7 +34,7 @@ const DEFAULT_HERO_IMAGES: HeroImages = {
   soiree: "/elraey-bg.PNG",
 }
 
-export default function AdminSettings() {
+function AdminSettingsContent() {
   const router = useRouter()
   const { state: authState } = useAuth()
   const [activeTab, setActiveTab] = useState("appearance")
@@ -50,9 +49,9 @@ export default function AdminSettings() {
   const weddingInputRef = useRef<HTMLInputElement>(null)
   const soireeInputRef = useRef<HTMLInputElement>(null)
 
-  const getAuthToken = () => {
+  const getAuthToken = useCallback(() => {
     return authState.token || localStorage.getItem("token") || ""
-  }
+  }, [authState.token])
 
   // Fetch current settings
   const fetchSettings = useCallback(async () => {
@@ -61,10 +60,12 @@ export default function AdminSettings() {
       const res = await fetch("/api/settings")
       if (res.ok) {
         const data = await res.json()
-        setHeroImages({
-          wedding: data.heroImages?.wedding || DEFAULT_HERO_IMAGES.wedding,
-          soiree: data.heroImages?.soiree || DEFAULT_HERO_IMAGES.soiree,
-        })
+        if (data) {
+          setHeroImages({
+            wedding: data.heroImages?.wedding || DEFAULT_HERO_IMAGES.wedding,
+            soiree: data.heroImages?.soiree || DEFAULT_HERO_IMAGES.soiree,
+          })
+        }
       }
     } catch (err) {
       console.error("Error fetching settings:", err)
@@ -81,7 +82,9 @@ export default function AdminSettings() {
       return
     }
 
-    router.push("/auth/login")
+    if (!authState.isLoading && (!authState.isAuthenticated || authState.user?.role !== "admin")) {
+      router.push("/auth/login")
+    }
   }, [authState.isAuthenticated, authState.isLoading, authState.user?.role, fetchSettings, router])
 
   const handleImageSelect = (
@@ -161,7 +164,7 @@ export default function AdminSettings() {
 
       const result = await res.json()
 
-      if (res.ok) {
+      if (res.ok && result) {
         setHeroImages({
           wedding: result.heroImages?.wedding || heroImages.wedding,
           soiree: result.heroImages?.soiree || heroImages.soiree,
@@ -172,8 +175,8 @@ export default function AdminSettings() {
         setSoireeDataUrl(null)
         toast.success("Hero images updated successfully!")
       } else {
-        setError(result.error || "Failed to save settings")
-        toast.error(result.error || "Failed to save settings")
+        setError(result?.error || "Failed to save settings")
+        toast.error(result?.error || "Failed to save settings")
       }
     } catch (err: any) {
       console.error("Error saving settings:", err)
@@ -202,362 +205,277 @@ export default function AdminSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <section className="py-16 sm:py-24">
-        <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="mb-8"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Link href="/admin/dashboard">
-                  <Button variant="outline" size="icon" className="rounded-full bg-transparent">
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-light tracking-wider">
-                    Site Settings
-                  </h1>
-                  <p className="text-gray-600 text-sm">
-                    Manage your website hero images and appearance
-                  </p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/admin/dashboard">
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-white shadow-sm border">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Settings</h1>
+            <p className="text-sm text-gray-500">Configure your platform preferences and management</p>
+          </div>
+        </div>
 
-              <div className="flex gap-2 justify-end">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* Sidebar Navigation */}
+          <aside className="md:col-span-3 space-y-1">
+            <nav className="flex flex-col gap-1">
+              <button
+                onClick={() => setActiveTab("appearance")}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200",
+                  activeTab === "appearance" 
+                    ? "bg-white text-black shadow-sm border border-gray-100" 
+                    : "text-gray-500 hover:bg-white/50 hover:text-gray-900"
+                )}
+              >
+                <ImageIcon className={cn("h-4 w-4", activeTab === "appearance" ? "text-rose-500" : "text-gray-400")} />
+                Site Appearance
+              </button>
+              <button
+                onClick={() => setActiveTab("employees")}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200",
+                  activeTab === "employees" 
+                    ? "bg-white text-black shadow-sm border border-gray-100" 
+                    : "text-gray-500 hover:bg-white/50 hover:text-gray-900"
+                )}
+              >
+                <Upload className={cn("h-4 w-4", activeTab === "employees" ? "text-purple-500" : "text-gray-400")} />
+                Employee Management
+              </button>
+            </nav>
+
+            <div className="pt-8 px-4">
+              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Actions</h4>
+              <div className="space-y-2">
                 <Button
                   onClick={fetchSettings}
-                  variant="outline"
-                  size="sm"
-                  className="bg-transparent text-xs sm:text-sm"
+                  variant="ghost"
+                  className="w-full justify-start text-xs text-gray-500 hover:bg-white"
                 >
-                  <RefreshCw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Refresh
+                  <RefreshCw className="mr-2 h-3 w-3" />
+                  Reload Configuration
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={saving || !hasChanges}
-                  size="sm"
-                  className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm disabled:opacity-50"
+                  className="w-full justify-start text-xs bg-black text-white hover:bg-gray-800 disabled:opacity-50"
                 >
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      Save Changes
-                    </>
-                  )}
+                  <Save className="mr-2 h-3 w-3" />
+                  Apply All Changes
                 </Button>
               </div>
             </div>
-          </motion.div>
+          </aside>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-white border shadow-sm">
-              <TabsTrigger value="appearance">Site Appearance</TabsTrigger>
-              <TabsTrigger value="employees">Employee Management</TabsTrigger>
-            </TabsList>
+          {/* Main Content Area */}
+          <main className="md:col-span-9">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {activeTab === "appearance" && (
+                <div className="space-y-6">
+                  {error && (
+                    <Alert className="border-red-200 bg-red-50 mb-6">
+                      <AlertDescription className="text-red-600">{error}</AlertDescription>
+                    </Alert>
+                  )}
 
-            <TabsContent value="appearance" className="space-y-6 m-0">
-              {error && (
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-                  <Alert className="border-red-200 bg-red-50">
-                    <AlertDescription className="text-red-600">{error}</AlertDescription>
-                  </Alert>
-                </motion.div>
+                  <Card className="border-0 shadow-sm overflow-hidden bg-white/80 backdrop-blur-sm">
+                    <CardHeader className="border-b border-gray-50 pb-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg font-semibold">Hero Images</CardTitle>
+                          <p className="text-xs text-gray-500 mt-1">Manage the visual identity of your collection pages</p>
+                        </div>
+                        <ImageIcon className="h-5 w-5 text-gray-300" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-10">
+                      {/* Wedding Hero */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-amber-400" />
+                            Wedding Collection Hero
+                          </label>
+                          <span className="text-[10px] text-gray-400 font-mono">1920 x 1080 Recommended</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <div className="relative aspect-video rounded-2xl overflow-hidden border bg-gray-50 group">
+                            <Image src={heroImages.wedding} alt="Wedding" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="text-white text-[10px] font-medium bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">Active Image</span>
+                            </div>
+                          </div>
+                          
+                          <div className="relative aspect-video">
+                            {weddingPreview ? (
+                              <div className="relative h-full rounded-2xl overflow-hidden border-2 border-green-500/50 shadow-lg shadow-green-100 group">
+                                <Image src={weddingPreview} alt="Preview" fill className="object-cover" />
+                                <button
+                                  onClick={() => clearPreview("wedding")}
+                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <div className="absolute bottom-3 left-3">
+                                  <span className="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-1 shadow-md">
+                                    <Check className="h-3 w-3" /> New image ready
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => weddingInputRef.current?.click()}
+                                className="w-full h-full rounded-2xl border-2 border-dashed border-gray-200 bg-white hover:border-rose-300 hover:bg-rose-50/30 transition-all flex flex-col items-center justify-center gap-3 group"
+                              >
+                                <div className="h-10 w-10 rounded-full bg-gray-50 group-hover:bg-rose-100 flex items-center justify-center transition-colors">
+                                  <Upload className="h-5 w-5 text-gray-400 group-hover:text-rose-500 transition-colors" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs font-medium text-gray-600">Upload New Wedding Hero</p>
+                                  <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP • Max 10MB</p>
+                                </div>
+                              </button>
+                            )}
+                            <input ref={weddingInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e, "wedding")} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-50" />
+
+                      {/* Soiree Hero */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-rose-500" />
+                            Soirée Collection Hero
+                          </label>
+                          <span className="text-[10px] text-gray-400 font-mono">1920 x 1080 Recommended</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <div className="relative aspect-video rounded-2xl overflow-hidden border bg-gray-50 group">
+                            <Image src={heroImages.soiree} alt="Soiree" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="text-white text-[10px] font-medium bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">Active Image</span>
+                            </div>
+                          </div>
+                          
+                          <div className="relative aspect-video">
+                            {soireePreview ? (
+                              <div className="relative h-full rounded-2xl overflow-hidden border-2 border-green-500/50 shadow-lg shadow-green-100 group">
+                                <Image src={soireePreview} alt="Preview" fill className="object-cover" />
+                                <button
+                                  onClick={() => clearPreview("soiree")}
+                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <div className="absolute bottom-3 left-3">
+                                  <span className="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-1 shadow-md">
+                                    <Check className="h-3 w-3" /> New image ready
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => soireeInputRef.current?.click()}
+                                className="w-full h-full rounded-2xl border-2 border-dashed border-gray-200 bg-white hover:border-rose-300 hover:bg-rose-50/30 transition-all flex flex-col items-center justify-center gap-3 group"
+                              >
+                                <div className="h-10 w-10 rounded-full bg-gray-50 group-hover:bg-rose-100 flex items-center justify-center transition-colors">
+                                  <Upload className="h-5 w-5 text-gray-400 group-hover:text-rose-500 transition-colors" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs font-medium text-gray-600">Upload New Soirée Hero</p>
+                                  <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP • Max 10MB</p>
+                                </div>
+                              </button>
+                            )}
+                            <input ref={soireeInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e, "soiree")} />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
-              {/* Hero Images Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-            <Card className="mb-6">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5 text-rose-500" />
-                  Hero Images
-                </CardTitle>
-                <p className="text-sm text-gray-500">
-                  These images appear as the background hero on the homepage, wedding, and soirée collection pages.
-                  For best results, use high-quality landscape images (at least 1920×1080).
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-8 pt-4">
-                {/* Wedding Hero Image */}
-                <div>
-                  <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded-full bg-gradient-to-r from-amber-400 to-yellow-600" />
-                    Wedding Collection Hero
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Used on the homepage left panel and the wedding page hero section.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Current Image */}
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                        Current Image
-                      </p>
-                      <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-                        <Image
-                          src={heroImages.wedding}
-                          alt="Current wedding hero"
-                          fill
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                          className="object-cover"
-                        />
-                        <div className="absolute bottom-2 left-2">
-                          <span className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-full">
-                            Live
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* New Image / Upload */}
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                        {weddingPreview ? "New Image Preview" : "Upload New Image"}
-                      </p>
-
-                      {weddingPreview ? (
-                        <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-green-400 bg-gray-100">
-                          <Image
-                            src={weddingPreview}
-                            alt="New wedding hero preview"
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            className="object-cover"
-                          />
-                          <button
-                            onClick={() => clearPreview("wedding")}
-                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <div className="absolute bottom-2 left-2">
-                            <span className="bg-green-500/80 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-                              <Check className="h-3 w-3" />
-                              Ready to save
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => weddingInputRef.current?.click()}
-                          className="w-full aspect-video rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer"
-                        >
-                          <div className="h-10 w-10 rounded-full bg-gray-200 group-hover:bg-rose-100 flex items-center justify-center transition-colors">
-                            <Upload className="h-5 w-5 text-gray-400 group-hover:text-rose-500 transition-colors" />
-                          </div>
-                          <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
-                            Click to upload
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            JPG, PNG, WebP • Max 10MB
-                          </span>
-                        </button>
-                      )}
-
-                      <input
-                        ref={weddingInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageSelect(e, "wedding")}
-                        className="hidden"
-                      />
-
-                      {weddingPreview && (
-                        <Button
-                          onClick={() => weddingInputRef.current?.click()}
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 w-full text-xs bg-transparent"
-                        >
-                          <Upload className="mr-2 h-3 w-3" />
-                          Choose Different Image
-                        </Button>
-                      )}
-                    </div>
+              {activeTab === "employees" && (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border-0 shadow-sm p-6 overflow-hidden">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold">Employee Management</h3>
+                    <p className="text-xs text-gray-500 mt-1">Control access and assign roles to your administration team</p>
                   </div>
+                  <EmployeeManagement />
                 </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-100" />
-
-                {/* Soiree Hero Image */}
-                <div>
-                  <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded-full bg-gradient-to-r from-rose-500 to-pink-500" />
-                    Soirée Collection Hero
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Used on the homepage right panel and the soirée page hero section.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Current Image */}
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                        Current Image
-                      </p>
-                      <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-                        <Image
-                          src={heroImages.soiree}
-                          alt="Current soiree hero"
-                          fill
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                          className="object-cover"
-                        />
-                        <div className="absolute bottom-2 left-2">
-                          <span className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-full">
-                            Live
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* New Image / Upload */}
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                        {soireePreview ? "New Image Preview" : "Upload New Image"}
-                      </p>
-
-                      {soireePreview ? (
-                        <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-green-400 bg-gray-100">
-                          <Image
-                            src={soireePreview}
-                            alt="New soiree hero preview"
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            className="object-cover"
-                          />
-                          <button
-                            onClick={() => clearPreview("soiree")}
-                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <div className="absolute bottom-2 left-2">
-                            <span className="bg-green-500/80 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-                              <Check className="h-3 w-3" />
-                              Ready to save
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => soireeInputRef.current?.click()}
-                          className="w-full aspect-video rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer"
-                        >
-                          <div className="h-10 w-10 rounded-full bg-gray-200 group-hover:bg-rose-100 flex items-center justify-center transition-colors">
-                            <Upload className="h-5 w-5 text-gray-400 group-hover:text-rose-500 transition-colors" />
-                          </div>
-                          <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
-                            Click to upload
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            JPG, PNG, WebP • Max 10MB
-                          </span>
-                        </button>
-                      )}
-
-                      <input
-                        ref={soireeInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageSelect(e, "soiree")}
-                        className="hidden"
-                      />
-
-                      {soireePreview && (
-                        <Button
-                          onClick={() => soireeInputRef.current?.click()}
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 w-full text-xs bg-transparent"
-                        >
-                          <Upload className="mr-2 h-3 w-3" />
-                          Choose Different Image
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Sticky Save Bar */}
-            {hasChanges && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] p-4 z-50"
-              >
-                <div className="container mx-auto max-w-5xl flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium text-amber-600">Unsaved changes</span> — 
-                    {weddingDataUrl && soireeDataUrl
-                      ? " Both hero images will be updated"
-                      : weddingDataUrl
-                        ? " Wedding hero image will be updated"
-                        : " Soirée hero image will be updated"}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        clearPreview("wedding")
-                        clearPreview("soiree")
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="bg-transparent text-xs sm:text-sm"
-                    >
-                      Discard
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving}
-                      size="sm"
-                      className="bg-black text-white hover:bg-gray-800 text-xs sm:text-sm"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-            </TabsContent>
-
-            <TabsContent value="employees" className="m-0">
-              <EmployeeManagement />
-            </TabsContent>
-          </Tabs>
+              )}
+            </motion.div>
+          </main>
         </div>
-      </section>
+      </div>
+
+      {/* Floating Save Notification (Minimal) */}
+      {hasChanges && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 pr-6 rounded-2xl z-50 flex items-center gap-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-amber-50 flex items-center justify-center">
+              <Save className="h-4 w-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Unsaved Changes</p>
+              <p className="text-xs text-gray-900 font-medium">Hero images have been modified</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 border-l pl-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                clearPreview("wedding")
+                clearPreview("soiree")
+              }}
+              className="text-xs text-gray-500 hover:text-gray-900"
+            >
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-black text-white hover:bg-gray-800 text-xs px-6 rounded-xl"
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save Changes"}
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </div>
+  )
+}
+
+export default function AdminSettings() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500" />
+      </div>
+    }>
+      <AdminSettingsContent />
+    </Suspense>
   )
 }

@@ -126,11 +126,14 @@ export default function ProductDetailPage() {
   const [extraDayAfter, setExtraDayAfter] = useState(false)
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
+  const [customPrice, setCustomPrice] = useState<number | null>(null)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
   const { dispatch } = useCart()
   const { state: favoritesState, addToFavorites, removeFromFavorites } = useFavorites()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
+  const { state: authState } = useAuth()
+  const userRole = authState.user?.role || ""
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const {
@@ -215,7 +218,6 @@ export default function ProductDetailPage() {
 
   const [reviews, setReviews] = useState<Review[]>([])
   const [relatedProducts, setRelatedProducts] = useState<ProductDetail[]>([])
-  const { state: authState } = useAuth()
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null)
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [selectedRelatedSize, setSelectedRelatedSize] = useState<any>(null)
@@ -371,6 +373,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!isRentBranch || !product || !rentEventTime || !rentEventDate) {
       setRentalPrice(null)
+      setCustomPrice(null)
       return
     }
 
@@ -399,7 +402,9 @@ export default function ProductDetailPage() {
     if (costBase > 0) {
       const res = calculateRentalPrice(costBase, d, 0, isExclusive)
       const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
-      setRentalPrice({ total: res.total + extraDaysFee, category: "Speculative" })
+      const specTotal = res.total + extraDaysFee
+      setRentalPrice({ total: specTotal, category: "Speculative" })
+      if (canViewPrices) setCustomPrice(specTotal)
     }
     // -------------------------------------
 
@@ -421,7 +426,9 @@ export default function ProductDetailPage() {
         if (res.ok) {
           const data = await res.json()
           const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
-          setRentalPrice({ total: data.total + extraDaysFee, category: data.category })
+          const finalTotal = data.total + extraDaysFee
+          setRentalPrice({ total: finalTotal, category: data.category })
+          if (canViewPrices) setCustomPrice(finalTotal)
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
@@ -434,7 +441,7 @@ export default function ProductDetailPage() {
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter])
+  }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter, canViewPrices])
 
   // Check if the selected rental date is more than 45 days away.
   // When true, pricing is not available online — user must contact branch via WhatsApp.
@@ -590,7 +597,7 @@ export default function ProductDetailPage() {
           id: cartId,
           productId: product.id,
           name: product.name,
-          price: (isRentBranch && rentalPrice) ? rentalPrice.total : price,
+          price: (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : price),
           originalPrice: isRentBranch ? undefined : firstSize?.originalPrice,
           size: "custom",
           volume: measurementUnit,
@@ -640,7 +647,7 @@ export default function ProductDetailPage() {
           id: cartId,
           productId: product.id,
           name: product.name,
-          price: (isRentBranch && rentalPrice) ? rentalPrice.total : getSelectedPrice(),
+          price: (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : getSelectedPrice()),
           originalPrice: isRentBranch ? undefined : selectedSizeObj.originalPrice,
           size: "one-size",
           volume: undefined,
@@ -997,13 +1004,48 @@ export default function ProductDetailPage() {
                             )
                           }
                           return (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
-                              {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !rentalPrice && (
-                                <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
-                                  Starting at (Cat A)
-                                </span>
-                              )}
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
+                                {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !rentalPrice && (
+                                  <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
+                                    {canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                  </span>
+                                )}
+                              </div>
+                              {canViewPrices && isRentBranch && rentalPrice && (() => {
+                                const basePrice = rentalPrice.total
+                                const maxDiscount = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500
+                                const minAllowed = Math.max(0, basePrice - maxDiscount)
+                                const currentCustom = customPrice !== null ? customPrice : basePrice
+                                return (
+                                  <div className="mt-2 p-3 border border-purple-200 rounded-xl bg-purple-50/50">
+                                    <label className="text-xs text-purple-700 font-semibold uppercase tracking-wider mb-1 block">Staff Price Override</label>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-gray-500 font-medium">EGP</span>
+                                      <input
+                                        type="number"
+                                        value={currentCustom}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value)
+                                          if (!isNaN(val)) setCustomPrice(val)
+                                        }}
+                                        className="w-32 text-xl font-bold text-black border border-purple-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                        min={minAllowed}
+                                        step={50}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] text-purple-600 mt-1 block">
+                                      Min: {formatPrice(minAllowed)} | Base: {formatPrice(basePrice)}
+                                    </span>
+                                    {currentCustom < minAllowed && (
+                                      <span className="text-[10px] text-red-600 font-semibold mt-0.5 block">
+                                        ⚠ Below your allowed minimum ({formatPrice(minAllowed)})
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })()}
                             </div>
                           )
                         })()}
@@ -1298,7 +1340,12 @@ export default function ProductDetailPage() {
                           (selectedSize < 0 ||
                             (product.sizes[selectedSize]?.stockCount !== undefined &&
                               product.sizes[selectedSize].stockCount === 0))) ||
-                        (isCustomSizeMode && !isMeasurementsValid)
+                        (isCustomSizeMode && !isMeasurementsValid) ||
+                        (canViewPrices && customPrice !== null && (() => {
+                          const bp = rentalPrice?.total || 0;
+                          const md = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500;
+                          return customPrice < Math.max(0, bp - md);
+                        })())
                       }
                       onClick={() => {
                         if (product.isOutOfStock) return
@@ -1399,3 +1446,4 @@ export default function ProductDetailPage() {
     </div>
   )
 }
+

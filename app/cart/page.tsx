@@ -22,7 +22,7 @@ export default function CartPage() {
   const router = useRouter()
   const { state, dispatch } = useCart()
   const { state: authState } = useAuth()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -251,3 +251,4 @@ export default function CartPage() {
     </div>
   )
 }
+

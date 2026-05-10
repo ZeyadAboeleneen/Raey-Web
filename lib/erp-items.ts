@@ -24,17 +24,28 @@ export async function isAdminRequest(request: NextRequest, permission?: Permissi
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
     
-    // 1. Direct Admin Check (from JWT role)
-    if (decoded.role === "admin") return true;
+    // 1. Database-backed verification (Zero-Trust)
+    // We no longer trust the 'role' claim in the JWT.
+    const employeeId = decoded.employeeId || decoded.userId;
+    if (!employeeId) return false;
 
-    // 2. Employee Permission Check
-    if (decoded.employeeId && permission) {
-      const employee = await prisma.employee.findUnique({
-        where: { id: decoded.employeeId },
-      });
-      if (employee && employee.isActive) {
-        return checkPermission(employee, permission);
-      }
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee || !employee.isActive) return false;
+
+    // Verify token version
+    if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== employee.tokenVersion) {
+      return false;
+    }
+
+    // 2. Direct Admin Check (from DB)
+    if (employee.role === "admin") return true;
+
+    // 3. Granular Permission Check
+    if (permission) {
+      return checkPermission(employee, permission);
     }
 
     return false;

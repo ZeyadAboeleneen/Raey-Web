@@ -82,13 +82,13 @@ export async function calculateRentalPrice(
   const countReq = await makeRequest()
   const rentalCountResult = await countReq
     .input("ModelTypeID", sql.Int, modelTypeId)
-    .input("RentStart", sql.VarChar, rentStartStr)
+    .input("BookingDate", sql.VarChar, actualBookingDate.toLocaleDateString("en-CA"))
     .query(`
       SELECT COUNT(*) AS n
       FROM Booking
       WHERE ModelTypeID = @ModelTypeID
         AND ReturnDate IS NOT NULL
-        AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
+        AND CAST(ReturnDate AS DATE) <= CAST(@BookingDate AS DATE)
     `)
   const n: number = rentalCountResult.recordset[0].n
 
@@ -118,31 +118,24 @@ export async function calculateRentalPrice(
     const pMinReq = await makeRequest()
     const pMinResult = await pMinReq
       .input("ModelTypeID", sql.Int, modelTypeId)
-      .input("RentStart", sql.VarChar, rentStartStr)
+      .input("BookingDate", sql.VarChar, actualBookingDate.toLocaleDateString("en-CA"))
       .query(`
-        WITH First4 AS (
-          SELECT TOP 4 BookingDate, ReceivedDate, Total
-          FROM Booking
-          WHERE ModelTypeID = @ModelTypeID
-            AND ReturnDate IS NOT NULL
-            AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
-          ORDER BY ReturnDate ASC
-        )
-        SELECT Total FROM First4
+        SELECT MIN(Total) AS MinTotal
+        FROM Booking
+        WHERE ModelTypeID = @ModelTypeID
+          AND ReturnDate IS NOT NULL
+          AND CAST(ReturnDate AS DATE) <= CAST(@BookingDate AS DATE)
+          AND Total > 0
       `)
 
     let pMin = round100(cost * 0.8) // fallback to Cat A
-    if (pMinResult.recordset.length > 0) {
-      // Use the actual lowest Total it was previously rented for
-      const actualPrices = pMinResult.recordset.map((row: any) => row.Total).filter(t => t > 0);
-      if (actualPrices.length > 0) {
-        pMin = Math.min(...actualPrices);
-      }
+    if (pMinResult.recordset.length > 0 && pMinResult.recordset[0].MinTotal) {
+      pMin = pMinResult.recordset[0].MinTotal;
     }
 
-    total = pMin - 500 * (n - 3)
+    total = pMin - 500
     category = "POST4"
-    formula = `P_min(${pMin}) − 500 × (${n} − 3)`
+    formula = `LowestPrice(${pMin}) − 500`
   }
 
   // 4. Apply minimum floor — price must NEVER go below 3,000 EGP

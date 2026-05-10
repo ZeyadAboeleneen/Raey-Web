@@ -120,6 +120,11 @@ async function handleJsonUpload(request: NextRequest) {
       continue;
     }
 
+    if (price <= 0) {
+      errors.push({ row: i + 1, reason: `Invalid price for "${name}": must be greater than 0` });
+      continue;
+    }
+
     const lineId = mapCollectionToLineId(collection) ?? 1;
     const itemCode = generateItemCode(name);
 
@@ -304,6 +309,14 @@ async function handleFormDataUpload(request: NextRequest) {
       report.errors.push({
         row: row.rowIndex,
         reason: rowErrors.map((e) => `${e.field}: ${e.message}`).join("; "),
+      });
+      continue;
+    }
+
+    if (row.price <= 0) {
+      report.errors.push({
+        row: row.rowIndex,
+        reason: `Invalid price: must be greater than 0`,
       });
       continue;
     }

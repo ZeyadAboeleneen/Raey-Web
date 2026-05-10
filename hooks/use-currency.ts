@@ -48,6 +48,7 @@ export const useCurrencyFormatter = () => {
   return {
     formatPrice,
     showPrices,
+    canViewPrices,
     currencyCode: settings.currencyCode,
     currencySymbol: settings.currencySymbol,
     localeSettings: settings

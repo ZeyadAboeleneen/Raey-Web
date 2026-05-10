@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -11,7 +11,7 @@ import { Navigation } from "@/components/navigation"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation, TranslationKey } from "@/lib/translations"
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const orderId = searchParams?.get("orderId")
@@ -232,5 +232,17 @@ export default function CheckoutSuccessPage() {
         </div>
       </section>
     </div>
+  )
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }

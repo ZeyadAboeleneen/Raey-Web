@@ -166,7 +166,7 @@ export default function SoireeBranchPage() {
 
   const { dispatch: cartDispatch } = useCart()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -566,7 +566,7 @@ export default function SoireeBranchPage() {
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                 {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
                                                   <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                    {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
+                                                    {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
                                                   </span>
                                                 )}
                                                 {hasDiscount ? (
@@ -730,4 +730,5 @@ export default function SoireeBranchPage() {
     </div>
   )
 }
+
 

@@ -4,9 +4,11 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useDateContext } from "@/lib/date-context"
 import type { CachedProduct as Product } from "@/lib/products-cache"
 import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
+import { usePermission } from "@/lib/auth-context"
 
 export function useDateFilteredProducts(products: Product[]) {
   const { occasionDate, isBrowsingOnly, isOccasionPast45Days } = useDateContext()
+  const canViewPrices = usePermission("canViewPricesOnWebsite")
   const [dynamicPrices, setDynamicPrices] = useState<Record<string, number>>({})
   const [loadingPrices, setLoadingPrices] = useState(false)
 
@@ -132,7 +134,7 @@ export function useDateFilteredProducts(products: Product[]) {
     // Set speculative prices immediately (0ms delay)
     setDynamicPrices(speculative)
     fetchingIdsRef.current.clear()
-  }, [occasionDate, products, isBrowsingOnly])
+  }, [occasionDate, products, isBrowsingOnly, canViewPrices])
 
   return {
     sortedProducts,

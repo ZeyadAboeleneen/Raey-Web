@@ -19,6 +19,7 @@ import type { SizeChartRow } from "@/components/custom-size-form"
 import type { CachedProduct as Product, ProductSize } from "@/lib/products-cache"
 import { useRouter } from "next/navigation"
 import { useDateContext } from "@/lib/date-context"
+import { useAuth } from "@/lib/auth-context"
 
 const CustomSizeForm = dynamic(
   () => import("@/components/custom-size-form").then((m) => m.CustomSizeForm),
@@ -41,7 +42,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const router = useRouter()
   const { dispatch: cartDispatch } = useCart()
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
@@ -69,6 +70,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [extraDayAfter, setExtraDayAfter] = useState(false)
   const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
+  const [customPrice, setCustomPrice] = useState<number | null>(null)
+  const { state: authState } = useAuth()
+  const userRole = authState.user?.role || ""
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
@@ -95,6 +99,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       setExtraDayBefore(false)
       setExtraDayAfter(false)
       setRentalPrice(null)
+      setCustomPrice(null)
       setIsCustomSizeMode(true)
       resetMeasurements()
       
@@ -129,6 +134,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   useEffect(() => {
     if (!isRentBranch || !product || !rentEventDate) {
       setRentalPrice(null)
+      setCustomPrice(null)
       return
     }
 
@@ -155,7 +161,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         if (res.ok) {
           const data = await res.json()
           const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
-          setRentalPrice({ total: data.total + extraDaysFee, category: data.category })
+          const finalTotal = data.total + extraDaysFee
+          setRentalPrice({ total: finalTotal, category: data.category })
+          if (canViewPrices) setCustomPrice(finalTotal)
         } else {
           setRentalPrice(null)
         }
@@ -171,7 +179,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventDate, isExclusive, extraDayBefore, extraDayAfter])
+  }, [isRentBranch, product?.id, rentEventDate, isExclusive, extraDayBefore, extraDayAfter, canViewPrices])
 
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
@@ -308,7 +316,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           id: `${product.id}-${isCustomSizeMode ? "custom" : selectedSize?.size}-rent-${rentStartStr}-${rentEndStr}`,
           productId: product.id,
           name: product.name,
-          price: rentalPrice?.total || 0,
+          price: (canViewPrices && customPrice !== null) ? customPrice : (rentalPrice?.total || 0),
           size: isCustomSizeMode ? "custom" : selectedSize?.size || "one-size",
           volume: isCustomSizeMode ? measurementUnit : undefined,
           image: (product.images && product.images[0]) || (product as any).image || "/placeholder.svg",
@@ -626,8 +634,42 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                             ) : rentalPrice ? (
                               <>
                                 <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
-                                <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
-
+                                {canViewPrices ? (
+                                  (() => {
+                                    const basePrice = rentalPrice.total
+                                    const maxDiscount = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500
+                                    const minAllowed = Math.max(0, basePrice - maxDiscount)
+                                    const currentCustom = customPrice !== null ? customPrice : basePrice
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm text-gray-500">EGP</span>
+                                          <input
+                                            type="number"
+                                            value={currentCustom}
+                                            onChange={(e) => {
+                                              const val = Number(e.target.value)
+                                              if (!isNaN(val)) setCustomPrice(val)
+                                            }}
+                                            className="w-28 text-xl font-bold text-black border border-purple-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50"
+                                            min={minAllowed}
+                                            step={50}
+                                          />
+                                        </div>
+                                        <span className="text-[9px] text-purple-600 font-medium">
+                                          Staff Override — Min: {formatPrice(minAllowed)} | Base: {formatPrice(basePrice)}
+                                        </span>
+                                        {currentCustom < minAllowed && (
+                                          <span className="text-[9px] text-red-600 font-semibold">
+                                            ⚠ Below your allowed minimum ({formatPrice(minAllowed)})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )
+                                  })()
+                                ) : (
+                                  <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
+                                )}
                               </>
                             ) : (
                               <div className="flex flex-col">
@@ -640,7 +682,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-[10px] text-rose-600 font-medium">Starting at (Cat A)</span>
+                                    <span className="text-[10px] text-rose-600 font-medium">
+                                      {canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                    </span>
                                     <span className="text-xl font-bold text-black">
                                       {product.rentalPriceA && product.rentalPriceA > 0 
                                         ? formatPrice(product.rentalPriceA) 
@@ -673,7 +717,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           }
                         }}
                         className={`rounded-full px-6 ${product.isOutOfStock ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'}`}
-                        disabled={product.isOutOfStock || (isRentBranch && !rentEventDate)}
+                        disabled={product.isOutOfStock || (isRentBranch && !rentEventDate) || (canViewPrices && customPrice !== null && (() => { const bp = rentalPrice?.total || 0; const md = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500; return customPrice < Math.max(0, bp - md) })())}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         {isRentBranch ? (rentEventDate ? t("rentNowLabel" as TranslationKey) : t("selectDateLabel" as TranslationKey)) : t("buyNowLabel" as TranslationKey)}

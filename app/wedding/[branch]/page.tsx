@@ -191,7 +191,7 @@ export default function WeddingBranchPage() {
 
   const { dispatch: cartDispatch } = useCart()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -722,3 +722,4 @@ export default function WeddingBranchPage() {
     </div>
   )
 }
+

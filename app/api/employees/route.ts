@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
         canViewPricesOnWebsite,
         canManageDiscountCodes,
         canManageOffers,
+        favorites: [],
       },
       select: {
         id: true,

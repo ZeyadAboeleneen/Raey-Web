@@ -71,7 +71,7 @@ export default function WeddingProductsPage() {
     resetMeasurements,
     isMeasurementsValid,
   } = useCustomSize()
-  const { formatPrice, showPrices } = useCurrencyFormatter()
+  const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -385,6 +385,7 @@ export default function WeddingProductsPage() {
   }
 
   const ProductCard = ({ product, layout, section, index }: ProductCardProps) => {
+    const priceData = useMemo(() => {
       // Dynamic price logic
       let exactDynamicPrice: number | null = null
       const isRentBranch = product.branch !== "sell-dresses"
@@ -528,7 +529,7 @@ export default function WeddingProductsPage() {
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                  {(occasionDate && !isOccasionPast45Days) ? "" : "Starting at (Cat A)"}
+                                  {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
                                 </span>
                               )}
                               {hasDiscount ? (
@@ -1095,3 +1096,4 @@ export default function WeddingProductsPage() {
     </div>
   )
 }
+
