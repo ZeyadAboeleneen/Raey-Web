@@ -51,43 +51,9 @@ export async function POST(request: NextRequest) {
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
     const query = `
-      WITH TargetItems AS (
-        SELECT ID, Item_buypric as cost 
-        FROM Items 
-        WHERE ID IN (${ids.join(',')})
-      ),
-      RentalHistory AS (
-        SELECT 
-          b.ModelTypeID,
-          b.Total,
-          b.ReturnDate,
-          ROW_NUMBER() OVER (PARTITION BY b.ModelTypeID ORDER BY b.ReturnDate ASC) as rn
-        FROM Booking b
-        WHERE b.ReturnDate IS NOT NULL 
-          AND CAST(b.ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
-          AND b.ModelTypeID IN (${ids.join(',')})
-      ),
-      Stats AS (
-        SELECT 
-          ModelTypeID,
-          COUNT(*) as n
-        FROM RentalHistory
-        GROUP BY ModelTypeID
-      ),
-      First4Min AS (
-        SELECT ModelTypeID, MIN(Total) as pMin
-        FROM RentalHistory
-        WHERE rn <= 4 AND Total > 0
-        GROUP BY ModelTypeID
-      )
-      SELECT 
-        ti.ID,
-        ti.cost,
-        ISNULL(s.n, 0) as n,
-        ISNULL(f4.pMin, 0) as pMin
-      FROM TargetItems ti
-      LEFT JOIN Stats s ON s.ModelTypeID = ti.ID
-      LEFT JOIN First4Min f4 ON f4.ModelTypeID = ti.ID
+      SELECT ID, Item_buypric as cost 
+      FROM Items 
+      WHERE ID IN (${ids.join(',')})
     `
 
     const result = await req.query(query)
@@ -95,15 +61,15 @@ export async function POST(request: NextRequest) {
 
     // 3. Apply the shared pricing logic in JS (lightweight)
     const prices: Record<string, number> = {}
-    const { calculateRentalPrice: calcPrice, MIN_RENTAL_PRICE } = await import("@/lib/rental-pricing-calc")
+    const { calculateRentalPrice: calcPrice } = await import("@/lib/rental-pricing-calc")
 
     for (const row of rows) {
       const res = calcPrice(
         row.cost,
         d,
-        row.n,
+        0, // n is no longer used for date-based customer pricing
         false, // isExclusive
-        row.pMin > 0 ? [row.pMin] : [] // if pMin exists, pass it as the reference price
+        [] // previous prices no longer used
       )
       prices[String(row.ID)] = res.total
     }

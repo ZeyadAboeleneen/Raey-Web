@@ -43,7 +43,7 @@ const QuickAddModal = dynamic(
 
 export default function SoireeProductsPage() {
   const { products: cachedProducts, loading, refresh } = useProductsCache()
-  
+
   // Filter for Soiree collection only
   const products = useMemo(() => {
     const target = "soiree"
@@ -391,7 +391,7 @@ export default function SoireeProductsPage() {
       const price = exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
         ? product.rentalPriceA
         : getSmallestPrice(product.sizes))
-      
+
       const original = getSmallestOriginalPrice(product.sizes)
       return { price, original, exactDynamicPrice }
     }, [product, dynamicPrices, occasionDate])
@@ -497,7 +497,7 @@ export default function SoireeProductsPage() {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
                     const clientRentalPrice = priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
                     const isRent = product.branch !== "sell-dresses"
-                    
+
                     return (
                       <>
                         {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
@@ -528,7 +528,7 @@ export default function SoireeProductsPage() {
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                  {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                  {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
                                 </span>
                               )}
                               {hasDiscount ? (

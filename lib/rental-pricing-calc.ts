@@ -29,27 +29,18 @@ export function calculateRentalPrice(
         total = round100(cost * 1.1)
         category = "F"
         formula = "cost × 1.1"
-    } else if (n < 4) {
+    } else {
+        // All non-exclusive rentals follow date-based A/B/C pricing
+        const multiplier = d <= 15 ? 0.8 : (0.8 - (0.2 / 15) * (d - 15))
+        category = d <= 15 ? "A" : (d <= 30 ? "B" : "C")
+        
         if (d <= 15) {
             total = round100(cost * 0.8)
-            category = "A"
             formula = "cost × 0.8"
         } else {
-            const multiplier = 0.8 - (0.2 / 15) * (d - 15)
-            category = d <= 30 ? "B" : "C"
             total = Math.round((cost * multiplier) / 50) * 50
             formula = `cost × ${multiplier.toFixed(4)}`
         }
-    } else {
-        // POST4: use minimum of first 4 rental prices
-        const pMin =
-            firstFourPrices.length > 0
-                ? Math.min(...firstFourPrices)
-                : round100(cost * 0.8) // fallback if not provided
-
-        total = pMin - 500 * (n - 3)
-        category = "POST4"
-        formula = `P_min(${pMin}) − 500 × (${n} − 3)`
     }
 
     // Apply minimum floor — price must never go below 3,000 EGP

@@ -176,7 +176,7 @@ export default function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<"shipping" | "pickup">("shipping")
 
   const hasRental = cartState.items.some((item) => item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch)
-  
+
   useEffect(() => {
     if (hasRental) {
       setDeliveryMethod("pickup")
@@ -207,12 +207,12 @@ export default function CheckoutPage() {
 
   // Correct order of calculations:
   const subtotal = cartState.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  
+
   const rentSubtotal = cartState.items.reduce((sum, item) => {
     const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
     return sum + (isRent ? item.price * item.quantity : 0);
   }, 0);
-  
+
   const buySubtotal = cartState.items.reduce((sum, item) => {
     const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
     return sum + (!isRent ? item.price * item.quantity : 0);
@@ -220,7 +220,7 @@ export default function CheckoutPage() {
 
   const discountAmount = appliedDiscount?.discountAmount || 0
   const total = subtotal - discountAmount
-  
+
   const baseDeposit = (rentSubtotal * 0.5) + buySubtotal;
   const depositRatio = subtotal > 0 ? baseDeposit / subtotal : 0;
   const depositAmount = discountAmount > 0 ? total * depositRatio : baseDeposit;
@@ -286,70 +286,70 @@ export default function CheckoutPage() {
   }
 
   const validateDiscountCode = async () => {
-  if (!discountCode.trim()) return
+    if (!discountCode.trim()) return
 
-  if (!authState.token && !formData.email.trim()) {
-    setDiscountError("Please enter your email before applying a discount code")
-    return
-  }
-
-  setDiscountLoading(true)
-  setDiscountError("") // Clear previous discount errors
-  try {
-    const token = authState.token
-    const response = await fetch("/api/discount-codes/validate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: JSON.stringify({
-        code: discountCode,
-        orderAmount: subtotal,
-        email: formData.email,
-        items: cartState.items.map(item => ({
-          id: item.id,
-          price: item.price,
-          quantity: item.quantity
-        }))
-      }),
-    })
-
-    if (response.ok) {
-      const result = await response.json()
-      setAppliedDiscount({
-        ...result,
-        // Store free items info if available
-        freeItems: result.freeItems || []
-      })
-      setDiscountError("")
-    } else {
-      const errorData = await response.json()
-      if (
-        errorData.error === "MIN_ORDER_AMOUNT" &&
-        typeof errorData.minOrderAmount === "number" &&
-        typeof errorData.minOrderRemaining === "number"
-      ) {
-        const remainingFormatted = formatPrice(errorData.minOrderRemaining)
-        const minFormatted = formatPrice(errorData.minOrderAmount)
-        setDiscountError(
-          `Add ${remainingFormatted} more to your cart to apply this discount (minimum order: ${minFormatted})`
-        )
-      } else {
-        setDiscountError(errorData.error)
-      }
-      setAppliedDiscount(null)
-      // Clear the discount code input on error so user can easily retry
-      setDiscountCode("")
+    if (!authState.token && !formData.email.trim()) {
+      setDiscountError("Please enter your email before applying a discount code")
+      return
     }
-  } catch (error) {
-    console.error("Discount validation error:", error)
-    setDiscountError("Failed to validate discount code")
-    setAppliedDiscount(null)
-  } finally {
-    setDiscountLoading(false)
+
+    setDiscountLoading(true)
+    setDiscountError("") // Clear previous discount errors
+    try {
+      const token = authState.token
+      const response = await fetch("/api/discount-codes/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          code: discountCode,
+          orderAmount: subtotal,
+          email: formData.email,
+          items: cartState.items.map(item => ({
+            id: item.id,
+            price: item.price,
+            quantity: item.quantity
+          }))
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setAppliedDiscount({
+          ...result,
+          // Store free items info if available
+          freeItems: result.freeItems || []
+        })
+        setDiscountError("")
+      } else {
+        const errorData = await response.json()
+        if (
+          errorData.error === "MIN_ORDER_AMOUNT" &&
+          typeof errorData.minOrderAmount === "number" &&
+          typeof errorData.minOrderRemaining === "number"
+        ) {
+          const remainingFormatted = formatPrice(errorData.minOrderRemaining)
+          const minFormatted = formatPrice(errorData.minOrderAmount)
+          setDiscountError(
+            `Add ${remainingFormatted} more to your cart to apply this discount (minimum order: ${minFormatted})`
+          )
+        } else {
+          setDiscountError(errorData.error)
+        }
+        setAppliedDiscount(null)
+        // Clear the discount code input on error so user can easily retry
+        setDiscountCode("")
+      }
+    } catch (error) {
+      console.error("Discount validation error:", error)
+      setDiscountError("Failed to validate discount code")
+      setAppliedDiscount(null)
+    } finally {
+      setDiscountLoading(false)
+    }
   }
-}
 
   const removeDiscount = () => {
     setAppliedDiscount(null);
@@ -504,12 +504,12 @@ export default function CheckoutPage() {
                 <h1 className="text-2xl sm:text-3xl font-light tracking-wider mb-4">
                   {t("yourCartIsEmpty")}
                 </h1>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100px" }}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                    className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mx-auto my-6 rounded-full"
-                  />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: "100px" }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="h-1 bg-gradient-to-r from-rose-400 to-pink-400 mx-auto my-6 rounded-full"
+                />
                 <p className="text-gray-600 mb-8">
                   {t("cartEmptyDesc")}
                 </p>
@@ -931,7 +931,7 @@ export default function CheckoutPage() {
                               <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                                 <div>
                                   <p className="font-medium text-sm sm:text-base">Instapay</p>
-                                  <p className="text-xs sm:text-sm text-gray-600">Pay via Instapay transfer link</p>
+                                  <p className="text-xs sm:text-sm text-gray-600">Pay via Instapay transfer</p>
                                 </div>
                                 <Smartphone className="h-5 w-5 text-rose-400" />
                               </div>
@@ -947,16 +947,11 @@ export default function CheckoutPage() {
                             >
                               <div className="pt-3 space-y-3">
                                 <div className="bg-white rounded-lg p-4 border border-rose-100">
-                                  <p className="text-sm text-gray-700 mb-2">Click the link below to complete your payment:</p>
-                                  <a
-                                    href="https://ipn.eg/S/zeyadaboeleneen/instapay/9KXW3j"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:from-rose-700 hover:to-pink-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                    Open Instapay Payment Link
-                                  </a>
+                                  <p className="text-sm text-gray-700 mb-2">Send the payment to this Instapay handle:</p>
+                                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-rose-50 to-rose-100 rounded-lg border border-rose-200">
+                                    <Smartphone className="h-5 w-5 text-rose-600" />
+                                    <span className="text-lg font-bold text-rose-700 tracking-wider">raey888</span>
+                                  </div>
                                   <p className="text-xs text-gray-500 mt-2">After payment, take a screenshot and upload it below.</p>
                                 </div>
                               </div>
@@ -995,33 +990,28 @@ export default function CheckoutPage() {
                                   <div className="grid grid-cols-1 gap-2 text-sm">
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5 border-b border-gray-100">
                                       <span className="text-gray-500 font-medium">Beneficiary Name</span>
-                                      <span className="text-gray-800 font-medium">Zeyad Mohamed Abo Eleneen Khaled</span>
+                                      <span className="text-gray-800 font-medium">وائل عبدالهادى عبدالهادى الراعيه</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5 border-b border-gray-100">
                                       <span className="text-gray-500 font-medium">Account Number</span>
-                                      <span className="text-gray-800 font-mono text-xs sm:text-sm">1020656463735</span>
+                                      <span className="text-gray-800 font-mono text-xs sm:text-sm">8470199000000927</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5 border-b border-gray-100">
                                       <span className="text-gray-500 font-medium">IBAN</span>
-                                      <span className="text-gray-800 font-mono text-xs">EG78 0037 0027 0818 1020 6564 63735</span>
+                                      <span className="text-gray-800 font-mono text-xs">EG040002084708470199000000927</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5 border-b border-gray-100">
                                       <span className="text-gray-500 font-medium">SWIFT Code</span>
-                                      <span className="text-gray-800 font-mono text-xs sm:text-sm">QNBAEGCXXXX</span>
+                                      <span className="text-gray-800 font-mono text-xs sm:text-sm">BMISEGXXXXX</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5 border-b border-gray-100">
                                       <span className="text-gray-500 font-medium">Bank Name</span>
-                                      <span className="text-gray-800">Qatar National Bank (QNB Al Ahli)</span>
+                                      <span className="text-gray-800">Banque Misr (بنك مصر)</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 py-1.5">
                                       <span className="text-gray-500 font-medium">Currency</span>
                                       <span className="text-gray-800">EGP</span>
                                     </div>
-                                  </div>
-                                  <div className="mt-3 pt-3 border-t border-gray-100">
-                                    <p className="text-xs text-gray-500">
-                                      <strong>Bank Address:</strong> 213 El Gomhoria Street, in front of Dar El Thaqafa, Mansoura, Dakahlia, Egypt
-                                    </p>
                                   </div>
                                 </div>
                                 <p className="text-xs text-gray-500">After transferring, take a screenshot and upload it below.</p>
@@ -1057,7 +1047,7 @@ export default function CheckoutPage() {
                                   <p className="text-sm text-gray-700 mb-2">Send the payment to this Vodafone Cash number:</p>
                                   <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border border-red-200">
                                     <Phone className="h-5 w-5 text-red-600" />
-                                    <span className="text-lg font-bold text-red-700 tracking-wider">01024285771</span>
+                                    <span className="text-lg font-bold text-red-700 tracking-wider">01033363000</span>
                                   </div>
                                   <p className="text-xs text-gray-500 mt-2">After sending, take a screenshot and upload it below.</p>
                                 </div>
@@ -1074,7 +1064,7 @@ export default function CheckoutPage() {
                           Upload Payment Screenshot *
                         </Label>
                         <p className="text-xs text-gray-500 mb-3">Upload a screenshot of your payment confirmation as proof.</p>
-                        
+
                         {!paymentScreenshot ? (
                           <label
                             htmlFor="payment-screenshot"
@@ -1095,10 +1085,10 @@ export default function CheckoutPage() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0]
                                 if (!file) return
-                                
+
                                 // Show filename immediately
                                 setScreenshotFileName(file.name)
-                                
+
                                 try {
                                   // Compress image to ~800KB max to speed up upload significantly
                                   const options = {
@@ -1106,9 +1096,9 @@ export default function CheckoutPage() {
                                     maxWidthOrHeight: 1280,
                                     useWebWorker: true
                                   }
-                                  
+
                                   const compressedFile = await imageCompression(file, options)
-                                  
+
                                   const reader = new FileReader()
                                   reader.onloadend = () => {
                                     setPaymentScreenshot(reader.result as string)

@@ -43,7 +43,7 @@ const QuickAddModal = dynamic(
 
 export default function WeddingProductsPage() {
   const { products: cachedProducts, loading, refresh } = useProductsCache()
-  
+
   // Filter for Wedding collection only
   const products = useMemo(() => {
     const target = "wedding"
@@ -498,7 +498,7 @@ export default function WeddingProductsPage() {
                     const showProductPrice = showPrices || product.branch === "sell-dresses"
                     const clientRentalPrice = priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
                     const isRent = product.branch !== "sell-dresses"
-                    
+
                     return (
                       <>
                         {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (
@@ -529,7 +529,7 @@ export default function WeddingProductsPage() {
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
                               {isRent && product.rentalPriceA && product.rentalPriceA > 0 && !priceData.exactDynamicPrice && (
                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                  {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                  {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
                                 </span>
                               )}
                               {hasDiscount ? (

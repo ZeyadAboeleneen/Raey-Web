@@ -566,7 +566,7 @@ export default function SoireeBranchPage() {
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
                                                 {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && (
                                                   <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                                                    {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                                    {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? " (Staff View)" : "Starting at (Cat A)"}
                                                   </span>
                                                 )}
                                                 {hasDiscount ? (
@@ -662,11 +662,10 @@ export default function SoireeBranchPage() {
                             variant={page === p ? "default" : "ghost"}
                             size="sm"
                             onClick={() => handlePageChange(p)}
-                            className={`w-9 h-9 rounded-full p-0 transition-all duration-200 ${
-                              page === p 
-                                ? "bg-black text-white shadow-md scale-110" 
+                            className={`w-9 h-9 rounded-full p-0 transition-all duration-200 ${page === p
+                                ? "bg-black text-white shadow-md scale-110"
                                 : "hover:bg-rose-50 hover:text-rose-600 text-gray-500"
-                            }`}
+                              }`}
                           >
                             {p}
                           </Button>

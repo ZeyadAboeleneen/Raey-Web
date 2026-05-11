@@ -348,7 +348,7 @@ export default function SoireePage() {
       removeFromFavorites(product.id)
     } else {
       const isRentBranch = product.branch !== "sell-dresses"
-    const price = product.isGiftPackage ? (product.packagePrice || 0) : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)
+      const price = product.isGiftPackage ? (product.packagePrice || 0) : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)
       addToFavorites({
         id: product.id,
         name: product.name,
@@ -434,7 +434,7 @@ export default function SoireePage() {
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
                         {isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0 && (
                           <span className="text-[9px] text-rose-300 font-medium mb-0.5">
-                            {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                            {(occasionDate && !isOccasionPast45Days && !canViewPrices) ? "" : canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
                           </span>
                         )}
                         {hasDiscount ? (

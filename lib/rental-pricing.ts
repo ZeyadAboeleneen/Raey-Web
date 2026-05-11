@@ -101,7 +101,8 @@ export async function calculateRentalPrice(
     total = round100(cost * 1.1)
     category = "F"
     formula = `cost(${cost}) × 1.1`
-  } else if (n < 4) {
+  } else {
+    // All non-exclusive rentals follow date-based A/B/C pricing
     if (d <= 15) {
       total = round100(cost * 0.8)
       category = "A"
@@ -113,29 +114,6 @@ export async function calculateRentalPrice(
       total = Math.round((cost * multiplier) / 50) * 50
       formula = `cost(${cost}) × ${multiplier.toFixed(4)}`
     }
-  } else {
-    // n >= 4: POST4 pricing — P_min dynamically from ACTUAL totals of first 4 bookings
-    const pMinReq = await makeRequest()
-    const pMinResult = await pMinReq
-      .input("ModelTypeID", sql.Int, modelTypeId)
-      .input("BookingDate", sql.VarChar, actualBookingDate.toLocaleDateString("en-CA"))
-      .query(`
-        SELECT MIN(Total) AS MinTotal
-        FROM Booking
-        WHERE ModelTypeID = @ModelTypeID
-          AND ReturnDate IS NOT NULL
-          AND CAST(ReturnDate AS DATE) <= CAST(@BookingDate AS DATE)
-          AND Total > 0
-      `)
-
-    let pMin = round100(cost * 0.8) // fallback to Cat A
-    if (pMinResult.recordset.length > 0 && pMinResult.recordset[0].MinTotal) {
-      pMin = pMinResult.recordset[0].MinTotal;
-    }
-
-    total = pMin - 500
-    category = "POST4"
-    formula = `LowestPrice(${pMin}) − 500`
   }
 
   // 4. Apply minimum floor — price must NEVER go below 3,000 EGP

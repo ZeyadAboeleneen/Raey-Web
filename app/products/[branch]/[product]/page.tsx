@@ -383,12 +383,12 @@ export default function ProductDetailPage() {
     const occasion = new Date(rentEventDate)
     const rentStart = new Date(occasion)
     rentStart.setDate(rentStart.getDate() - 1)
-    
+
     const startDay = new Date(rentStart)
     startDay.setHours(0, 0, 0, 0)
     const bookDay = new Date()
     bookDay.setHours(0, 0, 0, 0)
-    
+
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
     // If date is past 45 days, pricing is not available online
@@ -396,7 +396,7 @@ export default function ProductDetailPage() {
       setRentalPrice(null)
       return
     }
-    
+
     // Assume n=0 for speculative pricing
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
     if (costBase > 0) {
@@ -460,14 +460,14 @@ export default function ProductDetailPage() {
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
     if (!product || !isRentBranch || !isExclusive) return
-    
+
     const isValid = (() => {
       const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
       if (actuallyRented) return false
       if (bookedRanges.length === 0) return true
       if (!rentEventDate) return false
-      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
-      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0, 0, 0, 0)))
+      const selectedDate = new Date(rentEventDate).setHours(0, 0, 0, 0)
       return selectedDate < earliestBooking
     })()
 
@@ -1009,7 +1009,7 @@ export default function ProductDetailPage() {
                                 <span className="text-xl sm:text-2xl">{formatPrice(selectedPrice)}</span>
                                 {isRentBranch && product.rentalPriceA && product.rentalPriceA > 0 && !rentalPrice && (
                                   <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
-                                    {canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                    {canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
                                   </span>
                                 )}
                               </div>
@@ -1166,46 +1166,45 @@ export default function ProductDetailPage() {
                         // If user hasn't picked a date yet, wait for them to pick one
                         if (!rentEventDate) return false
                         // Check if user's date is strictly before the earliest booking
-                        const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
-                        const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+                        const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0, 0, 0, 0)))
+                        const selectedDate = new Date(rentEventDate).setHours(0, 0, 0, 0)
                         return selectedDate < earliestBooking
                       })() && !isPast45Days && (
-                        <div
-                          className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${
-                            isExclusive
+                          <div
+                            className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer select-none ${isExclusive
                               ? 'border-black bg-gray-50 shadow-sm'
                               : 'border-gray-200 hover:border-gray-400'
-                          }`}
-                          onClick={() => setIsExclusive(!isExclusive)}
-                        >
-                          <label className="flex items-start gap-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={isExclusive}
-                              onChange={(e) => setIsExclusive(e.target.checked)}
-                              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium text-gray-900 text-sm">{t("exclusiveHold" as TranslationKey)}</p>
-                                <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
-                                  {t("firstRentalLabel" as TranslationKey)}
-                                </span>
+                              }`}
+                            onClick={() => setIsExclusive(!isExclusive)}
+                          >
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isExclusive}
+                                onChange={(e) => setIsExclusive(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 text-sm">{t("exclusiveHold" as TranslationKey)}</p>
+                                  <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                                    {t("firstRentalLabel" as TranslationKey)}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 space-y-1">
+                                  <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                    <span className="text-gray-400">✦</span>
+                                    {t("exclusiveHoldNote1" as TranslationKey)}
+                                  </p>
+                                  <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                    <span className="text-gray-400">✦</span>
+                                    {t("exclusiveHoldNote2" as TranslationKey)}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="mt-1.5 space-y-1">
-                                <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                                  <span className="text-gray-400">✦</span>
-                                  {t("exclusiveHoldNote1" as TranslationKey)}
-                                </p>
-                                <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                                  <span className="text-gray-400">✦</span>
-                                  {t("exclusiveHoldNote2" as TranslationKey)}
-                                </p>
-                              </div>
-                            </div>
-                          </label>
-                        </div>
-                      )}
+                            </label>
+                          </div>
+                        )}
 
                       {/* Extra Days Options — show after user selects a date */}
                       {rentEventDate && !isPast45Days && (
@@ -1213,13 +1212,12 @@ export default function ProductDetailPage() {
                           <p className="font-medium text-gray-900 text-sm">{t("extraDays" as TranslationKey)} <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
                           <div className="grid grid-cols-2 gap-2">
                             <div
-                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${
-                                !canAddExtraDayBefore
-                                  ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                                  : extraDayBefore
-                                    ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
-                                    : 'border-gray-200 hover:border-gray-400 cursor-pointer'
-                              }`}
+                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${!canAddExtraDayBefore
+                                ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                : extraDayBefore
+                                  ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
+                                  : 'border-gray-200 hover:border-gray-400 cursor-pointer'
+                                }`}
                               onClick={() => canAddExtraDayBefore && setExtraDayBefore(!extraDayBefore)}
                             >
                               <label className={`flex items-center gap-2 ${canAddExtraDayBefore ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -1239,13 +1237,12 @@ export default function ProductDetailPage() {
                               </label>
                             </div>
                             <div
-                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${
-                                !canAddExtraDayAfter
-                                  ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                                  : extraDayAfter
-                                    ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
-                                    : 'border-gray-200 hover:border-gray-400 cursor-pointer'
-                              }`}
+                              className={`border rounded-lg p-3 transition-all duration-200 select-none ${!canAddExtraDayAfter
+                                ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                : extraDayAfter
+                                  ? 'border-black bg-gray-50 shadow-sm cursor-pointer'
+                                  : 'border-gray-200 hover:border-gray-400 cursor-pointer'
+                                }`}
                               onClick={() => canAddExtraDayAfter && setExtraDayAfter(!extraDayAfter)}
                             >
                               <label className={`flex items-center gap-2 ${canAddExtraDayAfter ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -1326,60 +1323,60 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {!isPast45Days && (
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      className={`px-6 py-3 rounded-full flex items-center ${isRentBranch && availabilityResult && !availabilityResult.available
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        className={`px-6 py-3 rounded-full flex items-center ${isRentBranch && availabilityResult && !availabilityResult.available
                           ? "bg-red-500 hover:bg-red-600 text-white cursor-not-allowed"
                           : "bg-black hover:bg-gray-800 text-white"
-                        }`}
-                      disabled={
-                        product.isOutOfStock ||
-                        checkingAvailability ||
-                        (isRentBranch && !rentEventDate) ||
-                        (!isCustomSizeMode &&
-                          (selectedSize < 0 ||
-                            (product.sizes[selectedSize]?.stockCount !== undefined &&
-                              product.sizes[selectedSize].stockCount === 0))) ||
-                        (isCustomSizeMode && !isMeasurementsValid) ||
-                        (canViewPrices && customPrice !== null && (() => {
-                          const bp = rentalPrice?.total || 0;
-                          const md = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500;
-                          return customPrice < Math.max(0, bp - md);
-                        })())
-                      }
-                      onClick={() => {
-                        if (product.isOutOfStock) return
-                        if (!isCustomSizeMode) {
-                          if (
-                            selectedSize >= 0 &&
-                            product.sizes[selectedSize]?.stockCount !== undefined &&
-                            product.sizes[selectedSize].stockCount === 0
-                          ) {
-                            alert("Selected size is out of stock")
+                          }`}
+                        disabled={
+                          product.isOutOfStock ||
+                          checkingAvailability ||
+                          (isRentBranch && !rentEventDate) ||
+                          (!isCustomSizeMode &&
+                            (selectedSize < 0 ||
+                              (product.sizes[selectedSize]?.stockCount !== undefined &&
+                                product.sizes[selectedSize].stockCount === 0))) ||
+                          (isCustomSizeMode && !isMeasurementsValid) ||
+                          (canViewPrices && customPrice !== null && (() => {
+                            const bp = rentalPrice?.total || 0;
+                            const md = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500;
+                            return customPrice < Math.max(0, bp - md);
+                          })())
+                        }
+                        onClick={() => {
+                          if (product.isOutOfStock) return
+                          if (!isCustomSizeMode) {
+                            if (
+                              selectedSize >= 0 &&
+                              product.sizes[selectedSize]?.stockCount !== undefined &&
+                              product.sizes[selectedSize].stockCount === 0
+                            ) {
+                              alert("Selected size is out of stock")
+                              return
+                            }
+                            handleAddToCart()
+                            return
+                          }
+                          if (!isMeasurementsValid) {
+                            alert("Please complete your custom measurements")
                             return
                           }
                           handleAddToCart()
-                          return
-                        }
-                        if (!isMeasurementsValid) {
-                          alert("Please complete your custom measurements")
-                          return
-                        }
-                        handleAddToCart()
-                      }}
-                    >
-                      <ShoppingCart className="mr-2 h-5 w-5" />
-                      {product.isOutOfStock
-                        ? t("outOfStockLabel" as TranslationKey)
-                        : isRentBranch
-                          ? (checkingAvailability
-                            ? t("loadingLabel" as TranslationKey)
-                            : !rentEventDate
-                              ? t("selectDateLabel" as TranslationKey)
-                              : t("rentNowLabel" as TranslationKey))
-                          : t("buyNowLabel" as TranslationKey)}
-                    </Button>
-                  </div>
+                        }}
+                      >
+                        <ShoppingCart className="mr-2 h-5 w-5" />
+                        {product.isOutOfStock
+                          ? t("outOfStockLabel" as TranslationKey)
+                          : isRentBranch
+                            ? (checkingAvailability
+                              ? t("loadingLabel" as TranslationKey)
+                              : !rentEventDate
+                                ? t("selectDateLabel" as TranslationKey)
+                                : t("rentNowLabel" as TranslationKey))
+                            : t("buyNowLabel" as TranslationKey)}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

@@ -9,8 +9,19 @@ import { usePermission } from "@/lib/auth-context"
 export function useDateFilteredProducts(products: Product[]) {
   const { occasionDate, isBrowsingOnly, isOccasionPast45Days } = useDateContext()
   const canViewPrices = usePermission("canViewPricesOnWebsite")
-  const [dynamicPrices, setDynamicPrices] = useState<Record<string, number>>({})
+  const [serverPrices, setServerPrices] = useState<Record<string, number>>({})
   const [loadingPrices, setLoadingPrices] = useState(false)
+
+  // Ref to track serverPrices without causing dependency cycles
+  const serverPricesRef = useRef<Record<string, number>>({})
+  serverPricesRef.current = serverPrices
+
+  // Track number of active fetches to correctly manage loadingPrices
+  const activeFetchCountRef = useRef(0)
+
+  // Track the current occasionDate to discard stale fetch results
+  const currentDateRef = useRef<Date | null>(occasionDate)
+  currentDateRef.current = occasionDate
 
   // Helper to check if a product is available
   const isAvailable = useCallback((product: Product) => {
@@ -55,19 +66,28 @@ export function useDateFilteredProducts(products: Product[]) {
   const fetchingIdsRef = useRef<Set<string>>(new Set())
   
   // 2. Fetch dynamic prices for specific products
+  // NOTE: serverPrices removed from deps — we read from serverPricesRef instead
+  // to prevent the infinite loop where serverPrices change → fetchPricesForIds
+  // identity changes → page useEffect re-fires → fetch → serverPrices change → …
   const fetchPricesForIds = useCallback(async (productIds: string[]) => {
     if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
-      setDynamicPrices(prev => Object.keys(prev).length === 0 ? prev : {})
+      setServerPrices(prev => Object.keys(prev).length === 0 ? prev : {})
       return
     }
 
+    // Read the latest server prices from the ref (no dependency needed)
+    const currentServerPrices = serverPricesRef.current
     const idsToFetch = productIds
-      .filter(p => p !== "sell-dresses" && !(p in dynamicPrices) && !fetchingIdsRef.current.has(p))
+      .filter(p => p !== "sell-dresses" && !(p in currentServerPrices) && !fetchingIdsRef.current.has(p))
 
     if (idsToFetch.length === 0) return
 
     idsToFetch.forEach(id => fetchingIdsRef.current.add(id))
+    activeFetchCountRef.current += 1
     setLoadingPrices(true)
+
+    // Capture the date this fetch is for, so we can discard stale results
+    const fetchDate = occasionDate
 
     try {
       const res = await fetch("/api/rental/bulk-pricing", {
@@ -79,16 +99,22 @@ export function useDateFilteredProducts(products: Product[]) {
         })
       })
       const data = await res.json()
-      if (data.success && data.prices) {
-        setDynamicPrices(prev => ({ ...prev, ...data.prices }))
+      // Only apply results if the date hasn't changed while we were fetching
+      if (data.success && data.prices && currentDateRef.current?.getTime() === fetchDate.getTime()) {
+        setServerPrices(prev => ({ ...prev, ...data.prices }))
       }
     } catch (error) {
       console.error("Failed to fetch dynamic prices", error)
     } finally {
       idsToFetch.forEach(id => fetchingIdsRef.current.delete(id))
-      setLoadingPrices(false)
+      activeFetchCountRef.current -= 1
+      // Only clear loading when ALL concurrent fetches are done
+      if (activeFetchCountRef.current <= 0) {
+        activeFetchCountRef.current = 0
+        setLoadingPrices(false)
+      }
     }
-  }, [occasionDate, isBrowsingOnly, dynamicPrices])
+  }, [occasionDate, isBrowsingOnly, isOccasionPast45Days])
 
   const fetchPricesForPage = useCallback(async (pageProducts: Product[]) => {
     const ids = pageProducts
@@ -97,16 +123,21 @@ export function useDateFilteredProducts(products: Product[]) {
     return fetchPricesForIds(ids)
   }, [fetchPricesForIds, isAvailable])
 
-  // Reset prices when date changes OR calculate speculative prices instantly
+  // Clear server prices and fetching cache when date changes
   useEffect(() => {
+    setServerPrices({})
+    serverPricesRef.current = {}
+    fetchingIdsRef.current.clear()
+    activeFetchCountRef.current = 0
+    setLoadingPrices(false)
+  }, [occasionDate])
+
+  // Speculative pricing logic for instant feedback (calculated during render)
+  const speculativePrices = useMemo(() => {
     if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
-      setDynamicPrices({})
-      fetchingIdsRef.current.clear()
-      return
+      return {}
     }
 
-    // Speculative pricing logic for instant feedback
-    // We calculate d exactly as the server does: occasionDate - 1 day vs today
     const msPerDay = 1000 * 60 * 60 * 24
     const occasion = new Date(occasionDate)
     const rentStart = new Date(occasion)
@@ -123,18 +154,20 @@ export function useDateFilteredProducts(products: Product[]) {
     for (const p of products) {
       if (p.branch === "sell-dresses" || p.isGiftPackage) continue
       
-      // Use Cat A price / 0.8 as the cost base if cost is missing, but cost should be there now
       const costBase = p.cost || (p.rentalPriceA ? p.rentalPriceA / 0.8 : 0)
       if (costBase > 0) {
-        const res = calculateRentalPrice(costBase, d, 0, false) // Assume n=0 for speculation
+        const res = calculateRentalPrice(costBase, d, 0, false)
         speculative[p.id] = res.total
       }
     }
+    return speculative
+  }, [occasionDate, products, isBrowsingOnly, isOccasionPast45Days])
 
-    // Set speculative prices immediately (0ms delay)
-    setDynamicPrices(speculative)
-    fetchingIdsRef.current.clear()
-  }, [occasionDate, products, isBrowsingOnly, canViewPrices])
+  // Combined prices: server prices override speculative ones
+  const dynamicPrices = useMemo(() => ({
+    ...speculativePrices,
+    ...serverPrices
+  }), [speculativePrices, serverPrices])
 
   return {
     sortedProducts,

@@ -46,7 +46,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
-  
+
   const {
     isCustomSizeMode,
     setIsCustomSizeMode,
@@ -102,7 +102,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       setCustomPrice(null)
       setIsCustomSizeMode(true)
       resetMeasurements()
-      
+
       if (isRentBranch) {
         fetchBookings()
       }
@@ -184,14 +184,14 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   // Reset isExclusive if the user changes the date to one that doesn't allow exclusive hold
   useEffect(() => {
     if (!product || !isRentBranch || !isExclusive) return
-    
+
     const isValid = (() => {
       const actuallyRented = hasBeenRentedDb !== null ? hasBeenRentedDb : product.hasBeenRented
       if (actuallyRented) return false
       if (bookedRanges.length === 0) return true
       if (!rentEventDate) return false
-      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
-      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0, 0, 0, 0)))
+      const selectedDate = new Date(rentEventDate).setHours(0, 0, 0, 0)
       return selectedDate < earliestBooking
     })()
 
@@ -274,7 +274,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         toast({ variant: "destructive", title: "Select rental date", description: "Please select an event date for your rental." })
         return
       }
-      
+
       const formatLocalDate = (d: Date) => {
         const year = d.getFullYear()
         const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -363,9 +363,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
     if (e && typeof e === 'object' && 'stopPropagation' in e) {
       e.stopPropagation()
     }
-    
+
     if (!product) return
-    
+
     if (isFavorite(product.id)) {
       await removeFromFavorites(product.id)
     } else {
@@ -491,6 +491,12 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           const newDate = date ?? undefined
                           setRentEventDate(newDate)
                           setOccasionDate(newDate || null)
+                          // Reset price state immediately to prevent flicker
+                          setRentalPrice(null)
+                          setCustomPrice(null)
+                          if (newDate) {
+                            setRentalPriceLoading(true)
+                          }
                         }}
                         disabled={(date) => {
                           const today = new Date()
@@ -508,7 +514,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                         className="text-xs"
                       />
                     </div>
-                    
+
                     {checkingAvailability && (
                       <div className="text-xs text-blue-600 flex items-center gap-1.5">
                         <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-500 border-t-transparent" />
@@ -528,26 +534,26 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                       // If user hasn't picked a date yet, wait for them to pick one
                       if (!rentEventDate) return false
                       // Check if user's date is strictly before the earliest booking
-                      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0,0,0,0)))
-                      const selectedDate = new Date(rentEventDate).setHours(0,0,0,0)
+                      const earliestBooking = Math.min(...bookedRanges.map(b => new Date(b.from).setHours(0, 0, 0, 0)))
+                      const selectedDate = new Date(rentEventDate).setHours(0, 0, 0, 0)
                       return selectedDate < earliestBooking
                     })() && (
-                      <div 
-                        className={`border rounded-lg p-3 cursor-pointer transition-all ${isExclusive ? 'border-black bg-gray-50' : 'border-gray-200'}`}
-                        onClick={() => setIsExclusive(!isExclusive)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input type="checkbox" checked={isExclusive} readOnly className="h-4 w-4 accent-black" />
+                        <div
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${isExclusive ? 'border-black bg-gray-50' : 'border-gray-200'}`}
+                          onClick={() => setIsExclusive(!isExclusive)}
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{t("exclusiveHold" as TranslationKey)}</span>
-                            <span className="bg-amber-100 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
-                              {t("firstRentalLabel" as TranslationKey)}
-                            </span>
+                            <input type="checkbox" checked={isExclusive} readOnly className="h-4 w-4 accent-black" />
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{t("exclusiveHold" as TranslationKey)}</span>
+                              <span className="bg-amber-100 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                                {t("firstRentalLabel" as TranslationKey)}
+                              </span>
+                            </div>
                           </div>
+                          <p className="text-[10px] text-gray-500 mt-1 ml-6">{t("exclusiveHoldQuickNote" as TranslationKey)}</p>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 ml-6">{t("exclusiveHoldQuickNote" as TranslationKey)}</p>
-                      </div>
-                    )}
+                      )}
 
                     {/* Extra Days Options — show after user selects a date */}
                     {rentEventDate && (
@@ -555,13 +561,12 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                         <p className="text-sm font-medium text-gray-900">{t("extraDays" as TranslationKey)} <span className="text-xs text-gray-500 font-normal">(200 EGP / day)</span></p>
                         <div className="grid grid-cols-2 gap-2">
                           <div
-                            className={`border rounded-lg p-2.5 transition-all ${
-                              !canAddExtraDayBefore
+                            className={`border rounded-lg p-2.5 transition-all ${!canAddExtraDayBefore
                                 ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
                                 : extraDayBefore
                                   ? 'border-black bg-gray-50 cursor-pointer'
                                   : 'border-gray-200 cursor-pointer'
-                            }`}
+                              }`}
                             onClick={() => canAddExtraDayBefore && setExtraDayBefore(!extraDayBefore)}
                           >
                             <label className={`flex items-center gap-2 ${canAddExtraDayBefore ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -575,13 +580,12 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                             </label>
                           </div>
                           <div
-                            className={`border rounded-lg p-2.5 transition-all ${
-                              !canAddExtraDayAfter
+                            className={`border rounded-lg p-2.5 transition-all ${!canAddExtraDayAfter
                                 ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
                                 : extraDayAfter
                                   ? 'border-black bg-gray-50 cursor-pointer'
                                   : 'border-gray-200 cursor-pointer'
-                            }`}
+                              }`}
                             onClick={() => canAddExtraDayAfter && setExtraDayAfter(!extraDayAfter)}
                           >
                             <label className={`flex items-center gap-2 ${canAddExtraDayAfter ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -683,11 +687,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                                 ) : (
                                   <>
                                     <span className="text-[10px] text-rose-600 font-medium">
-                                      {canViewPrices ? "Cat A Base Price (Staff View)" : "Starting at (Cat A)"}
+                                      {canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
                                     </span>
                                     <span className="text-xl font-bold text-black">
-                                      {product.rentalPriceA && product.rentalPriceA > 0 
-                                        ? formatPrice(product.rentalPriceA) 
+                                      {product.rentalPriceA && product.rentalPriceA > 0
+                                        ? formatPrice(product.rentalPriceA)
                                         : formatPrice(getSmallestPrice(product.sizes))}
                                     </span>
                                   </>
