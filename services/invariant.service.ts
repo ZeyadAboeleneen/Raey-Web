@@ -19,7 +19,7 @@ export const InvariantService = {
     const stuckEvents = await prisma.outboxEvent.count({
       where: {
         status: "PROCESSING",
-        updatedAt: { lt: tenMinsAgo }
+        createdAt: { lt: tenMinsAgo }   // ✅ FIXED: use createdAt instead of updatedAt
       }
     })
     if (stuckEvents > 0) {
