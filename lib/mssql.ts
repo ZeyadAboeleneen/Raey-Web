@@ -12,6 +12,8 @@ const globalForMssql = globalThis as typeof globalThis & {
   _mssqlConnecting?: Promise<sql.ConnectionPool>;
 };
 
+const isBuild = process.env.NEXT_PHASE === "phase-production-build";
+
 const config: sql.config = {
   server: process.env.MSSQL_SERVER || "",
   database: process.env.MSSQL_DATABASE || "",
@@ -22,7 +24,7 @@ const config: sql.config = {
     trustServerCertificate: true,
   },
   pool: {
-    max: 10,
+    max: isBuild ? 1 : 10,
     min: 0,
     idleTimeoutMillis: 30_000,
   },
