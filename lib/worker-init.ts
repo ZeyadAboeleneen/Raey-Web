@@ -7,6 +7,9 @@ const globalWithWorker = globalThis as any
  * Initializes the background worker poller.
  */
 export async function initOutboxWorker() {
+  // Prevent running during build phase
+  if (process.env.NEXT_PHASE === 'phase-production-build') return
+  
   if (!globalWithWorker.workerStarted) {
     globalWithWorker.workerStarted = true
     

@@ -8,7 +8,7 @@ function buildDatasourceUrl(): string {
     const base = process.env.DATABASE_URL || ""
     if (base.includes("connection_limit")) return base
     const separator = base.includes("?") ? "&" : "?"
-    return `${base}${separator}connection_limit=3&pool_timeout=60&connect_timeout=60`
+    return `${base}${separator}connection_limit=2&pool_timeout=60&connect_timeout=60`
 }
 
 export const prisma =

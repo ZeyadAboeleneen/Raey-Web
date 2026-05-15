@@ -19,7 +19,7 @@ const sql = require('mssql');
 
   // Check if there's an item-store link table we're missing
   const itemStoreCheck = await pool.request().query(
-    "SELECT * FROM ItemStores"
+    "SELECT * FROM tb_ItemStores"
   );
   console.log("\n=== ItemStores entries ===");
   console.table(itemStoreCheck.recordset);
@@ -50,7 +50,7 @@ const sql = require('mssql');
     FROM Items i 
     WHERE i.Category_id IN (1,6) 
       AND i.ID NOT IN (SELECT DISTINCT ModelTypeID FROM Booking WHERE BranchID IS NOT NULL)
-      AND i.ID NOT IN (SELECT ItemID FROM ItemStores)
+      AND i.ID NOT IN (SELECT ItemID FROM tb_ItemStores)
     ORDER BY i.ID DESC
   `);
   console.log("\n=== Sample items with NO branch link ===");

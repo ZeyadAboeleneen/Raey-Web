@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withPipeline } from "@/lib/api-pipeline"
 import { InvariantService } from "@/services/invariant.service"
+export const dynamic = "force-dynamic"
 
 export const GET = withPipeline(async (request) => {
   // 0. ASSERT INVARIANTS (The Enforcement Step)

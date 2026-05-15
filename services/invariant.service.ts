@@ -61,3 +61,13 @@ export const InvariantService = {
     return violations
   }
 }
+
+// Allow direct execution for diagnostics
+if (import.meta.url.endsWith(process.argv[1]) || process.argv[1]?.includes("invariant.service.ts")) {
+  InvariantService.assertSystemInvariants()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error("Failed to run invariant checks:", err)
+      process.exit(1)
+    })
+}

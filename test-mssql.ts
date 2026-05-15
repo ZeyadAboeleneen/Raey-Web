@@ -4,7 +4,7 @@ async function main() {
   const pool = await getMssqlPool();
   try {
     const result = await pool.request().query(`
-      SELECT TOP 5 * FROM ItemStores
+      SELECT TOP 5 * FROM tb_ItemStores
     `);
     console.log("ItemStores:", result.recordset);
     

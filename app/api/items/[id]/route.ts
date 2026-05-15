@@ -74,7 +74,7 @@ export async function GET(
         LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
         LEFT JOIN (
             SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
-            FROM ItemStores itemst 
+            FROM tb_ItemStores itemst 
             JOIN Stores st ON itemst.StoreID = st.ID
         ) istore ON istore.ItemID = i.ID
         OUTER APPLY (
@@ -143,7 +143,7 @@ export async function PUT(
     const existingResult = await pool.request().input("itemId", sql.Int, itemId).query(`
       SELECT i.Item_name, i.Item_sellpricNow, s.Store_name
       FROM Items i
-      LEFT JOIN ItemStores ist ON i.ID = ist.ItemID
+      LEFT JOIN tb_ItemStores ist ON i.ID = ist.ItemID
       LEFT JOIN Stores s ON ist.StoreID = s.ID
       WHERE i.ID = @itemId
     `);
@@ -196,10 +196,10 @@ export async function PUT(
             .input("itemId", sql.Int, itemId)
             .input("storeId", sql.Int, storeId)
             .query(`
-              IF EXISTS (SELECT 1 FROM ItemStores WHERE ItemID = @itemId)
-                UPDATE ItemStores SET StoreID = @storeId WHERE ItemID = @itemId
+              IF EXISTS (SELECT 1 FROM tb_ItemStores WHERE ItemID = @itemId)
+                UPDATE tb_ItemStores SET StoreID = @storeId WHERE ItemID = @itemId
               ELSE
-                INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)
+                INSERT INTO tb_ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)
             `);
           console.log(`✅ [MSSQL] Updated branch for item ${itemId} (StoreID: ${storeId})`);
         } catch (mssqlErr: any) {
@@ -281,7 +281,7 @@ export async function DELETE(
     await pool
       .request()
       .input("itemId", sql.Int, itemId)
-      .query(`DELETE FROM ItemStores WHERE ItemID = @itemId`);
+      .query(`DELETE FROM tb_ItemStores WHERE ItemID = @itemId`);
 
     // Hard-delete from Items
     await pool
@@ -293,7 +293,7 @@ export async function DELETE(
     try {
       await prisma.$transaction(async (tx) => {
         await tx.review.deleteMany({ where: { productId: String(itemId) } });
-        await tx.product.delete({ where: { productId: String(itemId) } }).catch(() => { });
+        await tx.product.deleteMany({ where: { productId: String(itemId) } });
       });
       console.log(`✅ [Prisma] Cleaned up records for item ${itemId}`);
     } catch (prismaErr: any) {

@@ -107,7 +107,7 @@ export function DateSelectionModal({
                   onClick={handleBrowseOnly}
                   className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 hover:text-gray-900 transition-colors underline underline-offset-4 decoration-gray-200"
                 >
-                  I'm just browsing
+                  I&apos;m just browsing
                 </button>
               </div>
             </div>

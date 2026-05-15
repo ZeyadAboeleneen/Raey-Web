@@ -155,7 +155,7 @@ async function handleJsonUpload(request: NextRequest) {
           .request()
           .input("itemId", sql.Int, newId)
           .input("storeId", sql.Int, storeId)
-          .query(`INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
+          .query(`INSERT INTO tb_ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
       }
     } catch (err: any) {
       console.error(`❌ [Bulk JSON] Row ${i + 1} failed:`, err?.message);
@@ -357,8 +357,8 @@ async function handleFormDataUpload(request: NextRequest) {
               .input("itemId", sql.Int, itemId)
               .input("storeId", sql.Int, storeId)
               .query(`
-                IF NOT EXISTS (SELECT 1 FROM ItemStores WHERE ItemID = @itemId AND StoreID = @storeId)
-                  INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)
+                IF NOT EXISTS (SELECT 1 FROM tb_ItemStores WHERE ItemID = @itemId AND StoreID = @storeId)
+                  INSERT INTO tb_ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)
               `);
           }
         }
@@ -391,7 +391,7 @@ async function handleFormDataUpload(request: NextRequest) {
             .request()
             .input("itemId", sql.Int, newId)
             .input("storeId", sql.Int, storeId)
-            .query(`INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
+            .query(`INSERT INTO tb_ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
         }
       }
 

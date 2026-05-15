@@ -20,8 +20,10 @@ import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
 import { initOutboxWorker } from "@/lib/worker-init"
 
-// Start background outbox worker
-initOutboxWorker()
+// Start background outbox worker (skip during build)
+if (process.env.NEXT_PHASE !== 'phase-production-build') {
+  initOutboxWorker()
+}
 
 // Configure fonts with optimized loading
 const playfairDisplay = Playfair_Display({

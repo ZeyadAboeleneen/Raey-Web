@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
       LEFT JOIN (
           SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
-          FROM ItemStores itemst 
+          FROM tb_ItemStores itemst 
           JOIN Stores st ON itemst.StoreID = st.ID
       ) istore ON istore.ItemID = i.ID
       OUTER APPLY (

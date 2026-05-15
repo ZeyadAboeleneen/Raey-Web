@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
             .request()
             .input("itemId", sql.Int, newId)
             .input("storeId", sql.Int, storeId)
-            .query(`INSERT INTO ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
+            .query(`INSERT INTO tb_ItemStores (ItemID, StoreID) VALUES (@itemId, @storeId)`);
           console.log(`✅ [MSSQL] Saved branch for item ${newId} (StoreID: ${storeId})`);
         } catch (mssqlErr: any) {
           console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
