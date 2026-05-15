@@ -19,6 +19,9 @@ Copy-Item -Path "prisma\schema.prisma" -Destination ".next\standalone\prisma\sch
 Write-Host "=== Copying .env.local ===" -ForegroundColor Cyan
 Copy-Item -Path ".env.local" -Destination ".next\standalone\.env.local" -Force
 
+Write-Host "=== Copying web.config ===" -ForegroundColor Cyan
+Copy-Item -Path "web.config" -Destination ".next\standalone\web.config" -Force
+
 Write-Host "`n=== Standalone folder ready! ===" -ForegroundColor Green
 Write-Host "Location: .next\standalone\" -ForegroundColor Yellow
 Write-Host "Upload ALL contents of that folder to SmarterASP.NET" -ForegroundColor Yellow

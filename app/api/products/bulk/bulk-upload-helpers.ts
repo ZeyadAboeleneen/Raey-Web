@@ -1,5 +1,4 @@
 import * as XLSX from "xlsx"
-import JSZip from "jszip"
 
 export interface ParsedRow {
   rowIndex: number
@@ -38,61 +37,6 @@ export interface UploadReport {
 }
 
 /**
- * Parse Excel (.xlsx) or CSV (.csv) buffer into JSON rows
- */
-export function parseDataFile(
-  buffer: Buffer,
-  filename: string
-): { rows: Record<string, any>[]; errors: string[] } {
-  const errors: string[] = []
-  try {
-    const isCSV = filename.toLowerCase().endsWith(".csv")
-    const wb = XLSX.read(buffer, { type: "buffer" })
-    const wsName = wb.SheetNames[0]
-    if (!wsName) {
-      return { rows: [], errors: ["No sheets found in the file"] }
-    }
-    const ws = wb.Sheets[wsName]
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: "" })
-    return { rows: rows as Record<string, any>[], errors }
-  } catch (err: any) {
-    return { rows: [], errors: [`Failed to parse file: ${err.message}`] }
-  }
-}
-
-/**
- * Extract images from a ZIP buffer, returning map of lowercase filename → Buffer
- */
-export async function extractZipImages(
-  buffer: Buffer
-): Promise<Map<string, Buffer>> {
-  const imageMap = new Map<string, Buffer>()
-  try {
-    const zip = await JSZip.loadAsync(buffer)
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]
-
-    const entries = Object.entries(zip.files)
-    for (const [path, file] of entries) {
-      if (file.dir) continue
-      const name = path.split("/").pop() || path
-      
-      // Ignore MacOS hidden files
-      if (name.startsWith("._") || name.startsWith("__MACOSX")) continue;
-
-      const ext = name.substring(name.lastIndexOf(".")).toLowerCase()
-      if (imageExtensions.includes(ext)) {
-        const data = await file.async("nodebuffer")
-        console.log(`[ZIP Extract] Found image: ${name} -> saved as ${name.toLowerCase()}`)
-        imageMap.set(name.toLowerCase(), data)
-      }
-    }
-  } catch (err: any) {
-    console.error("Failed to extract ZIP:", err.message)
-  }
-  return imageMap
-}
-
-/**
  * Normalize column headers to standard field names
  */
 export function normalizeRow(raw: Record<string, any>): Record<string, any> {
@@ -111,13 +55,8 @@ export function extractRow(
   normalized: Record<string, any>,
   rowIndex: number
 ): ParsedRow {
-  // Extract number from price, like "150 EGP" -> 150
   const rawPrice = String(normalized.price ?? "0");
   const parsedPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, "")) || 0;
-  
-  if (rawPrice !== "0") {
-    console.log(`[Price Parse] Row ${rowIndex}: "${rawPrice}" -> ${parsedPrice}`);
-  }
 
   return {
     rowIndex,
@@ -125,9 +64,7 @@ export function extractRow(
     price: parsedPrice,
     collection: String(normalized.collection ?? "").trim(),
     images: String(normalized.images ?? "").trim(),
-    branch: normalized.branch
-      ? String(normalized.branch).trim()
-      : undefined,
+    branch: normalized.branch ? String(normalized.branch).trim() : undefined,
     description: normalized.description ? String(normalized.description).trim() : undefined,
   }
 }
@@ -148,8 +85,6 @@ export function validateRow(row: ParsedRow): ValidationError[] {
     errors.push({ row: row.rowIndex, field: "price", message: "Price must be a positive number" })
   }
 
-  // Warning for missing images is handled in preview UI, not blocking
-
   return errors
 }
 
@@ -158,48 +93,41 @@ export function slugify(text: string): string {
 }
 
 /**
- * Match images for a product code from the ZIP image map.
+ * Match image names for a product from a set of available image names.
+ * Works with both ZIP filenames (preview) and URL map keys (confirm).
+ *
  * Strategy:
  *  1. If `imagesColumn` is provided, try those filenames
- *  2. Fallback: match by product name (e.g., "Red Dress" -> "red-dress.jpg", "red-dress-1.jpg")
+ *  2. Fallback: match by slugified product name
  */
-export function matchImagesToProduct(
+export function matchImageNamesToProduct(
   name: string,
   imagesColumn: string,
-  zipMap: Map<string, Buffer>
+  availableNames: Set<string>
 ): string[] {
   const matched: string[] = []
-  
+
   // Strategy 1: from images column
   if (imagesColumn) {
     const requestedNames = imagesColumn.split(",").map((n) => n.trim().toLowerCase()).filter(Boolean)
     for (const reqName of requestedNames) {
-      // Direct exact match
-      if (zipMap.has(reqName)) {
+      if (availableNames.has(reqName)) {
         if (!matched.includes(reqName)) matched.push(reqName)
         continue
       }
-      
+
       // Extension-agnostic match
-      let found = false
       const queryBaseName = reqName.includes(".") ? reqName.substring(0, reqName.lastIndexOf(".")) : reqName
-      
-      for (const [filename] of zipMap) {
-        const zipBaseName = filename.substring(0, filename.lastIndexOf("."))
-        if (zipBaseName === queryBaseName) {
-          if (!matched.includes(filename)) matched.push(filename)
-          found = true
-          break // Pick first matching extension to avoid duplicates
+      for (const available of availableNames) {
+        const availBaseName = available.includes(".") ? available.substring(0, available.lastIndexOf(".")) : available
+        if (availBaseName === queryBaseName) {
+          if (!matched.includes(available)) matched.push(available)
+          break
         }
-      }
-      
-      if (!found) {
-        console.log(`[Image Match] Row "${name}": requested explicit image "${reqName}" not found in ZIP!`)
       }
     }
 
     if (matched.length > 0) {
-      console.log(`[Image Match] Row "${name}": matched ${matched.length} images via explicit column.`);
       matched.sort()
       return matched
     }
@@ -207,22 +135,15 @@ export function matchImagesToProduct(
 
   // Strategy 2: match by slugified name
   if (!name) return []
-  
+
   const nameSlug = slugify(name)
-  for (const [filename] of zipMap) {
-    const nameWithoutExt = filename.substring(0, filename.lastIndexOf("."))
+  for (const available of availableNames) {
+    const nameWithoutExt = available.includes(".") ? available.substring(0, available.lastIndexOf(".")) : available
     if (nameWithoutExt === nameSlug || nameWithoutExt.startsWith(nameSlug + "-") || nameWithoutExt.startsWith(nameSlug + "_")) {
-      matched.push(filename)
+      matched.push(available)
     }
   }
 
-  if (matched.length > 0) {
-    console.log(`[Image Match] Row "${name}": automatically matched ${matched.length} images using slug "${nameSlug}".`);
-  } else {
-    console.log(`[Image Match] Row "${name}": NO matches found (searched explicit and fallback slug "${nameSlug}").`);
-  }
-
-  // Sort by name so ordering is deterministic
   matched.sort()
   return matched
 }
@@ -257,21 +178,4 @@ export function findDuplicateRows(rows: ParsedRow[]): ValidationError[] {
   }
 
   return errors
-}
-
-/**
- * Convert an image buffer to a base64 data URL
- */
-export function bufferToDataUrl(buffer: Buffer, filename: string): string {
-  const ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase()
-  const mimeMap: Record<string, string> = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    gif: "image/gif",
-    webp: "image/webp",
-    avif: "image/avif",
-  }
-  const mime = mimeMap[ext] || "image/jpeg"
-  return `data:${mime};base64,${buffer.toString("base64")}`
 }

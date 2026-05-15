@@ -23,10 +23,18 @@ import {
   Package,
   Eye,
   Loader2,
+  Ban,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { useAuth, usePermission } from "@/lib/auth-context"
 import { toast } from "sonner"
+import {
+  extractAndUploadZip,
+  getZipImageList,
+  safeFetch,
+  type UploadResult,
+  type UploadProgress,
+} from "@/lib/cloudinary-client"
 
 // Types matching the API response
 interface ValidationError {
@@ -92,6 +100,8 @@ export default function BulkUploadPage() {
   } | null>(null)
   const [report, setReport] = useState<UploadReport | null>(null)
   const [error, setError] = useState("")
+  const [uploadStats, setUploadStats] = useState<UploadProgress | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const dataInputRef = useRef<HTMLInputElement>(null)
   const zipInputRef = useRef<HTMLInputElement>(null)
@@ -162,7 +172,20 @@ export default function BulkUploadPage() {
   const preventDefault = (e: React.DragEvent) => e.preventDefault()
 
   // ==========================
-  // Preview (Step 1 → 2)
+  // Cancel Upload
+  // ==========================
+  const handleCancel = () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setStep("upload")
+    setProgress(0)
+    setProgressMessage("")
+    setUploadStats(null)
+    toast.info("Upload cancelled")
+  }
+
+  // ==========================
+  // Preview (Step 1 → 2) — CLIENT-SIDE parsing, no server round-trip
   // ==========================
   const handlePreview = async () => {
     if (!dataFile) {
@@ -173,34 +196,51 @@ export default function BulkUploadPage() {
     setLoading(true)
     setError("")
     setProgress(20)
-    setProgressMessage("Parsing data file...")
+    setProgressMessage("Parsing data file locally...")
 
     try {
-      const formData = new FormData()
-      formData.append("dataFile", dataFile)
-      if (imagesFile) formData.append("imagesFile", imagesFile)
-      formData.append("mode", "preview")
+      // ── Parse Excel client-side ──
+      const buffer = await dataFile.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: "array" })
+      const wsName = wb.SheetNames[0]
+      if (!wsName) throw new Error("No sheets found in the file")
+      const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wsName], { defval: "" }) as Record<string, any>[]
+      if (rawRows.length === 0) throw new Error("No data rows found")
 
       setProgress(40)
-      setProgressMessage("Uploading files to server...")
+      setProgressMessage("Scanning ZIP images...")
 
-      const response = await fetch("/api/products/bulk", {
+      // ── Get ZIP image list (names only, no extraction) ──
+      let zipImages: { name: string; size: number }[] = []
+      if (imagesFile) {
+        zipImages = await getZipImageList(imagesFile)
+      }
+      const zipNameSet = new Set(zipImages.map((i) => i.name))
+
+      setProgress(60)
+      setProgressMessage("Matching products...")
+
+      // ── Send parsed data + image list to server for MSSQL matching ──
+      const { data: result, error: fetchErr } = await safeFetch<any>("/api/products/bulk", {
         method: "POST",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          mode: "preview",
+          rows: rawRows,
+          zipImageNames: Array.from(zipNameSet),
+        }),
       })
 
-      setProgress(80)
-      setProgressMessage("Processing response...")
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        setError(result.error || "Failed to process files")
-        toast.error(result.error || "Failed to process files")
+      if (fetchErr || !result) {
+        setError(fetchErr || "Failed to process files")
+        toast.error(fetchErr || "Preview failed")
         return
       }
 
+      setProgress(100)
       setPreviewData({
         summary: result.summary,
         products: result.products,
@@ -219,43 +259,76 @@ export default function BulkUploadPage() {
 
   // ==========================
   // Confirm Upload (Step 2 → 3 → 4)
+  // Client uploads images to Cloudinary, then sends metadata to API
   // ==========================
   const handleConfirm = async () => {
     if (!dataFile) return
 
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     setStep("processing")
-    setProgress(10)
-    setProgressMessage("Preparing upload...")
+    setProgress(5)
+    setProgressMessage("Preparing...")
+    setUploadStats(null)
 
     try {
-      const formData = new FormData()
-      formData.append("dataFile", dataFile)
-      if (imagesFile) formData.append("imagesFile", imagesFile)
-      formData.append("mode", "confirm")
+      // ── Phase 1: Upload images to Cloudinary if ZIP provided ──
+      let uploadResults: UploadResult[] = []
+      if (imagesFile) {
+        setProgressMessage("Uploading images to Cloudinary...")
+        uploadResults = await extractAndUploadZip(imagesFile, {
+          authToken: getAuthToken(),
+          folder: "products",
+          concurrency: 5,
+          signal: controller.signal,
+          onProgress: (p) => {
+            setUploadStats(p)
+            // Images are 80% of the work
+            setProgress(Math.round((p.percentage * 0.8)))
+            setProgressMessage(`Uploading ${p.currentFile} (${p.completed}/${p.total})...`)
+          },
+        })
 
-      setProgress(30)
-      setProgressMessage("Uploading and processing products...")
+        if (controller.signal.aborted) return
 
-      // Simulate progress while the request is in flight
-      const progressInterval = setInterval(() => {
-        setProgress((p) => Math.min(p + 5, 85))
-      }, 2000)
+        const failed = uploadResults.filter((r) => !r.success)
+        if (failed.length > 0) {
+          console.warn(`⚠️ ${failed.length} images failed to upload`)
+        }
+      }
 
-      const response = await fetch("/api/products/bulk", {
+      // ── Phase 2: Parse Excel and send to server ──
+      setProgress(85)
+      setProgressMessage("Saving products to database...")
+
+      const buffer = await dataFile.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: "array" })
+      const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }) as Record<string, any>[]
+
+      // Build a map of filename → Cloudinary URL
+      const imageUrlMap: Record<string, string> = {}
+      for (const r of uploadResults) {
+        if (r.success && r.url) imageUrlMap[r.filename.toLowerCase()] = r.url
+      }
+
+      const { data: result, error: fetchErr } = await safeFetch<any>("/api/products/bulk", {
         method: "POST",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          mode: "confirm",
+          rows: rawRows,
+          imageUrlMap,
+        }),
+        signal: controller.signal,
       })
 
-      clearInterval(progressInterval)
-      setProgress(95)
-      setProgressMessage("Finalizing...")
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        setError(result.error || "Upload failed")
-        toast.error(result.error || "Upload failed")
+      if (fetchErr || !result) {
+        setError(fetchErr || "Upload failed")
+        toast.error(fetchErr || "Upload failed")
         setStep("preview")
         return
       }
@@ -265,60 +338,92 @@ export default function BulkUploadPage() {
       setStep("report")
       toast.success(result.message || "Upload complete!")
     } catch (err: any) {
-      setError(err.message || "Upload failed")
-      toast.error(err.message || "Upload failed")
-      setStep("preview")
+      if (err?.name !== "AbortError") {
+        setError(err.message || "Upload failed")
+        toast.error(err.message || "Upload failed")
+        setStep("preview")
+      }
+    } finally {
+      abortControllerRef.current = null
     }
   }
 
   // ==========================
-  // Image-Only Upload (Direct)
+  // Image-Only Upload — Direct to Cloudinary, then metadata to API
   // ==========================
   const handleImageOnlyUpload = async () => {
     if (!imagesFile) return
 
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     setStep("processing")
-    setProgress(10)
-    setProgressMessage("Match processing and uploading to Cloudinary...")
+    setProgress(5)
+    setProgressMessage("Extracting ZIP and uploading to Cloudinary...")
+    setUploadStats(null)
 
     try {
-      const formData = new FormData()
-      formData.append("imagesFile", imagesFile)
-      formData.append("mode", "image-only")
-
-      setProgress(30)
-
-      const progressInterval = setInterval(() => {
-        setProgress((p) => Math.min(p + 5, 85))
-      }, 2000)
-
-      const response = await fetch("/api/products/bulk", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-        body: formData,
+      // ── Phase 1: Upload all images to Cloudinary ──
+      const uploadResults = await extractAndUploadZip(imagesFile, {
+        authToken: getAuthToken(),
+        folder: "products",
+        concurrency: 5,
+        signal: controller.signal,
+        onProgress: (p) => {
+          setUploadStats(p)
+          setProgress(Math.round(p.percentage * 0.8))
+          setProgressMessage(`Uploading ${p.currentFile} (${p.completed}/${p.total})...`)
+        },
       })
 
-      clearInterval(progressInterval)
-      setProgress(95)
-      setProgressMessage("Finalizing...")
+      if (controller.signal.aborted) return
 
-      const result = await response.json()
+      // ── Phase 2: Send URLs to server for auto-matching ──
+      setProgress(85)
+      setProgressMessage("Matching images to products...")
 
-      if (!response.ok) {
-        setError(result.error || "Image matching failed")
-        toast.error(result.error || "Image matching failed")
+      const images = uploadResults
+        .filter((r) => r.success)
+        .map((r) => ({ filename: r.filename, url: r.url, publicId: r.publicId }))
+
+      const { data: result, error: fetchErr } = await safeFetch<any>("/api/products/bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({ mode: "image-only", images }),
+        signal: controller.signal,
+      })
+
+      if (fetchErr || !result) {
+        setError(fetchErr || "Image matching failed")
+        toast.error(fetchErr || "Image matching failed")
         setStep("upload")
         return
       }
 
       setProgress(100)
+      // Merge client-side upload failures into the report
+      const clientFailures = uploadResults.filter((r) => !r.success)
+      if (clientFailures.length > 0 && result.errors) {
+        for (const f of clientFailures) {
+          result.errors.push({ file: f.filename, reason: `Client upload failed: ${f.error}` })
+        }
+        result.failed = (result.failed || 0) + clientFailures.length
+      }
+
       setReport(result)
       setStep("report")
       toast.success(result.message || "Image match complete!")
     } catch (err: any) {
-      setError(err.message || "Upload failed")
-      toast.error(err.message || "Upload failed")
-      setStep("upload")
+      if (err?.name !== "AbortError") {
+        setError(err.message || "Upload failed")
+        toast.error(err.message || "Upload failed")
+        setStep("upload")
+      }
+    } finally {
+      abortControllerRef.current = null
     }
   }
 
@@ -326,6 +431,8 @@ export default function BulkUploadPage() {
   // Reset
   // ==========================
   const handleReset = () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
     setStep("upload")
     setDataFile(null)
     setImagesFile(null)
@@ -333,6 +440,7 @@ export default function BulkUploadPage() {
     setReport(null)
     setError("")
     setProgress(0)
+    setUploadStats(null)
   }
 
   if (authState.isLoading) {
@@ -779,9 +887,19 @@ export default function BulkUploadPage() {
                       <RefreshCw className="h-16 w-16 text-black" />
                     </motion.div>
                     <h2 className="text-xl font-medium mb-2">Processing Bulk Upload</h2>
-                    <p className="text-gray-500 mb-6">{progressMessage || "Uploading products and images..."}</p>
+                    <p className="text-gray-500 mb-4">{progressMessage || "Uploading products and images..."}</p>
                     <Progress value={progress} className="h-3 mb-2" />
-                    <p className="text-sm text-gray-400">{progress}%</p>
+                    <p className="text-sm text-gray-400 mb-4">{progress}%</p>
+                    {uploadStats && (
+                      <div className="text-xs text-gray-500 space-y-1 mt-3 border-t pt-3">
+                        <p>📦 {uploadStats.completed}/{uploadStats.total} files</p>
+                        {uploadStats.failures > 0 && <p className="text-red-500">❌ {uploadStats.failures} failed</p>}
+                        {uploadStats.retries > 0 && <p className="text-amber-500">🔄 {uploadStats.retries} retries</p>}
+                      </div>
+                    )}
+                    <Button variant="outline" onClick={handleCancel} className="mt-4 gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                      <Ban className="h-4 w-4" /> Cancel Upload
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
