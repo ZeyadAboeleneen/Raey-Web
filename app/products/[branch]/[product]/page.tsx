@@ -369,6 +369,9 @@ export default function ProductDetailPage() {
     }
   }, [occasionTime])
 
+  // Admins and staff with canViewPricesOnWebsite bypass the 45-day WhatsApp restriction
+  const canBypass45Days = userRole === "admin" || canViewPrices
+
   // Fetch rental price whenever date or exclusive option changes
   useEffect(() => {
     if (!isRentBranch || !product || !rentEventTime || !rentEventDate) {
@@ -392,7 +395,8 @@ export default function ProductDetailPage() {
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
     // If date is past 45 days, pricing is not available online
-    if (d > 45) {
+    // Admins and staff with canEditProducts bypass this restriction
+    if (d > 45 && !canBypass45Days) {
       setRentalPrice(null)
       return
     }
@@ -441,12 +445,15 @@ export default function ProductDetailPage() {
 
     fetchPrice()
     return () => controller.abort()
-  }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter, canViewPrices])
+  }, [isRentBranch, product?.id, rentEventTime, isExclusive, extraDayBefore, extraDayAfter, canViewPrices, canBypass45Days])
 
   // Check if the selected rental date is more than 45 days away.
   // When true, pricing is not available online — user must contact branch via WhatsApp.
+  // Admins and staff with canEditProducts bypass this restriction.
   // Uses BOTH: the in-page calendar (rentEventDate) AND the global popup date (isOccasionPast45Days).
+
   const isPast45Days = (() => {
+    if (canBypass45Days) return false
     if (!isRentBranch || !rentEventDate) return false
     const msPerDay = 1000 * 60 * 60 * 24
     const rs = new Date(rentEventDate)

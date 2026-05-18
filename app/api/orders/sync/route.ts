@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
       for (const item of items) {
         if (item.type === "rent" && item.rentStart && item.rentEnd) {
-          const branchId = mapBranchSlugToBranchId(item.branch) || 15
+          const branchId = mapBranchSlugToBranchId(item.branch) || 3 // Default to BranchID 3 (el-raey-1)
           const modelTypeId = parseInt(item.productId, 10)
 
           if (isNaN(modelTypeId)) continue
@@ -117,6 +117,20 @@ export async function POST(request: NextRequest) {
             const extraDaySuffix = extraDayLabels.length > 0 ? ` [${extraDayLabels.join(', ')}]` : ''
             const noteItem = `${exclusivePrefix}Web Order: ${item.size} - Qty: ${item.quantity}${extraDaySuffix}`
 
+            let itemDeposit = 1000 // Default to Soiree
+            if (item.isExclusive) {
+              itemDeposit = Math.round(finalPrice * 0.5)
+            } else {
+              const col = (item.collection || "").toLowerCase()
+              if (col === "wedding") {
+                itemDeposit = 5000
+              }
+            }
+            
+            // Ensure deposit doesn't exceed final price
+            itemDeposit = Math.min(itemDeposit, finalPrice)
+            const itemRemaining = Math.max(0, finalPrice - itemDeposit)
+
             await new sql.Request(txn)
               .input('invoice_code', sql.NVarChar, `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50))
               .input('Cust_Name', sql.NVarChar, (shippingAddress?.name || '').substring(0, 50))
@@ -136,8 +150,8 @@ export async function POST(request: NextRequest) {
               .input('CurrencyID', sql.Int, 1)
               .input('ExRate', sql.Decimal(18, 2), 1.0)
               .input('Total', sql.Decimal(18, 2), finalPrice)
-              .input('Deposit', sql.Decimal(18, 2), finalPrice * 0.5)
-              .input('Remaining', sql.Decimal(18, 2), finalPrice * 0.5)
+              .input('Deposit', sql.Decimal(18, 2), itemDeposit)
+              .input('Remaining', sql.Decimal(18, 2), itemRemaining)
               .input('NoteItem', sql.NVarChar, noteItem.substring(0, 200))
               .input('BreastSize', sql.NVarChar, item.customMeasurements?.values?.bust ? String(item.customMeasurements.values.bust).substring(0, 20) : '')
               .input('WaistSize', sql.NVarChar, item.customMeasurements?.values?.waist ? String(item.customMeasurements.values.waist).substring(0, 20) : '')

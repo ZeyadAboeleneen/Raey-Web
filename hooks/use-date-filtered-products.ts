@@ -5,10 +5,18 @@ import { useDateContext } from "@/lib/date-context"
 import type { CachedProduct as Product } from "@/lib/products-cache"
 import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
 import { usePermission } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
 
 export function useDateFilteredProducts(products: Product[]) {
-  const { occasionDate, isBrowsingOnly, isOccasionPast45Days } = useDateContext()
+  const { occasionDate, isBrowsingOnly, isOccasionPast45Days: rawIsOccasionPast45Days } = useDateContext()
   const canViewPrices = usePermission("canViewPricesOnWebsite")
+  const canEditProducts = usePermission("canEditProducts")
+  const { state: authState } = useAuth()
+  const userRole = authState.user?.role || ""
+
+  // Admins and staff with canEditProducts bypass the 45-day restriction
+  const canBypass45Days = userRole === "admin" || canEditProducts || canViewPrices
+  const isOccasionPast45Days = canBypass45Days ? false : rawIsOccasionPast45Days
   const [serverPrices, setServerPrices] = useState<Record<string, number>>({})
   const [loadingPrices, setLoadingPrices] = useState(false)
 

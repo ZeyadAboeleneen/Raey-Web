@@ -221,9 +221,32 @@ export default function CheckoutPage() {
   const discountAmount = appliedDiscount?.discountAmount || 0
   const total = subtotal - discountAmount
 
-  const baseDeposit = (rentSubtotal * 0.5) + buySubtotal;
+  // ── New deposit rules ──────────────────────────────────────────────
+  // Exclusive (first hold): 50% of rental price
+  // Soiree dress rent:      fixed 1,000 EGP per item
+  // Wedding dress rent:     fixed 5,000 EGP per item
+  // Buy items:              100% (full price)
+  const baseDeposit = cartState.items.reduce((sum, item) => {
+    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
+    if (!isRent) {
+      // Buy items → full price
+      return sum + (item.price * item.quantity)
+    }
+    // Exclusive (first hold) → 50% of rental price
+    if (item.isExclusive) {
+      return sum + Math.round(item.price * item.quantity * 0.5)
+    }
+    // Collection-based fixed deposits
+    const col = (item.collection || "").toLowerCase()
+    if (col === "wedding") {
+      return sum + (5000 * item.quantity)
+    }
+    // Default to soiree deposit for all other rental items
+    return sum + (1000 * item.quantity)
+  }, 0);
+
   const depositRatio = subtotal > 0 ? baseDeposit / subtotal : 0;
-  const depositAmount = discountAmount > 0 ? total * depositRatio : baseDeposit;
+  const depositAmount = discountAmount > 0 ? Math.round(total * depositRatio) : baseDeposit;
   const remainingAmount = total - depositAmount;
 
 
@@ -358,7 +381,7 @@ export default function CheckoutPage() {
   };
 
   const validateForm = () => {
-    const required = ["firstName", "lastName", "email", "phone", "altPhone", "address", "city"]
+    const required = ["firstName", "lastName", "email", "phone", "address", "city"]
 
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
@@ -375,14 +398,14 @@ export default function CheckoutPage() {
       return false
     }
 
-    if (!validatePhoneNumber(formData.altPhone, secondaryCountryCode, "secondary")) {
+    if (formData.altPhone.trim() && !validatePhoneNumber(formData.altPhone, secondaryCountryCode, "secondary")) {
       return false
     }
 
     const fullPrimaryPhone = formatPhoneWithDialCode(primaryCountryCode, formData.phone)
     const fullSecondaryPhone = formatPhoneWithDialCode(secondaryCountryCode, formData.altPhone)
 
-    if (fullPrimaryPhone === fullSecondaryPhone) {
+    if (formData.altPhone.trim() && fullPrimaryPhone === fullSecondaryPhone) {
       setError("Primary and secondary phone numbers cannot be the same")
       return false
     }
@@ -685,7 +708,7 @@ export default function CheckoutPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="altPhone" className="text-sm font-medium">
-                            {t("secondaryPhone")}
+                            {t("secondaryPhone")} <span className="text-gray-400 font-normal">(optional)</span>
                           </Label>
                           <div className={`mt-1 flex gap-2 ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
                             <select
@@ -706,8 +729,7 @@ export default function CheckoutPage() {
                               id="altPhone"
                               value={formData.altPhone}
                               onChange={(e) => handleInputChange("altPhone", e.target.value)}
-                              placeholder="Enter secondary phone number"
-                              required
+                              placeholder="Enter secondary phone number (optional)"
                               className="flex-1 border-gray-200 focus:border-rose-500 focus:ring-rose-500 placeholder:text-xs sm:placeholder:text-sm"
                             />
                           </div>

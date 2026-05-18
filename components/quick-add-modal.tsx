@@ -19,7 +19,7 @@ import type { SizeChartRow } from "@/components/custom-size-form"
 import type { CachedProduct as Product, ProductSize } from "@/lib/products-cache"
 import { useRouter } from "next/navigation"
 import { useDateContext } from "@/lib/date-context"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, usePermission } from "@/lib/auth-context"
 
 const CustomSizeForm = dynamic(
   () => import("@/components/custom-size-form").then((m) => m.CustomSizeForm),
@@ -73,12 +73,17 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [customPrice, setCustomPrice] = useState<number | null>(null)
   const { state: authState } = useAuth()
   const userRole = authState.user?.role || ""
+  const canEditProducts = usePermission("canEditProducts")
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
   const isRentBranch = product?.branch !== "sell-dresses"
 
+  // Admins and staff with canEditProducts bypass the 45-day restriction
+  const canBypass45Days = userRole === "admin" || canEditProducts
+
   const isPast45Days = (() => {
+    if (canBypass45Days) return false
     if (!isRentBranch || !rentEventDate) return false
     const msPerDay = 1000 * 60 * 60 * 24
     const rs = new Date(rentEventDate)
