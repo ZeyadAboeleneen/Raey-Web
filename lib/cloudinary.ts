@@ -83,3 +83,30 @@ export async function uploadDataUrlToCloudinary(
   const buffer = dataUrlToBuffer(dataUrl)
   return uploadBufferToCloudinary(buffer, folder, publicId)
 }
+
+/**
+ * Delete an image from Cloudinary by its URL
+ */
+export async function deleteImageFromCloudinary(url: string): Promise<boolean> {
+  try {
+    configureCloudinary()
+    
+    // Extract public_id from Cloudinary URL
+    // e.g., https://res.cloudinary.com/cloudname/image/upload/v1234/folder/filename.jpg
+    // We want "folder/filename"
+    const parts = url.split("/")
+    const uploadIndex = parts.findIndex(p => p === "upload")
+    if (uploadIndex === -1) return false
+    
+    // Everything after upload/vXXX/
+    let publicIdWithExt = parts.slice(uploadIndex + 2).join("/")
+    // Remove the extension
+    const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.')) || publicIdWithExt
+
+    await cloudinary.uploader.destroy(publicId)
+    return true
+  } catch (error) {
+    console.error("Cloudinary delete error:", error)
+    return false
+  }
+}

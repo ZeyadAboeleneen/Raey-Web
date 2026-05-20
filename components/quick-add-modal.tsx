@@ -463,30 +463,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
               </div>
 
               <div className="space-y-6">
-                <CustomSizeForm
-                  controller={{
-                    isCustomSizeMode,
-                    setIsCustomSizeMode,
-                    measurementUnit,
-                    setMeasurementUnit,
-                    measurements,
-                    onMeasurementChange: handleMeasurementChange,
-                    confirmMeasurements,
-                    setConfirmMeasurements,
-                    isMeasurementsValid,
-                  }}
-                  sizeChart={sizeChart}
-                  sizes={product.sizes}
-                  selectedSize={selectedSize}
-                  onSelectSize={(size) => {
-                    setIsCustomSizeMode(false)
-                    setSelectedSize(size as ProductSize)
-                  }}
-                  formatPrice={formatPrice}
-                />
-
                 {isRentBranch && (
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="space-y-4">
                     <p className="font-medium text-gray-900 text-sm">{t("selectOccasionDate" as TranslationKey)}</p>
                     <div className="flex justify-center border rounded-xl p-2 bg-gray-50">
                       <Calendar
@@ -609,6 +587,30 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                   </div>
                 )}
 
+                <div className={isRentBranch ? "pt-6 border-t border-gray-100" : ""}>
+                  <CustomSizeForm
+                    controller={{
+                      isCustomSizeMode,
+                      setIsCustomSizeMode,
+                      measurementUnit,
+                      setMeasurementUnit,
+                      measurements,
+                      onMeasurementChange: handleMeasurementChange,
+                      confirmMeasurements,
+                      setConfirmMeasurements,
+                      isMeasurementsValid,
+                    }}
+                    sizeChart={sizeChart}
+                    sizes={product.sizes}
+                    selectedSize={selectedSize}
+                    onSelectSize={(size) => {
+                      setIsCustomSizeMode(false)
+                      setSelectedSize(size as ProductSize)
+                    }}
+                    formatPrice={formatPrice}
+                  />
+                </div>
+
                 <div className="flex flex-col space-y-4 py-4 border-t border-gray-100">
                   {isPast45Days ? (
                     <div className="space-y-3 w-full">
@@ -719,7 +721,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
 
                       <Button
                         onClick={() => {
-                          if (isCustomSizeMode && isMeasurementsValid) {
+                          if (isCustomSizeMode) {
+                            if (!isMeasurementsValid) {
+                              alert("Please complete your custom measurements")
+                              return
+                            }
                             setShowCustomSizeConfirmation(true)
                           } else {
                             handleAddToCart()
@@ -747,12 +753,12 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
             <AlertDialogDescription asChild>
               <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm mt-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <span><strong>Shoulder:</strong> {measurements.shoulder} {measurementUnit}</span>
-                  <span><strong>Bust:</strong> {measurements.bust} {measurementUnit}</span>
+                  <span><strong>Shoulder:</strong> {measurements.shoulder ? `${measurements.shoulder} ${measurementUnit}` : "Not specified"}</span>
+                  <span><strong>Breast:</strong> {measurements.breast} {measurementUnit}</span>
                   <span><strong>Waist:</strong> {measurements.waist} {measurementUnit}</span>
                   <span><strong>Hips:</strong> {measurements.hips} {measurementUnit}</span>
                   <span><strong>Sleeve:</strong> {measurements.sleeve} {measurementUnit}</span>
-                  <span><strong>Length:</strong> {measurements.length} {measurementUnit}</span>
+                  <span><strong>Length:</strong> {measurements.length ? `${measurements.length} ${measurementUnit}` : "Not specified"}</span>
                 </div>
               </div>
             </AlertDialogDescription>

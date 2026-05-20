@@ -22,7 +22,7 @@ const data = JSON.stringify({
         unit: "cm",
         values: {
           shoulder: "1",
-          bust: "1",
+          breast: "1",
           waist: "J",
           hips: "J",
           sleeve: "J",

@@ -38,7 +38,7 @@ interface OrderDetails {
       unit: "cm" | "inch"
       values: {
         shoulder: string
-        bust: string
+        breast: string
         waist: string
         hips: string
         sleeve: string
@@ -90,6 +90,9 @@ interface OrderDetails {
     cardName: string
   }
   paymentScreenshot?: string | null
+  paymentStatus?: "pending" | "approved" | "rejected" | "pending_review"
+  paymentFraudReason?: string | null
+  paymentAiConfidence?: number | null
   discountCode?: string
   discountAmount?: number
   depositAmount?: number
@@ -126,6 +129,70 @@ export default function AdminOrderDetailsPage() {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  const handleAdminDecision = async (decision: "approved" | "rejected") => {
+    setUpdating(true)
+    setError("")
+    setSuccess("")
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/decision`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authState.token}`,
+        },
+        body: JSON.stringify({
+          decision,
+          reason: `Manually reviewed and ${decision} by Admin.`
+        }),
+      })
+
+      if (response.ok) {
+        if (decision === "approved") {
+          setSuccess("Payment successfully approved! The order has been synchronized to the MSSQL ERP Booking database.")
+        } else {
+          setSuccess("Payment successfully rejected! The booking reservation has been successfully removed from the MSSQL ERP database.")
+        }
+        // Refetch order details to show the updated status
+        await fetchOrderDetails()
+      } else {
+        const errData = await response.json()
+        setError(errData.error || `Failed to submit decision: ${decision}`)
+      }
+    } catch (err: any) {
+      console.error("Decision error:", err)
+      setError("An error occurred while submitting payment decision")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleAiVerification = async () => {
+    setUpdating(true)
+    setError("")
+    setSuccess("")
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/verify`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authState.token}`,
+        },
+      })
+
+      if (response.ok) {
+        setSuccess("AI payment verification completed successfully!")
+        await fetchOrderDetails()
+      } else {
+        const errData = await response.json()
+        setError(errData.error || "Failed to trigger AI payment verification")
+      }
+    } catch (err: any) {
+      console.error("AI verify error:", err)
+      setError("An error occurred during AI verification")
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   useEffect(() => {
     if (!authState.isLoading && (!authState.isAuthenticated || !canViewOrders)) {
@@ -294,6 +361,45 @@ export default function AdminOrderDetailsPage() {
             </motion.div>
           )}
 
+          {order.paymentStatus === "pending_review" && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+              <Alert className="border-amber-300 bg-amber-50">
+                <AlertDescription className="text-amber-800 flex items-center gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>
+                    <strong>Awaiting Manual Review:</strong> The AI flagged this payment for manual verification.
+                    {order.paymentFraudReason && ` Reason: ${order.paymentFraudReason}`}
+                  </span>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+          {order.paymentStatus === "rejected" && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+              <Alert className="border-red-300 bg-red-50">
+                <AlertDescription className="text-red-800 flex items-center gap-2">
+                  <span className="text-lg">❌</span>
+                  <span>
+                    <strong>AI Flagged/Rejected:</strong> This payment screenshot was rejected as invalid.
+                    {order.paymentFraudReason && ` Reason: ${order.paymentFraudReason}`}
+                  </span>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+          {order.paymentStatus === "approved" && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+              <Alert className="border-green-300 bg-green-50">
+                <AlertDescription className="text-green-800 flex items-center gap-2">
+                  <span className="text-lg">✅</span>
+                  <span>
+                    <strong>Payment Approved:</strong> Successfully verified and synced to the MSSQL ERP Booking database.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <Card>
@@ -311,7 +417,7 @@ export default function AdminOrderDetailsPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium text-lg">{item.name}</h3>
-                            {item.isExclusive && (
+                            {(item as any).isExclusive && (
                               <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider border border-amber-200">
                                 First Rental
                               </span>
@@ -349,7 +455,7 @@ export default function AdminOrderDetailsPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Shoulder</p>
-                                    <p className="text-sm font-medium">{item.customMeasurements.values.shoulder}</p>
+                                    <p className="text-sm font-medium">{item.customMeasurements.values.shoulder || "Not specified"}</p>
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-100">
@@ -357,8 +463,8 @@ export default function AdminOrderDetailsPage() {
                                     <Ruler className="h-3 w-3 text-blue-500" />
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-500">Bust</p>
-                                    <p className="text-sm font-medium">{item.customMeasurements.values.bust}</p>
+                                    <p className="text-xs text-gray-500">Breast</p>
+                                    <p className="text-sm font-medium">{item.customMeasurements.values.breast}</p>
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-100">
@@ -394,7 +500,7 @@ export default function AdminOrderDetailsPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Length</p>
-                                    <p className="text-sm font-medium">{item.customMeasurements.values.length}</p>
+                                    <p className="text-sm font-medium">{item.customMeasurements.values.length || "Not specified"}</p>
                                   </div>
                                 </div>
                               </div>
@@ -551,7 +657,46 @@ export default function AdminOrderDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   {order.paymentScreenshot ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* AI Verification Details */}
+                      <div className="p-3 bg-gray-50 rounded-lg border text-sm space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">AI Confidence:</span>
+                          <span className="font-semibold text-gray-800">
+                            {order.paymentAiConfidence !== null && order.paymentAiConfidence !== undefined
+                              ? `${Math.round(order.paymentAiConfidence * 100)}%`
+                              : "Pending verification / Not processed"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Verification Status:</span>
+                          <span className={`font-semibold capitalize ${
+                            order.paymentStatus === 'approved' ? 'text-green-600' :
+                            order.paymentStatus === 'rejected' ? 'text-red-600' :
+                            order.paymentStatus === 'pending_review' ? 'text-amber-600' :
+                            'text-gray-600'
+                          }`}>
+                            {order.paymentStatus === 'pending_review' ? 'Awaiting Review' : order.paymentStatus}
+                          </span>
+                        </div>
+                        {order.paymentFraudReason && (
+                          <div className="pt-2 border-t text-xs text-gray-600">
+                            <strong className="text-red-600">AI Flag Reason:</strong> {order.paymentFraudReason}
+                          </div>
+                        )}
+                        {(order.paymentAiConfidence === null || order.paymentAiConfidence === undefined) && (
+                          <div className="pt-2 border-t mt-2">
+                            <button
+                              onClick={handleAiVerification}
+                              disabled={updating}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md text-xs transition duration-200 flex items-center justify-center gap-1 shadow-sm disabled:opacity-50"
+                            >
+                              {updating ? "Processing AI..." : "🔍 Run AI Verification Now"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                         <a href={order.paymentScreenshot} target="_blank" rel="noopener noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -563,6 +708,39 @@ export default function AdminOrderDetailsPage() {
                         </a>
                       </div>
                       <p className="text-xs text-gray-500 text-center">Click image to view full size</p>
+
+                      {/* Admin Quick Action Decision Buttons */}
+                      {order.paymentStatus !== "approved" ? (
+                        <div className="grid grid-cols-2 gap-2 pt-3 border-t">
+                          <Button
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700 text-white font-medium w-full"
+                            onClick={() => handleAdminDecision("approved")}
+                            disabled={updating}
+                          >
+                            Approve & Book ERP
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium w-full"
+                            onClick={() => handleAdminDecision("rejected")}
+                            disabled={updating}
+                          >
+                            Reject & Block
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="pt-3 border-t">
+                          <Button
+                            variant="destructive"
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium w-full flex items-center justify-center gap-1"
+                            onClick={() => handleAdminDecision("rejected")}
+                            disabled={updating}
+                          >
+                            ❌ Reject & Remove Booking from ERP
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-6">

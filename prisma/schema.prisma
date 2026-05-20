@@ -2,6 +2,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum PaymentStatus {
+  pending
+  approved
+  pending_review
+  rejected
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -71,8 +78,18 @@ model Order {
   updatedAt         DateTime @updatedAt @map("updated_at")
   depositAmount     Float    @default(0) @map("deposit_amount")
   remainingAmount   Float    @default(0) @map("remaining_amount")
-  paymentScreenshot String?  @map("payment_screenshot") @db.LongText
-  user              User?    @relation(fields: [userId], references: [id])
+  paymentScreenshot      String?       @map("payment_screenshot") @db.LongText
+  paymentTransactionId   String?       @unique @map("payment_transaction_id")
+  paymentReceiptHash     String?       @map("payment_receipt_hash")
+  paymentVerifiedAt      DateTime?     @map("payment_verified_at")
+  paymentAiConfidence    Float?        @map("payment_ai_confidence")
+  paymentStatus          PaymentStatus @default(pending) @map("payment_status")
+  paymentFraudReason     String?       @map("payment_fraud_reason")
+  paymentAiRaw           Json?         @map("payment_ai_raw")
+  paymentReviewedBy      String?       @map("payment_reviewed_by")
+  paymentReviewedAt      DateTime?     @map("payment_reviewed_at")
+  paymentAiPromptVersion String?       @map("payment_ai_prompt_version")
+  user                   User?         @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "orders_user_id_fkey")
   @@map("orders")

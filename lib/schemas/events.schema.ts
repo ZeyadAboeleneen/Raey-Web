@@ -26,7 +26,13 @@ export const EventRegistry = {
   AUDIT_LOG: AuditEventSchema,
   ERP_SYNC: ErpSyncEventSchema,
   EMPLOYEE_CREATED: z.object({ id: z.string(), email: z.string() }),
-  PRODUCT_UPDATED: z.object({ id: z.string(), priceChanged: z.boolean() })
+  PRODUCT_UPDATED: z.object({ id: z.string(), priceChanged: z.boolean() }),
+  VERIFY_PAYMENT: z.object({
+    orderId: z.string(),
+    expectedAmount: z.number(),
+    expectedProvider: z.string(),
+    imageUrl: z.string()
+  })
 }
 
 export type EventType = keyof typeof EventRegistry

@@ -74,12 +74,12 @@ interface SizeChartRow {
     label: string
     shoulderIn: string
     waistIn: string
-    bustIn: string
+    breastIn: string
     hipsIn: string
     sleeveIn: string
     shoulderCm: string
     waistCm: string
-    bustCm: string
+    breastCm: string
     hipsCm: string
     sleeveCm: string
 }
@@ -253,11 +253,11 @@ export function HomePageContent() {
     const scrollToBestSellers = () => bestSellersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
     const sizeChart: SizeChartRow[] = [
-        { label: "XL", shoulderIn: "16", waistIn: "32", bustIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", bustCm: "101", hipsCm: "106", sleeveCm: "58" },
-        { label: "L", shoulderIn: "15", waistIn: "31", bustIn: "39", hipsIn: "40", sleeveIn: "22.5", shoulderCm: "38", waistCm: "78", bustCm: "99", hipsCm: "101", sleeveCm: "57" },
-        { label: "M", shoulderIn: "14.5", waistIn: "29", bustIn: "37", hipsIn: "38", sleeveIn: "22", shoulderCm: "37", waistCm: "73", bustCm: "94", hipsCm: "96", sleeveCm: "55" },
-        { label: "S", shoulderIn: "14", waistIn: "27", bustIn: "35", hipsIn: "36", sleeveIn: "21.5", shoulderCm: "35", waistCm: "68", bustCm: "90", hipsCm: "91", sleeveCm: "54" },
-        { label: "XS", shoulderIn: "14", waistIn: "25", bustIn: "34", hipsIn: "35", sleeveIn: "21", shoulderCm: "34", waistCm: "63", bustCm: "86", hipsCm: "88", sleeveCm: "53" },
+        { label: "XL", shoulderIn: "16", waistIn: "32", breastIn: "40", hipsIn: "42", sleeveIn: "23", shoulderCm: "40", waistCm: "81", breastCm: "101", hipsCm: "106", sleeveCm: "58" },
+        { label: "L", shoulderIn: "15", waistIn: "31", breastIn: "39", hipsIn: "40", sleeveIn: "22.5", shoulderCm: "38", waistCm: "78", breastCm: "99", hipsCm: "101", sleeveCm: "57" },
+        { label: "M", shoulderIn: "14.5", waistIn: "29", breastIn: "37", hipsIn: "38", sleeveIn: "22", shoulderCm: "37", waistCm: "73", breastCm: "94", hipsCm: "96", sleeveCm: "55" },
+        { label: "S", shoulderIn: "14", waistIn: "27", breastIn: "35", hipsIn: "36", sleeveIn: "21.5", shoulderCm: "35", waistCm: "68", breastCm: "90", hipsCm: "91", sleeveCm: "54" },
+        { label: "XS", shoulderIn: "14", waistIn: "25", breastIn: "34", hipsIn: "35", sleeveIn: "21", shoulderCm: "34", waistCm: "63", breastCm: "86", hipsCm: "88", sleeveCm: "53" },
     ]
 
     return (

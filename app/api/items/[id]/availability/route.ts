@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getMssqlPool, sql } from "@/lib/mssql";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,10 +29,13 @@ export async function GET(
     const end = searchParams.get("end");
 
     // 1. Fetch bookings from local Prisma (for instant updates before ERP sync)
+    const where: any = {
+      status: { notIn: ["cancelled"] },
+      paymentStatus: "approved",
+    };
+
     const localOrders = await prisma.order.findMany({
-      where: {
-        status: { notIn: ["cancelled"] },
-      },
+      where,
       select: { items: true },
     });
 

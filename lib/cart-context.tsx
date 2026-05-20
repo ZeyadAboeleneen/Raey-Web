@@ -8,7 +8,7 @@ interface CustomMeasurements {
   unit: "cm" | "inch"
   values: {
     shoulder: string
-    bust: string
+    breast: string
     waist: string
     hips: string
     sleeve: string

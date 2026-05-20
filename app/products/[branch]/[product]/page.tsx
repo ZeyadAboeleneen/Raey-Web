@@ -153,12 +153,12 @@ export default function ProductDetailPage() {
       label: "XL",
       shoulderIn: "16",
       waistIn: "32",
-      bustIn: "40",
+      breastIn: "40",
       hipsIn: "42",
       sleeveIn: "23",
       shoulderCm: "40",
       waistCm: "81",
-      bustCm: "101",
+      breastCm: "101",
       hipsCm: "106",
       sleeveCm: "58",
     },
@@ -166,12 +166,12 @@ export default function ProductDetailPage() {
       label: "L",
       shoulderIn: "15",
       waistIn: "31",
-      bustIn: "39",
+      breastIn: "39",
       hipsIn: "40",
       sleeveIn: "22.5",
       shoulderCm: "38",
       waistCm: "78",
-      bustCm: "99",
+      breastCm: "99",
       hipsCm: "101",
       sleeveCm: "57",
     },
@@ -179,12 +179,12 @@ export default function ProductDetailPage() {
       label: "M",
       shoulderIn: "14.5",
       waistIn: "29",
-      bustIn: "37",
+      breastIn: "37",
       hipsIn: "38",
       sleeveIn: "22",
       shoulderCm: "37",
       waistCm: "73",
-      bustCm: "94",
+      breastCm: "94",
       hipsCm: "96",
       sleeveCm: "55",
     },
@@ -192,12 +192,12 @@ export default function ProductDetailPage() {
       label: "S",
       shoulderIn: "14",
       waistIn: "27",
-      bustIn: "35",
+      breastIn: "35",
       hipsIn: "36",
       sleeveIn: "21.5",
       shoulderCm: "35",
       waistCm: "68",
-      bustCm: "90",
+      breastCm: "90",
       hipsCm: "91",
       sleeveCm: "54",
     },
@@ -205,12 +205,12 @@ export default function ProductDetailPage() {
       label: "XS",
       shoulderIn: "14",
       waistIn: "25",
-      bustIn: "34",
+      breastIn: "34",
       hipsIn: "35",
       sleeveIn: "21",
       shoulderCm: "34",
       waistCm: "63",
-      bustCm: "86",
+      breastCm: "86",
       hipsCm: "88",
       sleeveCm: "53",
     },
@@ -1078,47 +1078,8 @@ export default function ProductDetailPage() {
               {/* Size selection & add to cart */}
               {!product.isGiftPackage && (
                 <div className="space-y-4">
-                  <h3 className="text-base sm:text-lg font-medium mb-4 text-gray-900">{isRentBranch ? t("selectSizeToRent" as TranslationKey) : t("selectSizeToBuy" as TranslationKey)}</h3>
-                  <CustomSizeForm
-                    controller={{
-                      isCustomSizeMode,
-                      setIsCustomSizeMode,
-                      measurementUnit,
-                      setMeasurementUnit,
-                      measurements,
-                      onMeasurementChange: handleMeasurementChange,
-                      confirmMeasurements,
-                      setConfirmMeasurements,
-                      isMeasurementsValid,
-                    }}
-                    sizeChart={sizeChart}
-                    sizes={product.sizes.map((s) => ({
-                      originalPrice: s.originalPrice,
-                      discountedPrice: s.discountedPrice,
-                      stockCount: s.stockCount,
-                    }))}
-                    selectedSize={
-                      isCustomSizeMode
-                        ? null
-                        : product.sizes[selectedSize]
-                          ? {
-                            originalPrice: product.sizes[selectedSize].originalPrice,
-                            discountedPrice: product.sizes[selectedSize].discountedPrice,
-                            stockCount: product.sizes[selectedSize].stockCount,
-                          }
-                          : null
-                    }
-                    onSelectSize={(size) => {
-                      const index = product.sizes.findIndex((s) => s.originalPrice === size.originalPrice)
-                      if (index >= 0) {
-                        setSelectedSize(index)
-                        setIsCustomSizeMode(false)
-                      }
-                    }}
-                    formatPrice={formatPrice}
-                  />
                   {isRentBranch && (
-                    <div className="mt-4 space-y-3">
+                    <div className="space-y-3">
                       <p className="font-medium text-gray-900">{t("selectOccasionDate" as TranslationKey)}</p>
                       <div className="w-full max-w-sm">
                         <div className="border rounded-lg overflow-hidden place-items-center p-2 bg-white flex justify-center">
@@ -1329,6 +1290,48 @@ export default function ProductDetailPage() {
                       )}
                     </div>
                   )}
+
+                  <div className={isRentBranch ? "pt-6 border-t border-gray-100 space-y-4" : "space-y-4"}>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900">{isRentBranch ? t("selectSizeToRent" as TranslationKey) : t("selectSizeToBuy" as TranslationKey)}</h3>
+                    <CustomSizeForm
+                      controller={{
+                        isCustomSizeMode,
+                        setIsCustomSizeMode,
+                        measurementUnit,
+                        setMeasurementUnit,
+                        measurements,
+                        onMeasurementChange: handleMeasurementChange,
+                        confirmMeasurements,
+                        setConfirmMeasurements,
+                        isMeasurementsValid,
+                      }}
+                      sizeChart={sizeChart}
+                      sizes={product.sizes.map((s) => ({
+                        originalPrice: s.originalPrice,
+                        discountedPrice: s.discountedPrice,
+                        stockCount: s.stockCount,
+                      }))}
+                      selectedSize={
+                        isCustomSizeMode
+                          ? null
+                          : product.sizes[selectedSize]
+                            ? {
+                              originalPrice: product.sizes[selectedSize].originalPrice,
+                              discountedPrice: product.sizes[selectedSize].discountedPrice,
+                              stockCount: product.sizes[selectedSize].stockCount,
+                            }
+                            : null
+                      }
+                      onSelectSize={(size) => {
+                        const index = product.sizes.findIndex((s) => s.originalPrice === size.originalPrice)
+                        if (index >= 0) {
+                          setSelectedSize(index)
+                          setIsCustomSizeMode(false)
+                        }
+                      }}
+                      formatPrice={formatPrice}
+                    />
+                  </div>
                   {!isPast45Days && (
                     <div className="mt-4 flex justify-center">
                       <Button

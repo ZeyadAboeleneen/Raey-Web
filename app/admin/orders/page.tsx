@@ -188,11 +188,47 @@ export default function AdminOrdersPage() {
                               Deposit: {formatPrice(order.depositAmount)}
                             </span>
                           )}
-                          {order.paymentScreenshot && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 text-xs border border-green-100">
-                              <ImageIcon className="h-3 w-3" />
-                              Proof ✓
-                            </span>
+                          {order.paymentScreenshot ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 text-xs border border-green-100">
+                                <ImageIcon className="h-3 w-3" />
+                                Proof ✓
+                              </span>
+                              {order.paymentStatus === "approved" && (
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border font-medium ${
+                                  order.paymentReviewedBy === "admin"
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                    : "bg-green-100 text-green-850 border-green-300"
+                                }`}>
+                                  {order.paymentReviewedBy === "admin" ? "🛡️ Paid (Admin)" : "✨ Paid (AI)"}
+                                </span>
+                              )}
+                              {order.paymentStatus === "rejected" && (
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border font-medium ${
+                                  order.paymentReviewedBy === "admin"
+                                    ? "bg-red-100 text-red-800 border-red-300"
+                                    : "bg-orange-100 text-orange-800 border-orange-300"
+                                }`}>
+                                  {order.paymentReviewedBy === "admin" ? "🚫 Rejected (Admin)" : "✨ Rejected (AI)"}
+                                </span>
+                              )}
+                              {order.paymentStatus === "pending_review" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-805 text-xs border border-amber-300 font-medium animate-pulse">
+                                  ⚠️ Needs Review
+                                </span>
+                              )}
+                              {order.paymentStatus === "pending" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-300 font-medium">
+                                  ⏳ Awaiting AI
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            order.paymentMethod !== "cod" && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-50 text-red-650 text-xs border border-red-200 font-medium">
+                                ❌ No Screenshot
+                              </span>
+                            )
                           )}
                         </div>
 

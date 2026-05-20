@@ -11,12 +11,12 @@ export interface SizeChartRow {
   label: string
   shoulderIn: string
   waistIn: string
-  bustIn: string
+  breastIn: string
   hipsIn: string
   sleeveIn: string
   shoulderCm: string
   waistCm: string
-  bustCm: string
+  breastCm: string
   hipsCm: string
   sleeveCm: string
 }
@@ -87,16 +87,28 @@ export const CustomSizeForm = ({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {(Object.keys(measurementLabels) as MeasurementFields[]).map((field) => (
-            <div key={field} className="space-y-1">
-              <label className="text-xs uppercase tracking-[0.3em] text-gray-500">{t(field as TranslationKey) || measurementLabels[field]}</label>
-              <Input
-                value={measurements[field]}
-                onChange={(e) => onMeasurementChange(field, e.target.value)}
-                placeholder={measurementUnit === "cm" ? t("cm" as TranslationKey) : t("inch" as TranslationKey)}
-              />
-            </div>
-          ))}
+          {(["breast", "waist", "hips", "sleeve", "shoulder", "length"] as MeasurementFields[]).map((field) => {
+            const isOptional = ["shoulder", "length"].includes(field)
+            return (
+              <div key={field} className="space-y-1">
+                <label className="text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-gray-500 flex flex-wrap items-center gap-1">
+                  <span>{t(field as TranslationKey) || measurementLabels[field]}</span>
+                  {!isOptional ? (
+                    <span className="text-red-500 font-bold" title="Required">*</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-400 normal-case tracking-normal font-normal">
+                      {settings.language === "ar" ? `(${t("optional" as TranslationKey)})` : `(${t("optional" as TranslationKey)?.toLowerCase()})`}
+                    </span>
+                  )}
+                </label>
+                <Input
+                  value={measurements[field]}
+                  onChange={(e) => onMeasurementChange(field, e.target.value)}
+                  placeholder={measurementUnit === "cm" ? t("cm" as TranslationKey) : t("inch" as TranslationKey)}
+                />
+              </div>
+            )
+          })}
         </div>
 
         <div className="mt-4 space-y-2">

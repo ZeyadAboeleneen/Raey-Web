@@ -4,13 +4,13 @@ import { useCallback, useMemo, useState } from "react"
 
 export type MeasurementUnit = "cm" | "inch"
 
-export type MeasurementFields = "shoulder" | "bust" | "waist" | "hips" | "sleeve" | "length"
+export type MeasurementFields = "shoulder" | "breast" | "waist" | "hips" | "sleeve" | "length"
 
 export type MeasurementValues = Record<MeasurementFields, string>
 
 const initialMeasurements: MeasurementValues = {
   shoulder: "",
-  bust: "",
+  breast: "",
   waist: "",
   hips: "",
   sleeve: "",
@@ -19,7 +19,7 @@ const initialMeasurements: MeasurementValues = {
 
 export const measurementLabels: Record<MeasurementFields, string> = {
   shoulder: "Shoulder",
-  bust: "Bust",
+  breast: "Breast",
   waist: "Waist",
   hips: "Hips",
   sleeve: "Sleeve",
@@ -42,10 +42,10 @@ export const useCustomSize = () => {
     setMeasurements(prev => ({ ...prev, [field]: value }))
   }, [])
 
-  const isMeasurementsValid = useMemo(
-    () => Object.values(measurements).every(value => value.toString().trim().length > 0),
-    [measurements]
-  )
+  const isMeasurementsValid = useMemo(() => {
+    const requiredFields: MeasurementFields[] = ["breast", "waist", "hips", "sleeve"]
+    return requiredFields.every(field => measurements[field]?.toString().trim().length > 0)
+  }, [measurements])
 
   return {
     isCustomSizeMode,
