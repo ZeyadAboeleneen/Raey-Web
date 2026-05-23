@@ -20,7 +20,7 @@ const nextConfig = {
 
   images: {
     // Enable image optimization for better performance
-    unoptimized: false,
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [

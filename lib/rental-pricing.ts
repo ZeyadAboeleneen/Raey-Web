@@ -6,11 +6,8 @@ const round100 = (val: number) => Math.round(val / 100) * 100
 
 export interface RentalPricingInput {
   productId: string
-  /** Start of rental period (ReceivedDate) */
   rentStart: Date
-  /** End of rental period (ReturnDate) */
   rentEnd: Date
-  /** Date the booking is made (BookingDate). Defaults to today if not provided. */
   bookingDate?: Date
   isExclusive: boolean
 }
@@ -24,16 +21,6 @@ export interface RentalPricingOutput {
   d: number
 }
 
-/**
- * Calculate rental price server-side using MSSQL data.
- *
- * CRITICAL: This function supports running inside an existing MSSQL transaction
- * to prevent race conditions. When `txn` is provided, all queries run inside
- * that transaction — ensuring `n` is read and the booking is inserted atomically.
- *
- * @param input  Pricing parameters (productId, rentStart, rentEnd, isExclusive)
- * @param txn    Optional MSSQL Transaction — pass this from the order handler
- */
 export async function calculateRentalPrice(
   input: RentalPricingInput,
   txn?: InstanceType<typeof sql.Transaction>,
@@ -43,11 +30,8 @@ export async function calculateRentalPrice(
 
   if (isNaN(modelTypeId)) throw new Error(`Invalid productId: ${productId}`)
 
-  // d = days between BookingDate and ReceivedDate (rentStart)
   const msPerDay = 1000 * 60 * 60 * 24
   const actualBookingDate = bookingDate || new Date()
-
-  // Normalize dates to midnight to calculate exact calendar days difference
   const startDay = new Date(rentStart)
   startDay.setHours(0, 0, 0, 0)
 
@@ -55,14 +39,9 @@ export async function calculateRentalPrice(
   bookDay.setHours(0, 0, 0, 0)
 
   const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
-
-  // Format rentStart as YYYY-MM-DD string to prevent UTC timezone shifts in MSSQL
-  const rentStartStr = startDay.toLocaleDateString("en-CA") // "YYYY-MM-DD"
-
-  // Use transaction request if available, otherwise pool request
+  const rentStartStr = startDay.toLocaleDateString("en-CA")
   const makeRequest = () => {
     if (txn) return new sql.Request(txn)
-    // Fallback: not inside a transaction (e.g., pricing preview API)
     return getMssqlPool().then((pool) => pool.request())
   }
 
@@ -78,7 +57,6 @@ export async function calculateRentalPrice(
   if (!cost || cost <= 0) throw new Error(`Invalid Item_buypric for item ${modelTypeId}: ${cost}`)
 
   // 2. Count previous completed rentals for this dress (n)
-  //    NOTE: Inside a transaction, this read is serialized — preventing race conditions
   const countReq = await makeRequest()
   const rentalCountResult = await countReq
     .input("ModelTypeID", sql.Int, modelTypeId)
@@ -92,7 +70,7 @@ export async function calculateRentalPrice(
     `)
   const n: number = rentalCountResult.recordset[0].n
 
-  // 3. Apply pricing rules
+  // pricing rules
   let total: number
   let category: string
   let formula: string
@@ -102,21 +80,17 @@ export async function calculateRentalPrice(
     category = "F"
     formula = `cost(${cost}) × 1.1`
   } else {
-    // All non-exclusive rentals follow date-based A/B/C pricing
     if (d <= 15) {
       total = round100(cost * 0.8)
       category = "A"
       formula = `cost(${cost}) × 0.8`
     } else {
-      // Sliding scale: days 16–45
       const multiplier = 0.8 - (0.2 / 15) * (d - 15)
       category = d <= 30 ? "B" : "C"
       total = Math.round((cost * multiplier) / 50) * 50
       formula = `cost(${cost}) × ${multiplier.toFixed(4)}`
     }
   }
-
-  // 4. Apply minimum floor — price must NEVER go below 3,000 EGP
   const floored = total < MIN_RENTAL_PRICE
   total = Math.max(total, MIN_RENTAL_PRICE)
 

@@ -1,8 +1,3 @@
--- =============================================================
--- Dress Rental Pricing System — Backfill Existing Bookings
--- Run AFTER pricing-migration.sql to update historical records.
--- =============================================================
-
 WITH RankedRentals AS (
     SELECT
         B.ID                                        AS BookingID,
@@ -69,7 +64,6 @@ AllRentals AS (
         R.BookingID,
         R.ModelTypeID,
         R.RentalNumber,
-        -- Apply 3000 EGP floor
         CASE
             WHEN M.P_min - (500 * (R.RentalNumber - 3)) < 3000 THEN 3000
             ELSE M.P_min - (500 * (R.RentalNumber - 3))
