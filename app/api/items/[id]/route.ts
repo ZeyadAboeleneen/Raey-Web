@@ -238,7 +238,7 @@ export async function PUT(
         name,
         price,
         image,
-        collection: lineId === 6 ? "wedding" : "soiree",
+        collection: [6, 15].includes(lineId) ? "wedding" : lineId === 9 ? "fionka" : "soiree",
         isActive,
       },
       message: "Product updated successfully",

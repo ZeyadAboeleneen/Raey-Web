@@ -68,8 +68,10 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 500);
     const hasPagination = searchParams.has("page") || searchParams.has("limit");
 
+    const hasImage = searchParams.get("hasImage"); // "with-image" | "without-image" | "all"
+
     // Build cache key
-    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${includeNoImages ? "allimg" : "img"}|${page}|${limit}|${hasPagination ? "paged" : "all"}`;
+    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${includeNoImages ? "allimg" : "img"}|${page}|${limit}|${hasPagination ? "paged" : "all"}|imgFilter:${hasImage || "all"}`;
     const cached = getCached(cacheKey);
     if (cached) {
       console.log("⚡ [ERP] Served items from cache");
@@ -121,6 +123,7 @@ export async function GET(request: NextRequest) {
           ORDER BY b2.ID DESC
       ) fallback
       WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+      AND i.Item_sellpricNow > 0
     `;
 
     if (!includeInactive) {
@@ -129,16 +132,28 @@ export async function GET(request: NextRequest) {
 
     // Optional filters
     if (collection) {
-      const catId = collection.toLowerCase() === "wedding" ? 6 : collection.toLowerCase() === "soiree" ? 1 : null;
-      if (catId !== null) {
-        query += ` AND i.Category_id = @catId`;
-        req.input("catId", sql.Int, catId);
+      const catIds =
+        collection.toLowerCase() === "wedding"
+          ? [6, 15]
+          : collection.toLowerCase() === "soiree"
+          ? [1, 18]
+          : collection.toLowerCase() === "fionka"
+          ? [9]
+          : null;
+      if (catIds !== null) {
+        query += ` AND i.Category_id IN (${catIds.join(",")})`;
       }
     }
 
     if (search) {
       query += ` AND i.Item_name LIKE @search`;
       req.input("search", sql.NVarChar, `%${search}%`);
+    }
+
+    if (hasImage === "with-image") {
+      query += ` AND i.PicPath IS NOT NULL AND i.PicPath != '' AND i.PicPath != '/placeholder.svg' AND i.PicPath NOT LIKE 'data:%'`;
+    } else if (hasImage === "without-image") {
+      query += ` AND (i.PicPath IS NULL OR i.PicPath = '' OR i.PicPath = '/placeholder.svg' OR i.PicPath LIKE 'data:%')`;
     }
 
     query += ` ORDER BY i.ID DESC`;

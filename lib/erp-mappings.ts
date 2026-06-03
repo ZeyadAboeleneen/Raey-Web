@@ -8,11 +8,14 @@ import { resolveBranchSlugFromErpRow } from "@/lib/branch-map";
 // ── Line id (ERP Items.Category_id) → collection label ───────────────
 const LINE_ID_TO_COLLECTION: Record<number, string> = {
   1: "Soiree",
+  18: "Soiree",
   6: "Wedding",
+  15: "Wedding", // Second Look
+  9: "Fionka",
 };
 
 /** Only these line ids are valid for the website catalog. */
-export const VALID_ERP_LINE_IDS = [1, 6];
+export const VALID_ERP_LINE_IDS = [1, 6, 9, 15, 18];
 
 export function mapLineIdToCollection(lineId: number | null | undefined): string {
   if (lineId == null) return "Unknown";
@@ -24,8 +27,9 @@ export function mapCollectionToLineId(
 ): number | null {
   if (!collection) return null;
   const normalized = collection.trim().toLowerCase();
-  if (normalized === "wedding") return 6;
-  if (normalized === "soiree") return 1;
+  if (normalized === "wedding") return 6; // Primary Wedding category
+  if (normalized === "soiree") return 1; // Primary Soiree category
+  if (normalized === "fionka") return 9;
   return null;
 }
 

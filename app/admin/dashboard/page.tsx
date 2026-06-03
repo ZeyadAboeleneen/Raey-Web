@@ -141,6 +141,7 @@ export default function AdminDashboard() {
   const [debouncedProductSearchQuery, setDebouncedProductSearchQuery] = useState("")
   const [productBranchFilter, setProductBranchFilter] = useState("all")
   const [productCollectionFilter, setProductCollectionFilter] = useState("all")
+  const [productImageFilter, setProductImageFilter] = useState("all")
   const [absoluteStats, setAbsoluteStats] = useState({ totalProducts: 0, activeProducts: 0 })
 
   const canViewProducts = usePermission("canViewProducts")
@@ -209,7 +210,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     setProductPage(1)
     productsPageCacheRef.current.clear()
-  }, [debouncedProductSearchQuery, productBranchFilter, productCollectionFilter])
+  }, [debouncedProductSearchQuery, productBranchFilter, productCollectionFilter, productImageFilter])
 
   const fetchProductsPage = useCallback(async (page: number) => {
     try {
@@ -220,7 +221,7 @@ export default function AdminDashboard() {
         cache: 'no-store' as RequestCache,
       }
 
-      const cacheKey = `${debouncedProductSearchQuery}::${productBranchFilter}::${productCollectionFilter}::${page}`
+      const cacheKey = `${debouncedProductSearchQuery}::${productBranchFilter}::${productCollectionFilter}::${productImageFilter}::${page}`
       const cached = productsPageCacheRef.current.get(cacheKey)
       if (cached) {
         setProducts(cached)
@@ -236,6 +237,9 @@ export default function AdminDashboard() {
       }
       if (productCollectionFilter !== "all") {
         url += `&collection=${encodeURIComponent(productCollectionFilter)}`
+      }
+      if (productImageFilter !== "all") {
+        url += `&hasImage=${encodeURIComponent(productImageFilter)}`
       }
 
       const response = await fetch(url, fetchOptions)
@@ -258,7 +262,7 @@ export default function AdminDashboard() {
     } finally {
       setIsSearching(false)
     }
-  }, [authState.token, debouncedProductSearchQuery, productBranchFilter, productCollectionFilter])
+  }, [authState.token, debouncedProductSearchQuery, productBranchFilter, productCollectionFilter, productImageFilter])
 
   const fetchData = useCallback(async () => {
     try {
@@ -1081,6 +1085,16 @@ export default function AdminDashboard() {
                             <SelectItem value="el-raey-2">Raey 2- mashaya 2</SelectItem>
                             <SelectItem value="el-raey-the-yard">raey the yard-The yard cairo</SelectItem>
                             <SelectItem value="sell-dresses">Sell Dresses</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={productImageFilter} onValueChange={setProductImageFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Images" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Images</SelectItem>
+                            <SelectItem value="with-image">With Images</SelectItem>
+                            <SelectItem value="without-image">Without Images</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
