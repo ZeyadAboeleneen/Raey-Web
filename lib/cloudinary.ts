@@ -1,28 +1,55 @@
-import { v2 as cloudinary } from "cloudinary"
+/**
+ * lib/cloudinary.ts — backward-compatibility shim
+ *
+ * Cloudinary has been removed. This file re-exports the local
+ * image upload service under the same function names so that any
+ * code still importing from here continues to work without changes.
+ *
+ * Prefer importing from @/lib/image-upload-service directly in new code.
+ */
+
+export {
+  getImageUploadService,
+  ImageUploadService,
+} from "@/lib/image-upload-service"
+
+import { getImageUploadService } from "@/lib/image-upload-service"
 
 /**
- * Configure Cloudinary using environment variables.
- * Throws an error if any required variables are missing.
+ * @deprecated Use getImageUploadService().uploadBuffer() instead.
  */
-export function configureCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME
-  const apiKey = process.env.CLOUDINARY_API_KEY
-  const apiSecret = process.env.CLOUDINARY_API_SECRET
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary environment variables missing (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)")
-  }
-
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-  })
+export async function uploadBufferToCloudinary(
+  buffer: Buffer,
+  folder: string = "general",
+  _publicId?: string
+): Promise<string> {
+  const result = await getImageUploadService().uploadBuffer(buffer, folder)
+  return result.url
 }
 
 /**
- * Convert a base64 Data URL to a Buffer.
+ * @deprecated Use getImageUploadService().uploadFromDataUrl() instead.
  */
+export async function uploadDataUrlToCloudinary(
+  dataUrl: string,
+  folder: string = "general",
+  _publicId?: string
+): Promise<string> {
+  const result = await getImageUploadService().uploadFromDataUrl(dataUrl, folder)
+  return result.url
+}
+
+/**
+ * @deprecated Use getImageUploadService().deleteImage() instead.
+ */
+export async function deleteImageFromCloudinary(url: string): Promise<boolean> {
+  return getImageUploadService().deleteImage(url)
+}
+
+/** No-op shim — configuration is no longer needed. */
+export function configureCloudinary(): void {}
+
+/** @deprecated Use Buffer.from(dataUrl.split(',')[1], 'base64') instead. */
 export function dataUrlToBuffer(dataUrl: string): Buffer {
   const commaIndex = dataUrl.indexOf(",")
   if (commaIndex === -1) throw new Error("Invalid data URL")
@@ -30,83 +57,4 @@ export function dataUrlToBuffer(dataUrl: string): Buffer {
   const payload = dataUrl.slice(commaIndex + 1)
   const isBase64 = meta.toLowerCase().includes(";base64")
   return Buffer.from(payload, isBase64 ? "base64" : "utf8")
-}
-
-/**
- * Upload a Buffer to Cloudinary.
- * 
- * @param buffer The image buffer to upload
- * @param folder The folder in Cloudinary to store the image
- * @param publicId Optional public_id for the image
- * @returns The secure URL of the uploaded image
- */
-export async function uploadBufferToCloudinary(
-  buffer: Buffer, 
-  folder: string = "general", 
-  publicId?: string
-): Promise<string> {
-  configureCloudinary()
-  
-  return await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        public_id: publicId,
-        overwrite: true,
-        resource_type: "image",
-      },
-      (err, result) => {
-        if (err) return reject(err)
-        const url = (result as any)?.secure_url
-        if (!url) return reject(new Error("Cloudinary returned no secure_url"))
-        resolve(url)
-      }
-    )
-
-    stream.end(buffer)
-  })
-}
-
-/**
- * Upload a base64 Data URL to Cloudinary.
- * 
- * @param dataUrl The base64 data URL to upload
- * @param folder The folder in Cloudinary to store the image
- * @param publicId Optional public_id for the image
- * @returns The secure URL of the uploaded image
- */
-export async function uploadDataUrlToCloudinary(
-  dataUrl: string,
-  folder: string = "general",
-  publicId?: string
-): Promise<string> {
-  const buffer = dataUrlToBuffer(dataUrl)
-  return uploadBufferToCloudinary(buffer, folder, publicId)
-}
-
-/**
- * Delete an image from Cloudinary by its URL
- */
-export async function deleteImageFromCloudinary(url: string): Promise<boolean> {
-  try {
-    configureCloudinary()
-    
-    // Extract public_id from Cloudinary URL
-    // e.g., https://res.cloudinary.com/cloudname/image/upload/v1234/folder/filename.jpg
-    // We want "folder/filename"
-    const parts = url.split("/")
-    const uploadIndex = parts.findIndex(p => p === "upload")
-    if (uploadIndex === -1) return false
-    
-    // Everything after upload/vXXX/
-    let publicIdWithExt = parts.slice(uploadIndex + 2).join("/")
-    // Remove the extension
-    const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.')) || publicIdWithExt
-
-    await cloudinary.uploader.destroy(publicId)
-    return true
-  } catch (error) {
-    console.error("Cloudinary delete error:", error)
-    return false
-  }
 }

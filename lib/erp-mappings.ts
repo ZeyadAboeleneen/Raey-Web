@@ -8,11 +8,18 @@ import { resolveBranchSlugFromErpRow } from "@/lib/branch-map";
 // ── Line id (ERP Items.Category_id) → collection label ───────────────
 const LINE_ID_TO_COLLECTION: Record<number, string> = {
   1: "Soiree",
+  5: "Soiree",
+  10: "Soiree",
+  12: "Soiree",
+  18: "Soiree", // Old Soiree
   6: "Wedding",
+  11: "Wedding",
+  13: "Wedding",
+  9: "Fionka",
 };
 
 /** Only these line ids are valid for the website catalog. */
-export const VALID_ERP_LINE_IDS = [1, 6];
+export const VALID_ERP_LINE_IDS = [1, 5, 6, 9, 10, 11, 12, 13, 18];
 
 export function mapLineIdToCollection(lineId: number | null | undefined): string {
   if (lineId == null) return "Unknown";
@@ -24,8 +31,9 @@ export function mapCollectionToLineId(
 ): number | null {
   if (!collection) return null;
   const normalized = collection.trim().toLowerCase();
-  if (normalized === "wedding") return 6;
-  if (normalized === "soiree") return 1;
+  if (normalized === "wedding") return 6; // Primary Wedding category
+  if (normalized === "soiree") return 1; // Primary Soiree category
+  if (normalized === "fionka") return 9;
   return null;
 }
 
@@ -41,6 +49,10 @@ export interface UnavailableDateRange {
 export interface ErpProduct {
   id: number;
   name: string;
+  /** ERP Items.Item_code — used as SKU in structured data. */
+  code: string | null;
+  /** ERP Items.Notes — product description (empty in current DB, falls back to name). */
+  description: string | null;
   price: number;
   /** Dress cost (Item_buypric) from ERP — used to derive rental category prices. */
   cost: number;
@@ -63,6 +75,8 @@ export interface ErpItemRow {
   Item_name: string | null;
   Item_sellpricNow: number | null;
   Item_buypric: number | null;
+  Item_code?: string | null;
+  Notes?: string | null;
   PicPath: string | null;
   Item_Isdisabled: boolean | number | null;
   LineId: number | null;
@@ -98,6 +112,8 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
       itemMap.set(id, {
         id,
         name: (row.Item_name || "").trim(),
+        code: row.Item_code ? row.Item_code.trim() : null,
+        description: row.Notes ? row.Notes.trim() : null,
         price: row.Item_sellpricNow ?? 0,
         cost: row.Item_buypric ?? 0,
         image: (row.PicPath || "").trim(),
@@ -150,7 +166,8 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     id: String(p.id),
     product_id: String(p.id),
     name: p.name,
-    description: "",
+    code: p.code,
+    description: p.description || "",
     longDescription: "",
     price: p.price,
     rentalPriceA,

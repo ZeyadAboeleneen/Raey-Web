@@ -9,7 +9,7 @@ import { motion, useViewportScroll, useTransform, AnimatePresence } from "framer
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowRight, Sparkles, Star, ShoppingCart, Heart, X, Instagram, Facebook, Package, AlertCircle } from "lucide-react"
+import { ArrowRight, Sparkles, Star, ShoppingCart, Heart, X, Instagram, Facebook, Package, AlertCircle, MessageCircle } from "lucide-react"
 
 // Lazy load heavy components
 const Navigation = dynamic(() => import("@/components/navigation").then(mod => ({ default: mod.Navigation })), {
@@ -455,8 +455,8 @@ export function HomePageContent() {
                                                                                     {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
                                                                                 </div>
                                                                             )}
-                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}>
-                                                                                <ShoppingCart className="h-4 w-4 text-rose-500" />
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now via WhatsApp" : "Rent Now via WhatsApp"}>
+                                                                                <MessageCircle className="h-4 w-4 text-rose-500" />
                                                                             </Button>
                                                                         </div>
                                                                     </>
@@ -531,8 +531,8 @@ export function HomePageContent() {
                                                                                     {hasDiscount ? (<><span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span><span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span></>) : (<span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>)}
                                                                                 </div>
                                                                             )}
-                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now" : "Rent Now"}>
-                                                                                <ShoppingCart className="h-4 w-4 text-rose-500" />
+                                                                            <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${product.isOutOfStock ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"}`} disabled={product.isOutOfStock} aria-label={product.isOutOfStock ? t("outOfStock") : product.branch === "sell-dresses" ? "Buy Now via WhatsApp" : "Rent Now via WhatsApp"}>
+                                                                                <MessageCircle className="h-4 w-4 text-rose-500" />
                                                                             </Button>
                                                                         </div>
                                                                     </>

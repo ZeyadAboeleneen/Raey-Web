@@ -359,7 +359,16 @@ async function handleImageOnly(body: any) {
     if (!matchedItem) {
       for (const item of allItems) {
         const itemNameLower = item.Item_name.trim().toLowerCase();
-        if (itemNameLower.includes(baseNameLower) || baseNameLower.includes(itemNameLower)) {
+        
+        // Match if the item name contains the image name
+        if (itemNameLower.includes(baseNameLower)) {
+          matchedItem = item;
+          break;
+        }
+        
+        // Match if the image name contains the item name, BUT only if the item name 
+        // is at least 4 characters to prevent matching single characters like "1".
+        if (itemNameLower.length >= 4 && baseNameLower.includes(itemNameLower)) {
           matchedItem = item;
           break;
         }

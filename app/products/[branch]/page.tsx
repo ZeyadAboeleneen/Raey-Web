@@ -575,12 +575,10 @@ export default function BranchProductsPage() {
                                                 ? "Out of stock"
                                                 : !available
                                                   ? "Not available on selected date"
-                                                  : isRentBranch
-                                                    ? "Rent Now"
-                                                    : "Buy Now"
+                                                  : "Order via WhatsApp"
                                             }
                                           >
-                                            <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                                            <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
                                           </Button>
                                         </div>
                                       </>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Package, ShoppingCart, User, MapPin, ArrowLeft, Eye, Edit, Star, RefreshCw, X } from "lucide-react"
+import { Package, ShoppingCart, User, MapPin, ArrowLeft, Eye, Edit, Star, RefreshCw, X, MessageCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
@@ -317,7 +317,7 @@ export default function MyAccountPage() {
                 </Button>
                 <Link href="/soiree/products" className="order-1 sm:order-2">
                   <Button className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto">
-                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    <MessageCircle className="mr-2 h-4 w-4" />
                     Continue Shopping
                   </Button>
                 </Link>
@@ -356,7 +356,7 @@ export default function MyAccountPage() {
                       <p className="text-xs sm:text-sm text-gray-600">Active Orders</p>
                       <p className="text-xl sm:text-2xl font-light">{activeOrders}</p>
                     </div>
-                    <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+                    <Package className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
                   </div>
                 </CardContent>
               </Card>

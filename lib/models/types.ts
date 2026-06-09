@@ -58,12 +58,12 @@ export interface OrderItem {
   customMeasurements?: {
     unit: "cm" | "inch"
     values: {
-      shoulder: string
+      shoulder?: string
       breast: string
       waist: string
       hips: string
-      sleeve: string
-      length: string
+      sleeve?: string
+      length?: string
     }
   }
 }

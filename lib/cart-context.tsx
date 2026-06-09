@@ -7,12 +7,12 @@ import { useAuth } from "@/lib/auth-context"
 interface CustomMeasurements {
   unit: "cm" | "inch"
   values: {
-    shoulder: string
+    shoulder?: string
     breast: string
     waist: string
     hips: string
-    sleeve: string
-    length: string
+    sleeve?: string
+    length?: string
   }
 }
 

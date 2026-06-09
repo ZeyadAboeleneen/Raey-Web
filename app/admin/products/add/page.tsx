@@ -79,7 +79,7 @@ export default function AddProductPage() {
         const compressed = await imageCompression(file, {
           maxSizeMB: 0.35,
           maxWidthOrHeight: 1200,
-          useWebWorker: true,
+          useWebWorker: false,
           initialQuality: 0.7,
         })
         const base64 = await fileToBase64(compressed as File)

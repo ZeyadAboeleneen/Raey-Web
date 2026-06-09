@@ -43,7 +43,7 @@ export const useCustomSize = () => {
   }, [])
 
   const isMeasurementsValid = useMemo(() => {
-    const requiredFields: MeasurementFields[] = ["breast", "waist", "hips", "sleeve"]
+    const requiredFields: MeasurementFields[] = ["breast", "waist", "hips"]
     return requiredFields.every(field => measurements[field]?.toString().trim().length > 0)
   }, [measurements])
 

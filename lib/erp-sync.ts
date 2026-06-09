@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
-import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
+import { getImageUploadService } from "@/lib/image-upload-service"
 
 /**
  * Synchronizes an order to the MSSQL ERP Booking database.
@@ -31,27 +31,23 @@ export async function syncOrderToErp(
       return { success: true, message: "Already synced" }
     }
 
-    // 2. Upload Cloudinary Image if it's base64
+    // 2. Upload payment screenshot to local storage if it is still a raw base64 data URL
     let finalScreenshot = paymentScreenshot || order.paymentScreenshot
     const isBase64Screenshot = finalScreenshot && finalScreenshot.startsWith("data:image/")
-    
+
     if (isBase64Screenshot && finalScreenshot) {
       try {
-        console.log("📸 [ERP/Sync] Uploading payment screenshot to Cloudinary...")
-        const uploadedUrl = await uploadDataUrlToCloudinary(
-          finalScreenshot,
-          "payments",
-          `order-${orderId}`
-        )
-        console.log("✅ [ERP/Sync] Payment screenshot uploaded:", uploadedUrl)
-        
+        console.log("📸 [ERP/Sync] Uploading payment screenshot to local storage...")
+        const result = await getImageUploadService().uploadFromDataUrl(finalScreenshot, "payments")
+        console.log("✅ [ERP/Sync] Payment screenshot saved:", result.url)
+
         await prisma.order.update({
           where: { id: order.id },
-          data: { paymentScreenshot: uploadedUrl }
+          data: { paymentScreenshot: result.url },
         })
-        finalScreenshot = uploadedUrl
+        finalScreenshot = result.url
       } catch (uploadError) {
-        console.error("❌ [ERP/Sync] Failed to upload payment screenshot:", uploadError)
+        console.error("❌ [ERP/Sync] Failed to save payment screenshot:", uploadError)
       }
     }
 

@@ -88,7 +88,7 @@ export const CustomSizeForm = ({
 
         <div className="grid grid-cols-2 gap-3">
           {(["breast", "waist", "hips", "sleeve", "shoulder", "length"] as MeasurementFields[]).map((field) => {
-            const isOptional = ["shoulder", "length"].includes(field)
+            const isOptional = ["shoulder", "sleeve", "length"].includes(field)
             return (
               <div key={field} className="space-y-1">
                 <label className="text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-gray-500 flex flex-wrap items-center gap-1">

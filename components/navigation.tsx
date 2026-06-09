@@ -347,7 +347,7 @@ export function Navigation() {
               )}
             </Link>
 
-            {/* Shopping Cart */}
+            {/* Shopping Cart - Hidden from UI as per user request
             <Link
               href="/checkout"
               className={`relative p-2 transition-colors ${getIconColors(isActiveLink("/checkout"))}`}
@@ -362,6 +362,7 @@ export function Navigation() {
                 <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/5' : 'bg-white/20'}`} />
               )}
             </Link>
+            */}
           </div>
         </div>
 
@@ -440,6 +441,7 @@ export function Navigation() {
                           </span>
                         )}
                       </Link>
+                      {/* Shopping Cart - Hidden from UI
                       <Link href="/checkout" onClick={() => setIsOpen(false)} className="relative p-1">
                         <ShoppingCart className="h-5 w-5 text-black" />
                         {cartState.items.length > 0 && (
@@ -448,6 +450,7 @@ export function Navigation() {
                           </span>
                         )}
                       </Link>
+                      */}
                     </div>
                   </div>
                 </div>

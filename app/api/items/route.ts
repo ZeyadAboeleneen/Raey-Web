@@ -68,8 +68,10 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "40", 10), 1), 500);
     const hasPagination = searchParams.has("page") || searchParams.has("limit");
 
+    const hasImage = searchParams.get("hasImage"); // "with-image" | "without-image" | "all"
+
     // Build cache key
-    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${includeNoImages ? "allimg" : "img"}|${page}|${limit}|${hasPagination ? "paged" : "all"}`;
+    const cacheKey = `items|${collection || ""}|${branch || ""}|${search}|${format || ""}|${includeInactive ? "all" : "active"}|${includeNoImages ? "allimg" : "img"}|${page}|${limit}|${hasPagination ? "paged" : "all"}|imgFilter:${hasImage || "all"}`;
     const cached = getCached(cacheKey);
     if (cached) {
       console.log("⚡ [ERP] Served items from cache");
@@ -92,6 +94,8 @@ export async function GET(request: NextRequest) {
         i.Item_name,
         i.Item_sellpricNow,
         i.Item_buypric,
+        i.Item_code,
+        i.Notes,
         i.PicPath,
         i.Item_Isdisabled,
         i.Category_id AS LineId,
@@ -121,6 +125,7 @@ export async function GET(request: NextRequest) {
           ORDER BY b2.ID DESC
       ) fallback
       WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+      AND i.Item_sellpricNow > 0
     `;
 
     if (!includeInactive) {
@@ -129,16 +134,21 @@ export async function GET(request: NextRequest) {
 
     // Optional filters
     if (collection) {
-      const catId = collection.toLowerCase() === "wedding" ? 6 : collection.toLowerCase() === "soiree" ? 1 : null;
-      if (catId !== null) {
-        query += ` AND i.Category_id = @catId`;
-        req.input("catId", sql.Int, catId);
+      const catIds = collection.toLowerCase() === "wedding" ? [6, 11, 13] : collection.toLowerCase() === "soiree" ? [1, 5, 10, 12, 18] : collection.toLowerCase() === "fionka" ? [9] : null;
+      if (catIds !== null) {
+        query += ` AND i.Category_id IN (${catIds.join(",")})`;
       }
     }
 
     if (search) {
       query += ` AND i.Item_name LIKE @search`;
       req.input("search", sql.NVarChar, `%${search}%`);
+    }
+
+    if (hasImage === "with-image") {
+      query += ` AND i.PicPath IS NOT NULL AND i.PicPath != '' AND i.PicPath != '/placeholder.svg' AND i.PicPath NOT LIKE 'data:%'`;
+    } else if (hasImage === "without-image") {
+      query += ` AND (i.PicPath IS NULL OR i.PicPath = '' OR i.PicPath = '/placeholder.svg' OR i.PicPath LIKE 'data:%')`;
     }
 
     query += ` ORDER BY i.ID DESC`;
@@ -170,27 +180,27 @@ export async function GET(request: NextRequest) {
         ? pagedProducts
         : pagedProducts.map(erpProductToCachedShape);
 
-    // ── Merge local out-of-stock status for sell-dresses ────────────────
-    // Sell dresses are unique pieces. When purchased, the local Prisma DB
-    // marks them as isOutOfStock. Merge that flag into the ERP-sourced data.
+    // ── Merge local flags (isOutOfStock, isBestseller, isNew) from Prisma ──
     if (format !== "erp") {
-      const sellDressIds = pagedProducts
-        .filter((p) => p.branch === "sell-dresses")
-        .map((p) => String(p.id));
+      const allIds = pagedProducts.map((p) => String(p.id));
 
-      if (sellDressIds.length > 0) {
+      if (allIds.length > 0) {
         const localProducts = await prisma.product.findMany({
-          where: { productId: { in: sellDressIds }, isOutOfStock: true },
-          select: { productId: true },
+          where: { productId: { in: allIds } },
+          select: { productId: true, isOutOfStock: true, isBestseller: true, isNew: true },
         });
-        const soldOutIds = new Set(localProducts.map((p) => p.productId));
+        const localMap = new Map(localProducts.map((p) => [p.productId, p]));
 
-        if (soldOutIds.size > 0) {
+        if (localMap.size > 0) {
           output = output.map((item: any) => {
-            if (soldOutIds.has(String(item.id))) {
-              return { ...item, isOutOfStock: true };
-            }
-            return item;
+            const local = localMap.get(String(item.id));
+            if (!local) return item;
+            return {
+              ...item,
+              ...(local.isOutOfStock ? { isOutOfStock: true } : {}),
+              ...(local.isBestseller ? { isBestseller: true } : {}),
+              ...(local.isNew ? { isNew: true } : {}),
+            };
           });
         }
       }

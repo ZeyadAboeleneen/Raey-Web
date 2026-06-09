@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         </p>
         
         <p style="text-align: center;">
-          Have questions? Contact us at <a href="mailto:raey888@gmail.com">raey888@gmail.com</a> or WhatsApp: 01094448044
+          Have questions? Contact us at <a href="mailto:raey888@gmail.com">raey888@gmail.com</a> or WhatsApp: 01015847000
         </p>
         
         <p style="text-align: center; margin-top: 30px; font-weight: 600;">

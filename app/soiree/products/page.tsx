@@ -562,7 +562,7 @@ export default function SoireeProductsPage() {
                             {layout === "desktop" && product.isGiftPackage ? (
                               <Package className={cartIconClassName} />
                             ) : (
-                              <ShoppingCart className={`${cartIconClassName} text-rose-500`} />
+                              <MessageCircle className={`${cartIconClassName} text-rose-500`} />
                             )}
                           </Button>
                         </div>

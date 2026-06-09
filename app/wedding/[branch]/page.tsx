@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ArrowLeft } from "lucide-react"
+import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ArrowLeft, MessageCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import dynamic from "next/dynamic"
@@ -606,7 +606,7 @@ export default function WeddingBranchPage() {
                                                     : "Buy Now"
                                               }
                                             >
-                                              <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                                              <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
                                             </Button>
                                           </div>
                                         </>

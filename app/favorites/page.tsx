@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, ShoppingCart, Trash2, ArrowLeft } from "lucide-react"
+import { Heart, ShoppingCart, Trash2, ArrowLeft, MessageCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useFavorites, type FavoriteItem } from "@/lib/favorites-context"
@@ -227,7 +227,7 @@ export default function FavoritesPage() {
                                         )}
                                       </div>
                                     )}
-                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!item.isOutOfStock) openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock}><ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
+                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!item.isOutOfStock) openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock} aria-label="Order via WhatsApp"><MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
                                   </div>
                                 </>
                               )

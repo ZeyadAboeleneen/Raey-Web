@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Star, ShoppingCart, X, Heart, Package } from "lucide-react"
+import { Star, ShoppingCart, X, Heart, Package, MessageCircle } from "lucide-react"
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
 import { useRouter } from "next/navigation"
+import { useTranslation, TranslationKey, translations } from "@/lib/translations"
+import { useLocale } from "@/lib/locale-context"
 
 interface GiftPackageSize {
   size: string
@@ -62,6 +64,8 @@ export function GiftPackageSelector({
   const [quantity, setQuantity] = useState(1)
   const { dispatch: cartDispatch } = useCart()
   const router = useRouter()
+  const { settings } = useLocale()
+  const t = useTranslation(settings.language)
 
   // Initialize default product selections when component mounts
   useEffect(() => {
@@ -143,6 +147,32 @@ export function GiftPackageSelector({
 
     onClose()
     router.push("/checkout")
+  }
+
+  const handleWhatsAppOrder = () => {
+    if (!product.packagePrice) return
+
+    const whatsappNumber = "201015847000"
+    const tAr = translations.ar
+    let message = tAr.waMsgIntroGift
+    message += "\n\n"
+    message += `${tAr.waMsgPackage} ${product.name}\n`
+    const totalPrice = (product.packagePrice || 0) * quantity
+    message += `السعر: EGP${totalPrice}\n`
+    message += `${tAr.waMsgQuantity} ${quantity}\n`
+    message += `${tAr.waMsgSelectedItems}\n`
+
+    product.giftPackageSizes?.forEach(size => {
+      const selectedProductId = selectedProducts[size.size]
+      const selectedProduct = size.productOptions.find(opt => opt.productId === selectedProductId)
+      if (selectedProduct) {
+        message += `- ${size.size}: ${selectedProduct.productName}\n`
+      }
+    })
+
+    const encodedMessage = encodeURIComponent(message)
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank')
+    onClose()
   }
 
   const getSelectedProduct = (sizeName: string) => {
@@ -371,12 +401,12 @@ export function GiftPackageSelector({
             </div>
 
             <Button
-              onClick={addToCart}
-              className="flex items-center justify-center bg-black hover:bg-gray-800 rounded-full px-4 sm:px-6 py-3 sm:py-5 w-full sm:w-auto text-sm sm:text-base"
+              onClick={handleWhatsAppOrder}
+              className="flex items-center justify-center bg-[#25D366] hover:bg-[#1da851] text-white rounded-full px-4 sm:px-6 py-3 sm:py-5 w-full sm:w-auto text-sm sm:text-base"
               disabled={!isAllSizesSelected()}
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Add Package to Cart
+              <MessageCircle className="h-4 w-4 mr-2" />
+              {t("orderViaWhatsApp" as TranslationKey)}
             </Button>
           </div>
         </div>

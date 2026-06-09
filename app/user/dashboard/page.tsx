@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Package, ShoppingCart, User, MapPin, ArrowLeft, Eye } from "lucide-react"
+import { Package, ShoppingCart, User, MapPin, ArrowLeft, Eye, MessageCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useLocale } from "@/lib/locale-context"
@@ -105,7 +105,7 @@ export default function UserDashboard() {
               </div>
               <Link href="/soiree/products">
                 <Button className="bg-black text-white hover:bg-gray-800">
-                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  <MessageCircle className="mr-2 h-4 w-4" />
                   {t("continueShopping" as TranslationKey) || "Continue Shopping"}
                 </Button>
               </Link>
@@ -144,7 +144,7 @@ export default function UserDashboard() {
                       <p className="text-sm text-gray-600">{t("totalSpent" as TranslationKey)}</p>
                       <p className="text-2xl font-light">${totalSpent.toFixed(2)}</p>
                     </div>
-                    <ShoppingCart className="h-8 w-8 text-green-600" />
+                    <Package className="h-8 w-8 text-green-600" />
                   </div>
                 </CardContent>
               </Card>

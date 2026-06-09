@@ -37,12 +37,12 @@ interface OrderDetails {
     customMeasurements?: {
       unit: "cm" | "inch"
       values: {
-        shoulder: string
+        shoulder?: string
         breast: string
         waist: string
         hips: string
         sleeve: string
-        length: string
+        length?: string
       }
     }
     selectedProducts?: Array<{
@@ -491,7 +491,7 @@ export default function AdminOrderDetailsPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Sleeve</p>
-                                    <p className="text-sm font-medium">{item.customMeasurements.values.sleeve}</p>
+                                    <p className="text-sm font-medium">{item.customMeasurements.values.sleeve || "Not specified"}</p>
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-100">

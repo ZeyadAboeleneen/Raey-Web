@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus, MessageCircle } from "lucide-react"
 import dynamic from "next/dynamic"
 
 // Lazy load heavy components for faster initial render
@@ -472,7 +472,7 @@ export default function WeddingPage() {
                       </div>
                     )}
                     <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock && available) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${(!available || product.isOutOfStock) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"} pointer-events-auto`} disabled={product.isOutOfStock || !available}>
-                      <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                      <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
                     </Button>
                   </div>
                 </div>

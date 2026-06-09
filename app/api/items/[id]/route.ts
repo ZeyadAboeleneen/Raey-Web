@@ -6,6 +6,7 @@ import {
   erpProductToCachedShape,
   VALID_ERP_LINE_IDS,
   mapCollectionToLineId,
+  mapLineIdToCollection,
 } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
 import { logAudit, getRequestMetadata } from "@/lib/audit";
@@ -56,6 +57,8 @@ export async function GET(
           i.Item_name,
           i.Item_sellpricNow,
           i.Item_buypric,
+          i.Item_code,
+          i.Notes,
           i.PicPath,
           i.Item_Isdisabled,
           i.Category_id AS LineId,
@@ -238,7 +241,7 @@ export async function PUT(
         name,
         price,
         image,
-        collection: lineId === 6 ? "wedding" : "soiree",
+        collection: mapLineIdToCollection(lineId).toLowerCase(),
         isActive,
       },
       message: "Product updated successfully",

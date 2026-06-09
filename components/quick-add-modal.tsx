@@ -12,7 +12,7 @@ import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
-import { useTranslation, TranslationKey } from "@/lib/translations"
+import { useTranslation, TranslationKey, translations } from "@/lib/translations"
 import { useLocale } from "@/lib/locale-context"
 import { toast } from "@/hooks/use-toast"
 import type { SizeChartRow } from "@/components/custom-size-form"
@@ -364,6 +364,66 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
     router.push("/checkout")
   }
 
+  const handleWhatsAppOrder = () => {
+    if (!product) return
+
+    const whatsappNumber = "201015847000"
+    const tAr = translations.ar
+    
+    // Branch mapping
+    const branchMap: Record<string, string> = {
+      "mona-saleh": tAr.monaSalehCollection,
+      "el-raey-1": tAr.elRaey1Collection,
+      "el-raey-2": tAr.elRaey2Collection,
+      "el-raey-the-yard": tAr.elRaeyTheYardCollection,
+      "sell-dresses": tAr.sellDressesCollection
+    }
+    const branchNameAr = branchMap[product.branch] || product.branch
+
+    let message = isRentBranch 
+      ? tAr.waMsgIntroRent 
+      : tAr.waMsgIntroBuy
+    message += "\n\n"
+    message += `${tAr.waMsgDress} ${product.name}\n`
+    
+    const priceToDisplay = isRentBranch
+      ? ((canViewPrices && customPrice !== null) ? customPrice : (rentalPrice?.total || 0))
+      : (() => {
+          const referenceSize = selectedSize || product.sizes[0]
+          return (referenceSize?.discountedPrice || referenceSize?.originalPrice || 0) * quantity
+        })()
+
+    if (priceToDisplay > 0) {
+      message += `السعر: ${formatPrice(priceToDisplay)}\n`
+    }
+
+    message += `${tAr.waMsgBranch} ${branchNameAr}\n`
+
+    if (isRentBranch && (rentEventDate || occasionDate)) {
+      message += `${tAr.waMsgOccasionDate} ${(rentEventDate || occasionDate)?.toLocaleDateString('ar-EG')}\n`
+      if (isExclusive) message += `${tAr.waMsgExclusive}\n`
+      if (extraDayBefore) message += `${tAr.waMsgExtraBefore}\n`
+      if (extraDayAfter) message += `${tAr.waMsgExtraAfter}\n`
+    }
+
+    if (isCustomSizeMode) {
+      message += `${tAr.waMsgSize} ${tAr.waMsgCustom}\n`
+      message += `${tAr.waMsgMeasurements} (${measurementUnit === 'cm' ? 'سم' : 'إنش'}):\n`
+      Object.entries(measurements).forEach(([key, value]) => {
+        if (value) {
+          const labelAr = tAr[key as keyof typeof tAr] || key
+          message += `- ${labelAr}: ${value}\n`
+        }
+      })
+    } else if (selectedSize) {
+      message += `${tAr.waMsgSize} ${selectedSize.size || "One Size"}\n`
+    }
+
+    const encodedMessage = encodeURIComponent(message)
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank')
+    onClose()
+  }
+
   const handleToggleFavorite = async (e?: React.MouseEvent | any) => {
     if (e && typeof e === 'object' && 'stopPropagation' in e) {
       e.stopPropagation()
@@ -612,8 +672,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                 </div>
 
                 <div className="flex flex-col space-y-4 py-4 border-t border-gray-100">
-                  {isPast45Days ? (
-                    <div className="space-y-3 w-full">
+                  <div className="flex flex-col gap-4 w-full">
+                    {isPast45Days && (
                       <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                         <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                         <div>
@@ -623,89 +683,21 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           </p>
                         </div>
                       </div>
-                      <a
-                        href={`https://wa.me/201094448044?text=${encodeURIComponent(
-                          `Hello, I'm interested in renting:\n\nDress: ${product.name}\nProduct ID: ${product.id}\nBranch: ${product.branch}\nOccasion Date: ${(rentEventDate || occasionDate)?.toLocaleDateString('en-GB') || 'Not specified'}\n\nThe date I selected is beyond 45 days. Please provide the rental price.`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#25D366] hover:bg-[#1da851] text-white font-medium rounded-lg transition-colors duration-200"
-                      >
-                        <MessageCircle className="h-5 w-5" />
-                        Contact Branch via WhatsApp
-                      </a>
-                    </div>
-                  ) : (
+                    )}
+                    
                     <div className="flex justify-between items-center w-full">
                       <div className="flex flex-col">
                         {isRentBranch ? (
-                          rentEventDate ? (
+                          rentEventDate && !isPast45Days ? (
                             rentalPriceLoading ? (
                               <span className="text-sm text-gray-400">Calculating...</span>
                             ) : rentalPrice ? (
                               <>
                                 <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
-                                {canViewPrices ? (
-                                  (() => {
-                                    const basePrice = rentalPrice.total
-                                    const maxDiscount = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500
-                                    const minAllowed = Math.max(0, basePrice - maxDiscount)
-                                    const currentCustom = customPrice !== null ? customPrice : basePrice
-                                    return (
-                                      <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-sm text-gray-500">EGP</span>
-                                          <input
-                                            type="number"
-                                            value={currentCustom}
-                                            onChange={(e) => {
-                                              const val = Number(e.target.value)
-                                              if (!isNaN(val)) setCustomPrice(val)
-                                            }}
-                                            className="w-28 text-xl font-bold text-black border border-purple-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50"
-                                            min={minAllowed}
-                                            step={50}
-                                          />
-                                        </div>
-                                        <span className="text-[9px] text-purple-600 font-medium">
-                                          Staff Override — Min: {formatPrice(minAllowed)} | Base: {formatPrice(basePrice)}
-                                        </span>
-                                        {currentCustom < minAllowed && (
-                                          <span className="text-[9px] text-red-600 font-semibold">
-                                            ⚠ Below your allowed minimum ({formatPrice(minAllowed)})
-                                          </span>
-                                        )}
-                                      </div>
-                                    )
-                                  })()
-                                ) : (
-                                  <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
-                                )}
+                                <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
                               </>
-                            ) : (
-                              <div className="flex flex-col">
-                                {!showPrices && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (
-                                  <>
-                                    <span className="text-[10px] text-rose-600 font-medium">Starting from</span>
-                                    <span className="text-xl font-bold text-black">
-                                      {formatPrice((product as any).rentalPriceC)}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-[10px] text-rose-600 font-medium">
-                                      {canViewPrices ? "(Staff View)" : "Starting at (Cat A)"}
-                                    </span>
-                                    <span className="text-xl font-bold text-black">
-                                      {product.rentalPriceA && product.rentalPriceA > 0
-                                        ? formatPrice(product.rentalPriceA)
-                                        : formatPrice(getSmallestPrice(product.sizes))}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          ) : (
+                            ) : null
+                          ) : isPast45Days ? null : (
                             <div className="flex flex-col">
                               <span className="text-sm text-gray-500 italic">Select a date to view pricing</span>
                             </div>
@@ -720,25 +712,21 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                       </div>
 
                       <Button
-                        onClick={() => {
-                          if (isCustomSizeMode) {
-                            if (!isMeasurementsValid) {
-                              alert("Please complete your custom measurements")
-                              return
-                            }
-                            setShowCustomSizeConfirmation(true)
-                          } else {
-                            handleAddToCart()
-                          }
-                        }}
-                        className={`rounded-full px-6 ${product.isOutOfStock ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'}`}
-                        disabled={product.isOutOfStock || (isRentBranch && !rentEventDate) || (canViewPrices && customPrice !== null && (() => { const bp = rentalPrice?.total || 0; const md = userRole === "admin" ? Infinity : userRole === "manager" ? 1000 : 500; return customPrice < Math.max(0, bp - md) })())}
+                        onClick={handleWhatsAppOrder}
+                        className={`rounded-full px-6 bg-[#25D366] hover:bg-[#1da851] text-white`}
+                        disabled={
+                          product.isOutOfStock || 
+                          (isRentBranch && !rentEventDate && !isPast45Days) || 
+                          (isCustomSizeMode && !isMeasurementsValid)
+                        }
                       >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        {isRentBranch ? (rentEventDate ? t("rentNowLabel" as TranslationKey) : t("selectDateLabel" as TranslationKey)) : t("buyNowLabel" as TranslationKey)}
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        {isRentBranch 
+                          ? (t("orderViaWhatsApp" as TranslationKey)) 
+                          : (t("orderViaWhatsApp" as TranslationKey))}
                       </Button>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -757,7 +745,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                   <span><strong>Breast:</strong> {measurements.breast} {measurementUnit}</span>
                   <span><strong>Waist:</strong> {measurements.waist} {measurementUnit}</span>
                   <span><strong>Hips:</strong> {measurements.hips} {measurementUnit}</span>
-                  <span><strong>Sleeve:</strong> {measurements.sleeve} {measurementUnit}</span>
+                  <span><strong>Sleeve:</strong> {measurements.sleeve ? `${measurements.sleeve} ${measurementUnit}` : "Not specified"}</span>
                   <span><strong>Length:</strong> {measurements.length ? `${measurements.length} ${measurementUnit}` : "Not specified"}</span>
                 </div>
               </div>

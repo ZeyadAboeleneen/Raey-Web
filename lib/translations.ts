@@ -193,6 +193,23 @@ export const translations = {
     selectDateLabel: "Select Date",
     rentNowLabel: "Rent Now",
     buyNowLabel: "Buy Now",
+    orderViaWhatsApp: "Order via WhatsApp",
+    waMsgIntroRent: "Hello, I'm interested in renting this dress:",
+    waMsgIntroBuy: "Hello, I'm interested in buying this dress:",
+    waMsgIntroGift: "Hello, I'm interested in buying this gift package:",
+    waMsgDress: "Dress:",
+    waMsgPackage: "Package:",
+    waMsgProductId: "Product ID:",
+    waMsgBranch: "Branch:",
+    waMsgOccasionDate: "Occasion Date:",
+    waMsgSize: "Size:",
+    waMsgMeasurements: "Measurements:",
+    waMsgQuantity: "Quantity:",
+    waMsgSelectedItems: "Selected Items:",
+    waMsgExclusive: "Option: Exclusive Hold",
+    waMsgExtraBefore: "Option: Extra Day Before",
+    waMsgExtraAfter: "Option: Extra Day After",
+    waMsgCustom: "Custom",
 
     // Footer
     footerDesc: "Couture-crafted soirée dresses inspired by Middle Eastern artistry and modern glamour.",
@@ -301,8 +318,8 @@ export const translations = {
 
     // Contact Details
     instagramLink: "https://www.instagram.com/raeygroup?igsh=MTU2d2Jrcm1qczhhZQ==",
-    phoneWhatsApp: "201094448044",
-    phoneWhatsAppDisplay: "01094448044",
+    phoneWhatsApp: "201015847000",
+    phoneWhatsAppDisplay: "01015847000",
     contactEmail: "raey888@gmail.com",
     tiktokLink: "https://www.tiktok.com/@monasalehhautecouture?_r=1&_t=ZS-944Bim2ZRCu",
 
@@ -589,8 +606,25 @@ export const translations = {
     outOfStockLabel: "غير متوفر",
     loadingLabel: "جاري التحميل...",
     selectDateLabel: "اختر التاريخ",
-    rentNowLabel: "استأجري الآن",
+    rentNowLabel: "احجز الآن",
     buyNowLabel: "اشتري الآن",
+    orderViaWhatsApp: "اطلب عبر واتساب",
+    waMsgIntroRent: "مرحباً، أنا مهتمة باستئجار هذا الفستان:",
+    waMsgIntroBuy: "مرحباً، أنا مهتمة بشراء هذا الفستان:",
+    waMsgIntroGift: "مرحباً، أنا مهتمة بشراء باقة الهدايا هذه:",
+    waMsgDress: "الفستان:",
+    waMsgPackage: "الباقة:",
+    waMsgProductId: "كود المنتج:",
+    waMsgBranch: "الفرع:",
+    waMsgOccasionDate: "تاريخ المناسبة:",
+    waMsgSize: "المقاس:",
+    waMsgMeasurements: "القياسات:",
+    waMsgQuantity: "الكمية:",
+    waMsgSelectedItems: "العناصر المختارة:",
+    waMsgExclusive: "الخيار: حجز حصري (أول لبسة)",
+    waMsgExtraBefore: "الخيار: يوم إضافي قبل",
+    waMsgExtraAfter: "الخيار: يوم إضافي بعد",
+    waMsgCustom: "مخصص",
 
     // Footer
     footerDesc: "فساتين سواريه مصنوعة بالكوتور مستوحاة من الفن الشرقي الحديث والجاذبية العصرية.",
@@ -699,8 +733,8 @@ export const translations = {
 
     // Contact Details
     instagramLink: "https://www.instagram.com/raeygroup?igsh=MTU2d2Jrcm1qczhhZQ==",
-    phoneWhatsApp: "201094448044",
-    phoneWhatsAppDisplay: "01094448044",
+    phoneWhatsApp: "201015847000",
+    phoneWhatsAppDisplay: "01015847000",
     contactEmail: "raey888@gmail.com",
     tiktokLink: "https://www.tiktok.com/@monasalehhautecouture?_r=1&_t=ZS-944Bim2ZRCu",
 

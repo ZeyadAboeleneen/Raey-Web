@@ -33,6 +33,8 @@ async function fetchProductsFromDB(): Promise<any[]> {
         i.Item_name,
         i.Item_sellpricNow,
         i.Item_buypric,
+        i.Item_code,
+        i.Notes,
         i.PicPath,
         i.Item_Isdisabled,
         i.Category_id AS LineId,
@@ -89,6 +91,72 @@ export function warmProductsServerCache(): void {
   }
 
   g._ssrProductsPromise = fetchProductsFromDB();
+}
+
+/**
+ * Fetches a single product by numeric ID directly from MSSQL for SSR.
+ * Used by the product detail page to build JSON-LD without a client-side fetch.
+ */
+export async function getProductServer(itemIdStr: string): Promise<any | null> {
+  const itemId = parseInt(itemIdStr, 10);
+  if (isNaN(itemId)) return null;
+
+  try {
+    const pool = await getMssqlPool();
+    const result = await pool
+      .request()
+      .input("itemId", sql.Int, itemId)
+      .query<ErpItemRow>(`
+        SELECT
+          i.ID          AS ItemID,
+          i.Item_name,
+          i.Item_sellpricNow,
+          i.Item_buypric,
+          i.Item_code,
+          i.Notes,
+          i.PicPath,
+          i.Item_Isdisabled,
+          i.Category_id AS LineId,
+          c.Name        AS LineName,
+          b.ID          AS BookingID,
+          b.ReceivedDate,
+          b.ReturnDate,
+          b.BranchID,
+          s.Store_name  AS StoreName,
+          istore.Branch_ID AS ItemStoreBranchID,
+          istore.Store_name AS ItemStoreName,
+          fallback.FallbackStoreName
+        FROM Items i
+        LEFT JOIN Category c ON i.Category_id = c.ID
+        LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
+        LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
+        LEFT JOIN (
+            SELECT itemst.ItemID, st.Store_name, st.Branch_ID
+            FROM tb_ItemStores itemst
+            JOIN Stores st ON itemst.StoreID = st.ID
+        ) istore ON istore.ItemID = i.ID
+        OUTER APPLY (
+            SELECT TOP 1 s2.Store_name AS FallbackStoreName
+            FROM Booking b2
+            JOIN Stores s2 ON b2.BranchID = s2.Branch_ID
+            WHERE b2.ModelTypeID = i.ID
+            ORDER BY b2.ID DESC
+        ) fallback
+        WHERE i.ID = @itemId
+          AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+          AND i.Item_Isdisabled = 0
+      `);
+
+    if (result.recordset.length === 0) return null;
+
+    const erpProducts = transformErpRows(result.recordset as ErpItemRow[]);
+    if (erpProducts.length === 0) return null;
+
+    return erpProductToCachedShape(erpProducts[0]);
+  } catch (err: any) {
+    console.error("❌ [SSR] getProductServer failed:", err?.message || err);
+    return null;
+  }
 }
 
 export async function getProductsServer(): Promise<any[]> {

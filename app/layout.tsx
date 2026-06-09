@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { GlobalDateModal } from "@/components/global-date-modal"
 import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
+import { MetaPixel, MetaPixelNoscript } from "@/components/meta-pixel"
 import { initOutboxWorker } from "@/lib/worker-init"
 
 // Start background outbox worker (skip during build)
@@ -98,6 +99,8 @@ export default async function RootLayout({
       </head>
       <body className="font-sans">
         <GoogleAnalytics gaId="G-F487HSDE42" />
+        <MetaPixel />
+        <MetaPixelNoscript />
         <LocaleProvider>
           <HtmlLangWrapper>
             <AuthProvider>
