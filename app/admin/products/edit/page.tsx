@@ -197,6 +197,8 @@ function EditProductContent() {
         image: uploadedImages[0] || "",
         price: Number(firstSize?.originalPrice?.trim() || "0"),
         isActive: formData.isActive,
+        isBestseller: formData.isBestseller,
+        isNew: formData.isNew,
       }
 
       const response = await fetch(`/api/items/${productId}`, {

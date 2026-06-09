@@ -3,6 +3,7 @@ import { getMssqlPool, sql } from "@/lib/mssql";
 import { mapCollectionToLineId } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
 import { resolveStoreId } from "@/lib/erp-stores";
+import { prisma } from "@/lib/prisma";
 
 const errorResponse = (status: number, message: string) =>
   NextResponse.json({ error: message, timestamp: new Date().toISOString() }, { status });
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
         ? body.lineId
         : mapCollectionToLineId(body.collection);
     const branchCode = body.branch ? String(body.branch).trim() : null;
+    const isBestseller = body.isBestseller === true;
+    const isNew = body.isNew === true;
 
     if (!name) return errorResponse(400, "Product name is required");
     if (!Number.isFinite(price)) return errorResponse(400, "Valid price is required");
@@ -91,6 +94,31 @@ export async function POST(request: NextRequest) {
         } catch (mssqlErr: any) {
           console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
         }
+      }
+    }
+
+    // Persist isBestseller / isNew to local Prisma DB.
+    // The create branch must supply all required (no-default) fields:
+    // name, sizes, images, notes, giftPackageSizes.
+    if (newId) {
+      try {
+        await prisma.product.upsert({
+          where: { productId: String(newId) },
+          update: { isBestseller, isNew },
+          create: {
+            productId: String(newId),
+            name,
+            price,
+            sizes: [],
+            images: image ? [image] : [],
+            notes: { top: [], middle: [], base: [] },
+            giftPackageSizes: [],
+            isBestseller,
+            isNew,
+          },
+        });
+      } catch (prismaErr: any) {
+        console.error(`❌ [Prisma] Failed to save flags for item ${newId}:`, prismaErr?.message);
       }
     }
 

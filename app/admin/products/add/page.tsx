@@ -114,6 +114,8 @@ export default function AddProductPage() {
         branch: formData.branch,
         image: uploadedImages[0] || "",
         price: Number(firstSize?.originalPrice?.trim() || "0"),
+        isBestseller: formData.isBestseller,
+        isNew: formData.isNew,
       }
 
       let response;

@@ -108,7 +108,25 @@ export async function GET(
       return errorResponse(404, "Item not found");
     }
 
-    const output = format === "erp" ? product : erpProductToCachedShape(product);
+    let output: any = format === "erp" ? product : erpProductToCachedShape(product);
+
+    // Merge isBestseller / isNew / isOutOfStock from Prisma
+    if (format !== "erp") {
+      try {
+        const local = await prisma.product.findUnique({
+          where: { productId: String(product.id) },
+          select: { isBestseller: true, isNew: true, isOutOfStock: true },
+        });
+        if (local) {
+          output = {
+            ...output,
+            ...(local.isBestseller ? { isBestseller: true } : {}),
+            ...(local.isNew ? { isNew: true } : {}),
+            ...(local.isOutOfStock ? { isOutOfStock: true } : {}),
+          };
+        }
+      } catch { /* non-fatal */ }
+    }
 
     console.log(
       `✅ [ERP] Fetched item ${itemId} in ${Date.now() - startTime}ms`
@@ -162,6 +180,8 @@ export async function PUT(
         ? body.lineId
         : mapCollectionToLineId(body.collection);
     const isActive = body.isActive !== false;
+    const isBestseller = body.isBestseller === true;
+    const isNew = body.isNew === true;
     const branchCode = body.branch ? String(body.branch).trim() : null;
 
     if (!name) return errorResponse(400, "Product name is required");
@@ -209,6 +229,30 @@ export async function PUT(
           console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
         }
       }
+    }
+
+    // Persist isBestseller / isNew to local Prisma DB.
+    // Rental items live only in ERP, so no Prisma row exists yet — the create
+    // branch must supply all required (no-default) fields: name, sizes, images,
+    // notes, giftPackageSizes.
+    try {
+      await prisma.product.upsert({
+        where: { productId: String(itemId) },
+        update: { isBestseller, isNew },
+        create: {
+          productId: String(itemId),
+          name,
+          price,
+          sizes: [],
+          images: image ? [image] : [],
+          notes: { top: [], middle: [], base: [] },
+          giftPackageSizes: [],
+          isBestseller,
+          isNew,
+        },
+      });
+    } catch (prismaErr: any) {
+      console.error(`❌ [Prisma] Failed to save flags for item ${itemId}:`, prismaErr?.message);
     }
 
     clearErpProductCaches();
