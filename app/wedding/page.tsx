@@ -200,6 +200,22 @@ export default function WeddingPage() {
     setPage(1)
   }, [debouncedQuery, selectedCollection, selectedPriceRanges])
 
+  // Fetch no-image products from API when searching (not in cache)
+  const [searchApiResults, setSearchApiResults] = useState<Product[]>([])
+  useEffect(() => {
+    if (!debouncedQuery.trim()) { setSearchApiResults([]); return }
+    const controller = new AbortController()
+    fetch(`/api/items?search=${encodeURIComponent(debouncedQuery.trim())}&collection=wedding`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Product[]) => {
+        // Only keep no-image products — the cache already has the rest
+        const noImage = data.filter((p: Product) => !p.images?.length)
+        setSearchApiResults(noImage)
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [debouncedQuery])
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (showSizeSelector || showGiftPackageSelector) {
@@ -280,11 +296,15 @@ export default function WeddingPage() {
         if (p.isNew) s += 0.25
         return s
       }
-      const scored = result.map(p => ({ p, s: score(p) }))
-      result = scored.filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p)
+      const cachedScored = result.map(p => ({ p, s: score(p) }))
+      result = cachedScored.filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p)
+      // Append no-image products from API that aren't already in results
+      const existingIds = new Set(result.map(p => p.id))
+      const extraNoImage = searchApiResults.filter(p => !existingIds.has(p.id))
+      result = [...result, ...extraNoImage]
     }
     return result
-  }, [allProducts, selectedCollection, debouncedQuery])
+  }, [allProducts, selectedCollection, debouncedQuery, searchApiResults])
 
   const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
 

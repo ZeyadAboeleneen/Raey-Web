@@ -15,11 +15,12 @@ const LINE_ID_TO_COLLECTION: Record<number, string> = {
   6: "Wedding",
   11: "Wedding",
   13: "Wedding",
+  15: "Wedding",
   9: "Fionka",
 };
 
 /** Only these line ids are valid for the website catalog. */
-export const VALID_ERP_LINE_IDS = [1, 5, 6, 9, 10, 11, 12, 13, 18];
+export const VALID_ERP_LINE_IDS = [1, 5, 6, 9, 10, 11, 12, 13, 15, 18];
 
 export function mapLineIdToCollection(lineId: number | null | undefined): string {
   if (lineId == null) return "Unknown";
@@ -63,6 +64,8 @@ export interface ErpProduct {
   /** Storefront branch slug from Booking→Stores; null if no booking / unmapped. */
   branch: string | null;
   isActive: boolean;
+  isBestseller: boolean;
+  isNew: boolean;
   unavailableDates: UnavailableDateRange[];
 }
 
@@ -79,6 +82,10 @@ export interface ErpItemRow {
   Notes?: string | null;
   PicPath: string | null;
   Item_Isdisabled: boolean | number | null;
+  IsBestseller: boolean | number | null;
+  IsNew: boolean | number | null;
+  /** 1 if this item is linked to Store_name='15' via tb_ItemOperations — sell dress override */
+  IsSellDressOp: boolean | number | null;
   LineId: number | null;
   LineName: string | null;
   BookingID: number | null;
@@ -101,14 +108,19 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
     const id = row.ItemID;
 
     if (!itemMap.has(id)) {
+      // tb_ItemOperations link to Store_name='15' is the authoritative sell-dress signal
+      const isSellDressOp = Boolean(row.IsSellDressOp);
+
       const branchIdToUse = row.ItemStoreBranchID ?? row.BranchID ?? null;
       const storeNameToUse = row.ItemStoreName ?? row.StoreName ?? row.FallbackStoreName ?? null;
 
-      const branch = resolveBranchSlugFromErpRow({
-        BranchID: branchIdToUse,
-        StoreName: storeNameToUse,
-        Item_name: row.Item_name,
-      });
+      const branch = isSellDressOp
+        ? "sell-dresses"
+        : resolveBranchSlugFromErpRow({
+            BranchID: branchIdToUse,
+            StoreName: storeNameToUse,
+            Item_name: row.Item_name,
+          });
       itemMap.set(id, {
         id,
         name: (row.Item_name || "").trim(),
@@ -121,6 +133,8 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
         collection: mapLineIdToCollection(row.LineId),
         branch,
         isActive: !Boolean(row.Item_Isdisabled),
+        isBestseller: Boolean(row.IsBestseller),
+        isNew: Boolean(row.IsNew),
         unavailableDates: [],
       });
     }
@@ -190,8 +204,8 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     notes: { top: [], middle: [], base: [] },
     branch: p.branch,
     collection: p.collection.toLowerCase(),
-    isNew: false,
-    isBestseller: false,
+    isNew: p.isNew,
+    isBestseller: p.isBestseller,
     isActive: p.isActive,
     isOutOfStock: !p.isActive,
     isGiftPackage: false,

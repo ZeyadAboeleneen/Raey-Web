@@ -61,6 +61,9 @@ export async function GET(
           i.Notes,
           i.PicPath,
           i.Item_Isdisabled,
+          ISNULL(i.IsBestseller, 0) AS IsBestseller,
+          ISNULL(i.IsNew, 0)        AS IsNew,
+          CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
           i.Category_id AS LineId,
           c.Name        AS LineName,
           b.ID          AS BookingID,
@@ -76,10 +79,17 @@ export async function GET(
         LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
         LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
         LEFT JOIN (
-            SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
-            FROM tb_ItemStores itemst 
+            SELECT itemst.ItemID, st.Store_name, st.Branch_ID
+            FROM tb_ItemStores itemst
             JOIN Stores st ON itemst.StoreID = st.ID
         ) istore ON istore.ItemID = i.ID
+        LEFT JOIN (
+            SELECT DISTINCT op.OP_ItemID
+            FROM tb_ItemOperations op
+            INNER JOIN Stores sop ON sop.ID = op.OP_StoreID
+            WHERE sop.Store_name = '15'
+              AND op.OP_ItemID IS NOT NULL
+        ) sellOp ON sellOp.OP_ItemID = i.ID
         OUTER APPLY (
             SELECT TOP 1 s2.Store_name AS FallbackStoreName
             FROM Booking b2
@@ -88,7 +98,7 @@ export async function GET(
             ORDER BY b2.ID DESC
         ) fallback
         WHERE i.ID = @itemId
-          AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+          AND (i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")}) OR sellOp.OP_ItemID IS NOT NULL)
           ${includeInactive ? "" : "AND i.Item_Isdisabled = 0"}
       `);
 
@@ -109,24 +119,6 @@ export async function GET(
     }
 
     let output: any = format === "erp" ? product : erpProductToCachedShape(product);
-
-    // Merge isBestseller / isNew / isOutOfStock from Prisma
-    if (format !== "erp") {
-      try {
-        const local = await prisma.product.findUnique({
-          where: { productId: String(product.id) },
-          select: { isBestseller: true, isNew: true, isOutOfStock: true },
-        });
-        if (local) {
-          output = {
-            ...output,
-            ...(local.isBestseller ? { isBestseller: true } : {}),
-            ...(local.isNew ? { isNew: true } : {}),
-            ...(local.isOutOfStock ? { isOutOfStock: true } : {}),
-          };
-        }
-      } catch { /* non-fatal */ }
-    }
 
     console.log(
       `✅ [ERP] Fetched item ${itemId} in ${Date.now() - startTime}ms`
@@ -198,6 +190,8 @@ export async function PUT(
       .input("image", sql.NVarChar(sql.MAX), image || null)
       .input("lineId", sql.Int, lineId)
       .input("isDisabled", sql.Bit, isActive ? 0 : 1)
+      .input("isBestseller", sql.Bit, isBestseller ? 1 : 0)
+      .input("isNew", sql.Bit, isNew ? 1 : 0)
       .query(`
         UPDATE Items
         SET
@@ -206,7 +200,9 @@ export async function PUT(
           Item_buypric = @cost,
           PicPath = @image,
           Category_id = @lineId,
-          Item_Isdisabled = @isDisabled
+          Item_Isdisabled = @isDisabled,
+          IsBestseller = @isBestseller,
+          IsNew = @isNew
         WHERE ID = @itemId
       `);
 
@@ -229,30 +225,6 @@ export async function PUT(
           console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
         }
       }
-    }
-
-    // Persist isBestseller / isNew to local Prisma DB.
-    // Rental items live only in ERP, so no Prisma row exists yet — the create
-    // branch must supply all required (no-default) fields: name, sizes, images,
-    // notes, giftPackageSizes.
-    try {
-      await prisma.product.upsert({
-        where: { productId: String(itemId) },
-        update: { isBestseller, isNew },
-        create: {
-          productId: String(itemId),
-          name,
-          price,
-          sizes: [],
-          images: image ? [image] : [],
-          notes: { top: [], middle: [], base: [] },
-          giftPackageSizes: [],
-          isBestseller,
-          isNew,
-        },
-      });
-    } catch (prismaErr: any) {
-      console.error(`❌ [Prisma] Failed to save flags for item ${itemId}:`, prismaErr?.message);
     }
 
     clearErpProductCaches();

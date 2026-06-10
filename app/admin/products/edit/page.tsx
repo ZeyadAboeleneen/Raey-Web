@@ -109,7 +109,7 @@ function EditProductContent() {
           collection: product.collection || "wedding",
           branch: branchCode,
           sizes: product.sizes?.map((size: any) => ({
-            originalPrice: product.cost?.toString() || size.originalPrice?.toString() || "",
+            originalPrice: (product.price || size.originalPrice || size.discountedPrice || 0).toString(),
             stockCount: size.stockCount?.toString() || "",
           })) || [{
             originalPrice: "",

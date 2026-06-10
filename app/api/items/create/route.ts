@@ -3,7 +3,6 @@ import { getMssqlPool, sql } from "@/lib/mssql";
 import { mapCollectionToLineId } from "@/lib/erp-mappings";
 import { clearErpProductCaches, isAdminRequest } from "@/lib/erp-items";
 import { resolveStoreId } from "@/lib/erp-stores";
-import { prisma } from "@/lib/prisma";
 
 const errorResponse = (status: number, message: string) =>
   NextResponse.json({ error: message, timestamp: new Date().toISOString() }, { status });
@@ -35,12 +34,7 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(price)) return errorResponse(400, "Valid price is required");
     if (!lineId) return errorResponse(400, "Valid collection is required");
 
-    const baseCode = name
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 24);
-    const itemCode = `${baseCode || "ITEM"}-${Date.now().toString().slice(-6)}`;
+    const itemCode = name;
 
     // ── Insert into MSSQL ERP (NO branch column) ────────────────
     const pool = await getMssqlPool();
@@ -54,6 +48,8 @@ export async function POST(request: NextRequest) {
       .input("image", sql.NVarChar(sql.MAX), image || null)
       .input("lineId", sql.Int, lineId)
       .input("requestPoint", sql.Decimal(18, 2), 0)
+      .input("isBestseller", sql.Bit, isBestseller ? 1 : 0)
+      .input("isNew", sql.Bit, isNew ? 1 : 0)
       .query(`
         INSERT INTO Items (
           Item_code,
@@ -63,7 +59,9 @@ export async function POST(request: NextRequest) {
           PicPath,
           Category_id,
           Item_request_point,
-          Item_Isdisabled
+          Item_Isdisabled,
+          IsBestseller,
+          IsNew
         )
         OUTPUT INSERTED.ID AS id
         VALUES (
@@ -74,7 +72,9 @@ export async function POST(request: NextRequest) {
           @image,
           @lineId,
           @requestPoint,
-          0
+          0,
+          @isBestseller,
+          @isNew
         )
       `);
 
@@ -94,31 +94,6 @@ export async function POST(request: NextRequest) {
         } catch (mssqlErr: any) {
           console.error("⚠️ [MSSQL] Failed to save branch:", mssqlErr?.message);
         }
-      }
-    }
-
-    // Persist isBestseller / isNew to local Prisma DB.
-    // The create branch must supply all required (no-default) fields:
-    // name, sizes, images, notes, giftPackageSizes.
-    if (newId) {
-      try {
-        await prisma.product.upsert({
-          where: { productId: String(newId) },
-          update: { isBestseller, isNew },
-          create: {
-            productId: String(newId),
-            name,
-            price,
-            sizes: [],
-            images: image ? [image] : [],
-            notes: { top: [], middle: [], base: [] },
-            giftPackageSizes: [],
-            isBestseller,
-            isNew,
-          },
-        });
-      } catch (prismaErr: any) {
-        console.error(`❌ [Prisma] Failed to save flags for item ${newId}:`, prismaErr?.message);
       }
     }
 

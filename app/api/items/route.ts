@@ -7,7 +7,6 @@ import {
   VALID_ERP_LINE_IDS,
 } from "@/lib/erp-mappings";
 import { isAdminRequest } from "@/lib/erp-items";
-import { prisma } from "@/lib/prisma";
 import { decodeEmployeeJWT } from "@/lib/auth-helpers";
 import { filterPublicProducts } from "@/lib/product-visibility";
 
@@ -98,6 +97,9 @@ export async function GET(request: NextRequest) {
         i.Notes,
         i.PicPath,
         i.Item_Isdisabled,
+        ISNULL(i.IsBestseller, 0) AS IsBestseller,
+        ISNULL(i.IsNew, 0)        AS IsNew,
+        CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
         i.Category_id AS LineId,
         c.Name        AS LineName,
         b.ID          AS BookingID,
@@ -113,10 +115,17 @@ export async function GET(request: NextRequest) {
       LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID AND b.ReturnDate >= CAST(GETDATE() AS DATE)
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
       LEFT JOIN (
-          SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
-          FROM tb_ItemStores itemst 
+          SELECT itemst.ItemID, st.Store_name, st.Branch_ID
+          FROM tb_ItemStores itemst
           JOIN Stores st ON itemst.StoreID = st.ID
       ) istore ON istore.ItemID = i.ID
+      LEFT JOIN (
+          SELECT DISTINCT op.OP_ItemID
+          FROM tb_ItemOperations op
+          INNER JOIN Stores sop ON sop.ID = op.OP_StoreID
+          WHERE sop.Store_name = '15'
+            AND op.OP_ItemID IS NOT NULL
+      ) sellOp ON sellOp.OP_ItemID = i.ID
       OUTER APPLY (
           SELECT TOP 1 s2.Store_name AS FallbackStoreName
           FROM Booking b2
@@ -124,7 +133,10 @@ export async function GET(request: NextRequest) {
           WHERE b2.ModelTypeID = i.ID
           ORDER BY b2.ID DESC
       ) fallback
-      WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+      WHERE (
+        i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+        OR sellOp.OP_ItemID IS NOT NULL
+      )
       AND i.Item_sellpricNow > 0
     `;
 
@@ -134,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     // Optional filters
     if (collection) {
-      const catIds = collection.toLowerCase() === "wedding" ? [6, 11, 13] : collection.toLowerCase() === "soiree" ? [1, 5, 10, 12, 18] : collection.toLowerCase() === "fionka" ? [9] : null;
+      const catIds = collection.toLowerCase() === "wedding" ? [6, 11, 13, 15] : collection.toLowerCase() === "soiree" ? [1, 5, 10, 12, 18] : collection.toLowerCase() === "fionka" ? [9] : null;
       if (catIds !== null) {
         query += ` AND i.Category_id IN (${catIds.join(",")})`;
       }
@@ -165,7 +177,9 @@ export async function GET(request: NextRequest) {
     // ── Public visibility: hide products without valid images ────────
     // `includeNoImages` lets the dashboard see all products regardless of images.
     // `includeInactive` also bypasses this for backward compat.
-    if (!includeNoImages && !includeInactive) {
+    // When a search query is present, no-image products are included so users
+    // can find items by name even if photos haven't been uploaded yet.
+    if (!includeNoImages && !includeInactive && !search) {
       finalProducts = filterPublicProducts(finalProducts);
     }
 
@@ -179,32 +193,6 @@ export async function GET(request: NextRequest) {
       format === "erp"
         ? pagedProducts
         : pagedProducts.map(erpProductToCachedShape);
-
-    // ── Merge local flags (isOutOfStock, isBestseller, isNew) from Prisma ──
-    if (format !== "erp") {
-      const allIds = pagedProducts.map((p) => String(p.id));
-
-      if (allIds.length > 0) {
-        const localProducts = await prisma.product.findMany({
-          where: { productId: { in: allIds } },
-          select: { productId: true, isOutOfStock: true, isBestseller: true, isNew: true },
-        });
-        const localMap = new Map(localProducts.map((p) => [p.productId, p]));
-
-        if (localMap.size > 0) {
-          output = output.map((item: any) => {
-            const local = localMap.get(String(item.id));
-            if (!local) return item;
-            return {
-              ...item,
-              ...(local.isOutOfStock ? { isOutOfStock: true } : {}),
-              ...(local.isBestseller ? { isBestseller: true } : {}),
-              ...(local.isNew ? { isNew: true } : {}),
-            };
-          });
-        }
-      }
-    }
 
     // ── Strip prices based on permissions ──────────────────────────────
     const canViewPrices = await isAdminRequest(request, "canViewPricesOnWebsite");

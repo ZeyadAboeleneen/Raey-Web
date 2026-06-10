@@ -37,6 +37,9 @@ async function fetchProductsFromDB(): Promise<any[]> {
         i.Notes,
         i.PicPath,
         i.Item_Isdisabled,
+        ISNULL(i.IsBestseller, 0) AS IsBestseller,
+        ISNULL(i.IsNew, 0)        AS IsNew,
+        CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
         i.Category_id AS LineId,
         c.Name        AS LineName,
         b.ID          AS BookingID,
@@ -45,18 +48,37 @@ async function fetchProductsFromDB(): Promise<any[]> {
         b.BranchID,
         s.Store_name  AS StoreName,
         istore.Branch_ID AS ItemStoreBranchID,
-        istore.Store_name AS ItemStoreName
+        istore.Store_name AS ItemStoreName,
+        fallback.FallbackStoreName
       FROM Items i
       LEFT JOIN Category c ON i.Category_id = c.ID
-      LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID
+      LEFT JOIN Booking  b ON b.ModelTypeID  = i.ID AND b.ReturnDate >= CAST(GETDATE() AS DATE)
       LEFT JOIN Stores   s ON b.BranchID     = s.Branch_ID
       LEFT JOIN (
-          SELECT itemst.ItemID, st.Store_name, st.Branch_ID 
-          FROM tb_ItemStores itemst 
+          SELECT itemst.ItemID, st.Store_name, st.Branch_ID
+          FROM tb_ItemStores itemst
           JOIN Stores st ON itemst.StoreID = st.ID
       ) istore ON istore.ItemID = i.ID
+      LEFT JOIN (
+          SELECT DISTINCT op.OP_ItemID
+          FROM tb_ItemOperations op
+          INNER JOIN Stores sop ON sop.ID = op.OP_StoreID
+          WHERE sop.Store_name = '15'
+            AND op.OP_ItemID IS NOT NULL
+      ) sellOp ON sellOp.OP_ItemID = i.ID
+      OUTER APPLY (
+          SELECT TOP 1 s2.Store_name AS FallbackStoreName
+          FROM Booking b2
+          JOIN Stores s2 ON b2.BranchID = s2.Branch_ID
+          WHERE b2.ModelTypeID = i.ID
+          ORDER BY b2.ID DESC
+      ) fallback
       WHERE i.Item_Isdisabled = 0
-        AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+        AND i.Item_sellpricNow > 0
+        AND (
+          i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+          OR sellOp.OP_ItemID IS NOT NULL
+        )
       ORDER BY i.ID DESC
     `);
 
@@ -116,6 +138,9 @@ export async function getProductServer(itemIdStr: string): Promise<any | null> {
           i.Notes,
           i.PicPath,
           i.Item_Isdisabled,
+          ISNULL(i.IsBestseller, 0) AS IsBestseller,
+          ISNULL(i.IsNew, 0)        AS IsNew,
+          CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
           i.Category_id AS LineId,
           c.Name        AS LineName,
           b.ID          AS BookingID,
@@ -135,6 +160,13 @@ export async function getProductServer(itemIdStr: string): Promise<any | null> {
             FROM tb_ItemStores itemst
             JOIN Stores st ON itemst.StoreID = st.ID
         ) istore ON istore.ItemID = i.ID
+        LEFT JOIN (
+            SELECT DISTINCT op.OP_ItemID
+            FROM tb_ItemOperations op
+            INNER JOIN Stores sop ON sop.ID = op.OP_StoreID
+            WHERE sop.Store_name = '15'
+              AND op.OP_ItemID IS NOT NULL
+        ) sellOp ON sellOp.OP_ItemID = i.ID
         OUTER APPLY (
             SELECT TOP 1 s2.Store_name AS FallbackStoreName
             FROM Booking b2
@@ -143,7 +175,7 @@ export async function getProductServer(itemIdStr: string): Promise<any | null> {
             ORDER BY b2.ID DESC
         ) fallback
         WHERE i.ID = @itemId
-          AND i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
+          AND (i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")}) OR sellOp.OP_ItemID IS NOT NULL)
           AND i.Item_Isdisabled = 0
       `);
 
