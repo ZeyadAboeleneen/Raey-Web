@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
-import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
 import { getImageUploadService } from "@/lib/image-upload-service"
 
@@ -61,7 +60,7 @@ export async function syncOrderToErp(
 
     for (const item of items) {
       if (item.type === "rent" && item.rentStart && item.rentEnd) {
-        const branchId = mapBranchSlugToBranchId(item.branch) || 3 // Default to BranchID 3 (el-raey-1)
+        const branchId = 10 // All web orders go to BranchID 10
         const modelTypeId = parseInt(item.productId, 10)
 
         if (isNaN(modelTypeId)) continue
