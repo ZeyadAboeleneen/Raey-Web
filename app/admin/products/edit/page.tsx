@@ -469,19 +469,17 @@ function EditProductContent() {
                           <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                             <div className="grid grid-cols-1 gap-3 items-end">
                               <div>
-                                <Label>{formData.branch === "15" ? "Selling Price (EGP) *" : "Cost Price (EGP) *"}</Label>
+                                <Label>Cost Price (EGP) *</Label>
                                 <Input
                                   type="number"
                                   step="0.01"
                                   value={size.originalPrice}
                                   onChange={(e) => handleSizeChange(index, "originalPrice", e.target.value)}
-                                  placeholder={formData.branch === "15" ? "5000.00" : "1000.00"}
+                                  placeholder="1000.00"
                                   required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                  {formData.branch === "15" 
-                                    ? "This price will be shown directly on the website for sale." 
-                                    : "This cost is used to calculate rental categories (F, A, B, C, POST4)"}
+                                  This cost is used to calculate rental categories (F, A, B, C, POST4)
                                 </p>
                               </div>
                             </div>

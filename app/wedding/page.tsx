@@ -40,6 +40,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useToast } from "@/hooks/use-toast"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { useDateContext } from "@/lib/date-context"
+import { usePageParam } from "@/lib/use-page-param"
 
 
 
@@ -59,17 +61,21 @@ const COLLECTIONS_FILTER = [
   { slug: "el-raey-1", label: "El Mashaya 1" },
   { slug: "el-raey-2", label: "El Mashaya 2" },
   { slug: "el-raey-the-yard", label: "The yard cairo" },
-  { slug: "sell-dresses", label: "Sell Dresses" },
+  { slug: "hay-el-gamaa-2", label: "Main Branch" },
 ]
 export default function WeddingPage() {
   const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
+  const { mode } = useDateContext()
+  const isBuyMode = mode === "buy"
   const allProducts = useMemo(() => {
     const target = "wedding"
     return cachedProducts.filter(p => {
       const pColl = (p.collection || "").toLowerCase().trim()
-      return pColl === target
+      // In Buy mode only never-rented (sellable) dresses are offered for sale.
+      if (pColl !== target) return false
+      return isBuyMode ? p.isSellable === true : true
     })
-  }, [cachedProducts])
+  }, [cachedProducts, isBuyMode])
 
   // Show loading state only if we have NO products at all
   const isLoading = cacheLoading && cachedProducts.length === 0
@@ -77,9 +83,10 @@ export default function WeddingPage() {
     const target = "wedding"
     return getBestsellers().filter(p => {
       const pColl = (p.collection || "").toLowerCase().trim()
-      return pColl === target
+      if (pColl !== target) return false
+      return isBuyMode ? p.isSellable === true : true
     })
-  }, [getBestsellers])
+  }, [getBestsellers, isBuyMode])
   const bestSellersRent = bestSellers
   const newProducts = useMemo(() => allProducts.filter((p) => p.isNew), [allProducts])
 
@@ -131,7 +138,7 @@ export default function WeddingPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [selectedCollection, setSelectedCollection] = useState("")
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<number[]>([])
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePageParam()
 
   const [newsletterEmail, setNewsletterEmail] = useState("")
   const [isSubscribing, setIsSubscribing] = useState(false)
@@ -196,7 +203,14 @@ export default function WeddingPage() {
     return () => clearTimeout(handle)
   }, [searchQuery])
 
+  // Reset to page 1 when filters/search change — but NOT on the initial mount,
+  // so a page restored from the URL (?page=N) isn't clobbered.
+  const didMountResetRef = useRef(false)
   useEffect(() => {
+    if (!didMountResetRef.current) {
+      didMountResetRef.current = true
+      return
+    }
     setPage(1)
   }, [debouncedQuery, selectedCollection, selectedPriceRanges])
 
@@ -306,7 +320,7 @@ export default function WeddingPage() {
     return result
   }, [allProducts, selectedCollection, debouncedQuery, searchApiResults])
 
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
+  const { sortedProducts, isAvailable, dynamicPrices, getDynamicPrice, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
 
   const finalFilteredProducts = useMemo(() => {
     let result = sortedProducts
@@ -412,21 +426,25 @@ export default function WeddingPage() {
 
   const renderProductCard = (product: Product, index: number) => {
     const isGift = product.isGiftPackage
-    const isRentBranch = product.branch !== "sell-dresses"
+    // In Buy mode every card is a sale: no rental/date logic, show the sell price.
+    const isRentBranch = !isBuyMode && product.branch !== "sell-dresses"
 
     // Dynamic price logic
     let exactDynamicPrice: number | null = null
     if (occasionDate && isRentBranch && !isGift) {
-      if (dynamicPrices[product.id]) {
-        exactDynamicPrice = dynamicPrices[product.id]
-      }
+      exactDynamicPrice = dynamicPrices[product.id] ?? getDynamicPrice(product)
     }
 
-    const price = isGift ? product.packagePrice || 0 : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)))
+    const price = isGift
+      ? product.packagePrice || 0
+      : isBuyMode
+        ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
+        : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)))
     const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
     const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
 
-    const showProductPrice = showPrices || product.branch === "sell-dresses"
+    // Buy mode shows the sell price to everyone (customers are buying, not renting).
+    const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
     const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
 
     const available = isAvailable(product)

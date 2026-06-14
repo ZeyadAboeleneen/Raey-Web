@@ -24,7 +24,8 @@ export function calculateRentalPrice(
         total = round100(cost * 1.1)
         category = "F"
         formula = "cost × 1.1"
-    } else {
+    } else if (n < 4) {
+        // First 4 rentals follow date-based A/B/C pricing
         const multiplier = d <= 15 ? 0.8 : (0.8 - (0.2 / 15) * (d - 15))
         category = d <= 15 ? "A" : (d <= 30 ? "B" : "C")
 
@@ -35,6 +36,15 @@ export function calculateRentalPrice(
             total = Math.round((cost * multiplier) / 50) * 50
             formula = `cost × ${multiplier.toFixed(4)}`
         }
+    } else {
+        // POST4 (5th rental onward): minimum of first 4 rental prices, dropping 500 per extra rental
+        const pMin =
+            firstFourPrices.length > 0
+                ? Math.min(...firstFourPrices)
+                : round100(cost * 0.8) // fallback if first-4 prices not provided
+        total = pMin - 500 * (n - 3)
+        category = "POST4"
+        formula = `P_min(${pMin}) − 500 × (${n} − 3)`
     }
 
     const floored = total < MIN_RENTAL_PRICE

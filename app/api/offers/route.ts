@@ -12,12 +12,12 @@ const requireAdminOrPermission = async (request: NextRequest) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
     if (decoded.role === "admin") return { decoded }
-    
+
     if (decoded.employeeId) {
       const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
       if (employee && employee.isActive && employee.canManageOffers) return { decoded, employee }
     }
-    
+
     return { error: "Permission denied", status: 403 }
   } catch {
     return { error: "Invalid token", status: 401 }
@@ -32,15 +32,18 @@ const transformOffer = (offer: any) => ({
   image_url: offer.imageUrl,
   link_url: offer.linkUrl,
   discount_code: offer.discountCode,
+  discountCode: offer.discountCode,
   is_active: offer.isActive,
-  display_order: offer.displayOrder,
+  isActive: offer.isActive,
+  priority: offer.priority,
+  expiresAt: offer.expiresAt,
   created_at: offer.createdAt,
   updated_at: offer.updatedAt,
 })
 
 // ─── In-memory cache for offers ───
 type CachedEntry = { body: string; expiresAt: number }
-const OFFERS_TTL_MS = 30 * 60 * 1000 // 30 minutes
+const OFFERS_TTL_MS = 60 * 1000 // 1 minute — short so expiry-based filtering is timely
 
 const globalForOffers = globalThis as typeof globalThis & {
   _offersCache?: Map<string, CachedEntry>
@@ -48,6 +51,10 @@ const globalForOffers = globalThis as typeof globalThis & {
 const offersCache = globalForOffers._offersCache ?? new Map<string, CachedEntry>()
 if (!globalForOffers._offersCache) {
   globalForOffers._offersCache = offersCache
+}
+
+function invalidateCache() {
+  offersCache.clear()
 }
 
 export async function GET(request: NextRequest) {
@@ -68,8 +75,17 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const now = new Date()
+
+    // Auto-deactivate any offers whose expiry has passed
+    const expired = await prisma.offer.updateMany({
+      where: { isActive: true, expiresAt: { lte: now } },
+      data: { isActive: false },
+    })
+    if (expired.count > 0) invalidateCache()
+
     const where: any = activeOnly ? { isActive: true } : {}
-    const offers = await prisma.offer.findMany({ where, orderBy: { displayOrder: "asc" } })
+    const offers = await prisma.offer.findMany({ where, orderBy: { priority: "asc" } })
     const body = JSON.stringify(offers.map(transformOffer))
 
     // Store in cache
@@ -97,10 +113,28 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminOrPermission(request)
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-    const { title, description, image_url, link_url, discount_code, is_active, display_order, send_email_notification } =
-      await request.json()
+    const body = await request.json()
+    const {
+      title,
+      description,
+      image_url,
+      link_url,
+      discount_code,
+      discountCode,
+      is_active,
+      isActive,
+      display_order,
+      priority,
+      expiresAt,
+      send_email_notification,
+    } = body
 
     if (!description) return NextResponse.json({ error: "Description is required" }, { status: 400 })
+
+    const resolvedDiscountCode = discountCode ?? discount_code ?? null
+    const resolvedIsActive = (isActive ?? is_active) !== false
+    const resolvedPriority = Number(priority ?? display_order) || 0
+    const resolvedExpiresAt = expiresAt ? new Date(expiresAt) : null
 
     const offer = await prisma.offer.create({
       data: {
@@ -108,11 +142,14 @@ export async function POST(request: NextRequest) {
         description,
         imageUrl: image_url || null,
         linkUrl: link_url || null,
-        discountCode: discount_code || null,
-        isActive: is_active !== false,
-        displayOrder: Number(display_order) || 0,
+        discountCode: resolvedDiscountCode || null,
+        isActive: resolvedIsActive,
+        priority: resolvedPriority,
+        expiresAt: resolvedExpiresAt,
       },
     })
+
+    invalidateCache()
 
     // Send email to newsletter subscribers if requested
     if (send_email_notification) {
@@ -120,10 +157,10 @@ export async function POST(request: NextRequest) {
         const subscribers = await prisma.newsletterSubscriber.findMany({ select: { email: true } })
         const emails = subscribers.map((s: { email: string }) => s.email)
         if (emails.length > 0) {
-          const discountSection = discount_code
+          const discountSection = resolvedDiscountCode
             ? `<div style="background:#f3f4f6;padding:16px;border-radius:8px;text-align:center;margin:24px 0;">
                 <p style="margin:0;font-size:13px;color:#6b7280;">Use discount code:</p>
-                <p style="margin:8px 0 0;font-size:22px;font-weight:700;letter-spacing:2px;color:#111;">${discount_code}</p>
+                <p style="margin:8px 0 0;font-size:22px;font-weight:700;letter-spacing:2px;color:#111;">${resolvedDiscountCode}</p>
               </div>` : ""
           const buttonSection = link_url
             ? `<div style="text-align:center;margin-top:24px;">
@@ -137,7 +174,6 @@ export async function POST(request: NextRequest) {
               <p style="font-size:12px;color:#9ca3af;margin-top:32px;">Raey — You received this because you subscribed to our newsletter.</p>
             </div></body></html>`
 
-          // Send in batches — fire and forget
           Promise.all(emails.map((to: string) => sendEmail({ to, subject: title || "New Offer from Raey", html }))).catch(
             (err) => console.error("Error sending offer emails:", err)
           )
@@ -163,20 +199,48 @@ export async function PUT(request: NextRequest) {
     const id = searchParams.get("id")
     if (!id) return NextResponse.json({ error: "Offer ID is required" }, { status: 400 })
 
-    const { title, description, image_url, link_url, discount_code, is_active, display_order } = await request.json()
+    const body = await request.json()
+    const {
+      title,
+      description,
+      image_url,
+      link_url,
+      discount_code,
+      discountCode,
+      is_active,
+      isActive,
+      display_order,
+      priority,
+      expiresAt,
+    } = body
+
+    // Fetch existing offer to carry over any field not explicitly sent
+    const existing = await prisma.offer.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "Offer not found" }, { status: 404 })
+
+    const resolvedIsActive =
+      isActive !== undefined ? isActive : is_active !== undefined ? is_active : existing.isActive
 
     const updated = await prisma.offer.update({
       where: { id },
       data: {
-        title: title || null,
-        description,
-        imageUrl: image_url || null,
-        linkUrl: link_url || null,
-        discountCode: discount_code || null,
-        isActive: is_active !== false,
-        displayOrder: Number(display_order) || 0,
+        title: title !== undefined ? (title || null) : existing.title,
+        description: description ?? existing.description,
+        imageUrl: image_url !== undefined ? (image_url || null) : existing.imageUrl,
+        linkUrl: link_url !== undefined ? (link_url || null) : existing.linkUrl,
+        discountCode:
+          discountCode !== undefined
+            ? (discountCode || null)
+            : discount_code !== undefined
+            ? (discount_code || null)
+            : existing.discountCode,
+        isActive: resolvedIsActive,
+        priority: priority !== undefined ? (Number(priority) || 0) : display_order !== undefined ? (Number(display_order) || 0) : existing.priority,
+        expiresAt: expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : existing.expiresAt,
       },
     })
+
+    invalidateCache()
 
     return NextResponse.json({ success: true, offer: transformOffer(updated) })
   } catch (error: any) {
@@ -196,6 +260,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) return NextResponse.json({ error: "Offer ID is required" }, { status: 400 })
 
     await prisma.offer.delete({ where: { id } })
+    invalidateCache()
     return NextResponse.json({ success: true, message: "Offer deleted successfully" })
   } catch (error: any) {
     if (error?.code === "P2025") return NextResponse.json({ error: "Offer not found" }, { status: 404 })

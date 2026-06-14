@@ -8,7 +8,7 @@ export const branchMap: Record<string, string> = {
   M: "mona-saleh",
   D: "el-raey-2",
   R: "el-raey-the-yard",
-  "15": "sell-dresses",
+  "15": "hay-el-gamaa-2",
 };
 
 const slugToCode: Record<string, string> = Object.fromEntries(
@@ -23,7 +23,7 @@ export const BRANCH_OPTIONS = [
   { code: "M", label: "Hay El-Gamaa" },
   { code: "D", label: "El Mashaya 2" },
   { code: "R", label: "The yard cairo" },
-  { code: "15", label: "Sell Dresses" },
+  { code: "15", label: "Main Branch" },
 ] as const;
 
 export function mapBranchCodeToSlug(raw: string | number | null | undefined): string {
@@ -66,7 +66,7 @@ const BRANCH_ID_TO_CODE: Record<number, string> = {
   9: "M",   // mona-saleh
   7: "D",   // el-raey-2
   5: "R",   // el-raey-the-yard
-  1: "15",  // sell-dresses
+  1: "15",  // hay-el-gamaa-2
 };
 
 export function mapBookingBranchIdToSlug(branchId: number | null | undefined): string | null {

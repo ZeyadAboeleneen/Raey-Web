@@ -111,7 +111,7 @@ const formatBranchName = (branch: string | null | undefined) => {
   if (branch === "el-raey-2") return "El Mashaya 2"
   if (branch === "el-raey-the-yard") return "The yard cairo"
   if (branch === "mona-saleh") return "Hay El-Gamaa"
-  if (branch === "sell-dresses") return "Sell Dresses"
+  if (branch === "hay-el-gamaa-2") return "Main Branch"
 
   // fallback capitalize
   return branch.split('-').map(word =>
@@ -191,7 +191,9 @@ export default function AdminDashboard() {
 
   const formatDateForInput = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toISOString().slice(0, 16)
+    // Subtract timezone offset so datetime-local shows local time, not UTC
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    return localDate.toISOString().slice(0, 16)
   }
 
   // DASHBOARD USES EGP ONLY - NO CURRENCY CONVERSION NEEDED
@@ -288,7 +290,7 @@ export default function AdminDashboard() {
       // Then load secondary data in the background (does not block initial render)
       const [discountCodesRes, offersRes, totalProdsRes, activeProdsRes] = await Promise.all([
         fetch("/api/discount-codes", fetchOptions),
-        fetch("/api/offers", fetchOptions),
+        fetch("/api/offers?active=false", fetchOptions),
         fetch("/api/items?page=1&limit=1&includeInactive=true", fetchOptions), // Used to get total products
         fetch("/api/items?page=1&limit=1&includeInactive=true", fetchOptions), // Used to get active products
       ])
@@ -624,7 +626,7 @@ export default function AdminDashboard() {
       title: offer.title || "",
       description: offer.description,
       discountCode: offer.discountCode || "",
-      priority: offer.priority.toString(),
+      priority: (offer.priority ?? 0).toString(),
       expiresAt: offer.expiresAt ? formatDateForInput(offer.expiresAt) : "",
     })
   }
@@ -1084,7 +1086,7 @@ export default function AdminDashboard() {
                             <SelectItem value="el-raey-1">Raey1 -mashaya 1</SelectItem>
                             <SelectItem value="el-raey-2">Raey 2- mashaya 2</SelectItem>
                             <SelectItem value="el-raey-the-yard">raey the yard-The yard cairo</SelectItem>
-                            <SelectItem value="sell-dresses">Sell Dresses</SelectItem>
+                            <SelectItem value="hay-el-gamaa-2">Main Branch</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select value={productImageFilter} onValueChange={setProductImageFilter}>

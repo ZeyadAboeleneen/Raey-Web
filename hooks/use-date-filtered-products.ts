@@ -8,7 +8,7 @@ import { usePermission } from "@/lib/auth-context"
 import { useAuth } from "@/lib/auth-context"
 
 export function useDateFilteredProducts(products: Product[]) {
-  const { occasionDate, isBrowsingOnly, isOccasionPast45Days: rawIsOccasionPast45Days } = useDateContext()
+  const { occasionDate, isBrowsingOnly, mode, isOccasionPast45Days: rawIsOccasionPast45Days } = useDateContext()
   const canViewPrices = usePermission("canViewPricesOnWebsite")
   const canEditProducts = usePermission("canEditProducts")
   const { state: authState } = useAuth()
@@ -72,64 +72,18 @@ export function useDateFilteredProducts(products: Product[]) {
   }, [products, occasionDate, isBrowsingOnly, isAvailable])
 
   const fetchingIdsRef = useRef<Set<string>>(new Set())
-  
-  // 2. Fetch dynamic prices for specific products
-  // NOTE: serverPrices removed from deps — we read from serverPricesRef instead
-  // to prevent the infinite loop where serverPrices change → fetchPricesForIds
-  // identity changes → page useEffect re-fires → fetch → serverPrices change → …
-  const fetchPricesForIds = useCallback(async (productIds: string[]) => {
-    if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
-      setServerPrices(prev => Object.keys(prev).length === 0 ? prev : {})
-      return
-    }
 
-    // Read the latest server prices from the ref (no dependency needed)
-    const currentServerPrices = serverPricesRef.current
-    const idsToFetch = productIds
-      .filter(p => p !== "sell-dresses" && !(p in currentServerPrices) && !fetchingIdsRef.current.has(p))
+  // 2. Dynamic pricing for listing cards is computed entirely client-side via
+  // `speculativePrices` below. That uses the SAME formula and inputs
+  // (cost, date-derived `d`, n=0) as the /api/rental/bulk-pricing endpoint, so a
+  // server round-trip produces an identical number while adding latency and, at
+  // scale, a perpetual `loadingPrices` state that froze every card on
+  // "Calculating…". These fetchers are intentionally no-ops; the detail page /
+  // quick-add modal still call the server directly when an exact (n-aware) price
+  // is needed. Kept as stable callbacks so the page effects that call them don't loop.
+  const fetchPricesForIds = useCallback(async (_productIds: string[]) => {}, [])
 
-    if (idsToFetch.length === 0) return
-
-    idsToFetch.forEach(id => fetchingIdsRef.current.add(id))
-    activeFetchCountRef.current += 1
-    setLoadingPrices(true)
-
-    // Capture the date this fetch is for, so we can discard stale results
-    const fetchDate = occasionDate
-
-    try {
-      const res = await fetch("/api/rental/bulk-pricing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productIds: idsToFetch,
-          occasionDate: occasionDate.toISOString()
-        })
-      })
-      const data = await res.json()
-      // Only apply results if the date hasn't changed while we were fetching
-      if (data.success && data.prices && currentDateRef.current?.getTime() === fetchDate.getTime()) {
-        setServerPrices(prev => ({ ...prev, ...data.prices }))
-      }
-    } catch (error) {
-      console.error("Failed to fetch dynamic prices", error)
-    } finally {
-      idsToFetch.forEach(id => fetchingIdsRef.current.delete(id))
-      activeFetchCountRef.current -= 1
-      // Only clear loading when ALL concurrent fetches are done
-      if (activeFetchCountRef.current <= 0) {
-        activeFetchCountRef.current = 0
-        setLoadingPrices(false)
-      }
-    }
-  }, [occasionDate, isBrowsingOnly, isOccasionPast45Days])
-
-  const fetchPricesForPage = useCallback(async (pageProducts: Product[]) => {
-    const ids = pageProducts
-      .filter(p => p.branch !== "sell-dresses" && !p.isGiftPackage && isAvailable(p))
-      .map(p => p.id)
-    return fetchPricesForIds(ids)
-  }, [fetchPricesForIds, isAvailable])
+  const fetchPricesForPage = useCallback(async (_pageProducts: Product[]) => {}, [])
 
   // Clear server prices and fetching cache when date changes
   useEffect(() => {
@@ -140,52 +94,55 @@ export function useDateFilteredProducts(products: Product[]) {
     setLoadingPrices(false)
   }, [occasionDate])
 
-  // Speculative pricing logic for instant feedback (calculated during render)
-  const speculativePrices = useMemo(() => {
-    if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) {
-      return {}
-    }
-
+  // Number of days from booking (today) to the rental start (occasion − 1 day).
+  // Same `d` the server pricing uses. Null when there's no usable occasion date.
+  const dayOffset = useMemo(() => {
+    if (!occasionDate || isBrowsingOnly || isOccasionPast45Days) return null
     const msPerDay = 1000 * 60 * 60 * 24
-    const occasion = new Date(occasionDate)
-    const rentStart = new Date(occasion)
+    const rentStart = new Date(occasionDate)
     rentStart.setDate(rentStart.getDate() - 1)
-    
     const startDay = new Date(rentStart)
     startDay.setHours(0, 0, 0, 0)
     const bookDay = new Date()
     bookDay.setHours(0, 0, 0, 0)
-    
-    const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
-    
-    const speculative: Record<string, number> = {}
-    for (const p of products) {
-      if (p.branch === "sell-dresses" || p.isGiftPackage) continue
-      
-      const costBase = p.cost || (p.rentalPriceA ? p.rentalPriceA / 0.8 : 0)
-      if (costBase > 0) {
-        const res = calculateRentalPrice(costBase, d, 0, false)
-        speculative[p.id] = res.total
-      }
-    }
-    return speculative
-  }, [occasionDate, products, isBrowsingOnly, isOccasionPast45Days])
+    return Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
+  }, [occasionDate, isBrowsingOnly, isOccasionPast45Days])
 
-  // Combined prices: server prices override speculative ones
-  const dynamicPrices = useMemo(() => ({
-    ...speculativePrices,
-    ...serverPrices
-  }), [speculativePrices, serverPrices])
+  // Date-based rental price for a SINGLE product, computed on the fly.
+  // Works for any product (grid, bestsellers, new-arrivals) regardless of which
+  // list it came from — it does not depend on the product being in `products`.
+  // Uses the identical formula/inputs as the /api/rental/bulk-pricing endpoint.
+  const getDynamicPrice = useCallback((product: Product): number | null => {
+    if (dayOffset === null) return null
+    if (!product || product.branch === "sell-dresses" || product.isGiftPackage) return null
+    const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
+    if (costBase <= 0) return null
+    return calculateRentalPrice(costBase, dayOffset, 0, false).total
+  }, [dayOffset])
+
+  // Map form (id → price) for the products passed to this hook, for callers that
+  // index by id. Individual cards should prefer getDynamicPrice(product).
+  const dynamicPrices = useMemo(() => {
+    const map: Record<string, number> = {}
+    if (dayOffset === null) return map
+    for (const p of products) {
+      const price = getDynamicPrice(p)
+      if (price !== null) map[p.id] = price
+    }
+    return map
+  }, [products, dayOffset, getDynamicPrice])
 
   return {
     sortedProducts,
     isAvailable,
     dynamicPrices,
+    getDynamicPrice,
     loadingPrices,
     fetchPricesForPage,
     fetchPricesForIds,
     occasionDate,
     isBrowsingOnly,
+    mode,
     isOccasionPast45Days
   }
 }

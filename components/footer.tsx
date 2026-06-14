@@ -103,7 +103,7 @@ export function Footer() {
               <Link href={getCollectionLink("el-raey-the-yard")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("elRaeyTheYardCollection")}
               </Link>
-              <Link href={getCollectionLink("sell-dresses")} className="block text-rose-700 hover:text-rose-900 transition-colors">
+              <Link href={getCollectionLink("hay-el-gamaa-2")} className="block text-rose-700 hover:text-rose-900 transition-colors">
                 {t("sellDressesCollection")}
               </Link>
             </div>

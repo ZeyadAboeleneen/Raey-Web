@@ -547,7 +547,7 @@ export function Navigation() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </Link>
                   <Link
-                    href={getCollectionLink("sell-dresses")}
+                    href={getCollectionLink("hay-el-gamaa-2")}
                     className="flex items-center justify-between py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >

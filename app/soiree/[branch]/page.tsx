@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import Image from "next/image"
@@ -30,13 +30,15 @@ import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { useDateContext } from "@/lib/date-context"
+import { usePageParam } from "@/lib/use-page-param"
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
   "mona-saleh": { titleKey: "monaSalehCollection", descKey: "monaSalehDesc" },
   "el-raey-1": { titleKey: "elRaey1Collection", descKey: "elRaey1Desc" },
   "el-raey-2": { titleKey: "elRaey2Collection", descKey: "elRaey2Desc" },
   "el-raey-the-yard": { titleKey: "elRaeyTheYardCollection", descKey: "elRaeyTheYardDesc" },
-  "sell-dresses": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
+  "hay-el-gamaa-2": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
 }
 
 const CATEGORY_PAGE_SIZE = 10
@@ -44,12 +46,14 @@ const CATEGORY_PAGE_SIZE = 10
 
 export default function SoireeBranchPage() {
   const { branch } = useParams() as { branch: string }
-  const isRentBranch = branch !== "sell-dresses"
+  const { mode } = useDateContext()
+  const isBuyMode = mode === "buy"
+  const isRentBranch = !isBuyMode && branch !== "sell-dresses"
 
   const { products: cachedProducts, loading: cacheLoading, getByCollection } = useProductsCache()
   const allProducts = useMemo(
-    () => getByCollection("soiree").filter(p => p.branch === branch),
-    [getByCollection, branch]
+    () => getByCollection("soiree").filter(p => p.branch === branch && (isBuyMode ? p.isSellable === true : true)),
+    [getByCollection, branch, isBuyMode]
   )
 
   const [loading, setLoading] = useState(true)
@@ -60,7 +64,7 @@ export default function SoireeBranchPage() {
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePageParam()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(allProducts as any)
@@ -179,7 +183,14 @@ export default function SoireeBranchPage() {
 
 
   // Reset page when branch changes
+  // Reset page when branch changes — but not on initial mount, so a page
+  // restored from the URL (?page=N) survives refresh / back navigation.
+  const didMountResetRef = useRef(false)
   useEffect(() => {
+    if (!didMountResetRef.current) {
+      didMountResetRef.current = true
+      return
+    }
     if (branch) {
       setPage(1)
     }
@@ -435,9 +446,11 @@ export default function SoireeBranchPage() {
 
                     const price = isGift
                       ? product.packagePrice || 0
-                      : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
-                        ? (product as any).rentalPriceA
-                        : getSmallestPrice(product.sizes)))
+                      : isBuyMode
+                        ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
+                        : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
+                          ? (product as any).rentalPriceA
+                          : getSmallestPrice(product.sizes)))
 
                     const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
                     const available = isAvailable(product as any)
@@ -535,7 +548,7 @@ export default function SoireeBranchPage() {
                                   {/* Bottom overlay with name, price and cart button */}
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                     {(() => {
-                                      const showProductPrice = showPrices || product.branch === "sell-dresses"
+                                      const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
                                       return (
                                         <>
                                           {(showProductPrice || clientRentalPrice) && !isOccasionPast45Days ? (

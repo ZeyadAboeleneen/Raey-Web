@@ -45,7 +45,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
-  const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
+  const { occasionDate, setOccasionDate, mode, isOccasionPast45Days } = useDateContext()
 
   const {
     isCustomSizeMode,
@@ -77,7 +77,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
 
-  const isRentBranch = product?.branch !== "sell-dresses"
+  // Buy mode forces the sale path regardless of branch.
+  const isRentBranch = mode !== "buy" && product?.branch !== "sell-dresses"
 
   // Admins and staff with canEditProducts bypass the 45-day restriction
   const canBypass45Days = userRole === "admin" || canEditProducts
@@ -346,7 +347,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           id: `${product.id}-${isCustomSizeMode ? "custom" : baseSize?.size}`,
           productId: product.id,
           name: product.name,
-          price: baseSize?.discountedPrice || baseSize?.originalPrice || 0,
+          price: (product as any).sellPrice ?? baseSize?.discountedPrice ?? baseSize?.originalPrice ?? 0,
           originalPrice: baseSize?.originalPrice,
           size: isCustomSizeMode ? "custom" : baseSize?.size,
           volume: isCustomSizeMode ? measurementUnit : baseSize?.volume,
@@ -376,7 +377,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       "el-raey-1": tAr.elRaey1Collection,
       "el-raey-2": tAr.elRaey2Collection,
       "el-raey-the-yard": tAr.elRaeyTheYardCollection,
-      "sell-dresses": tAr.sellDressesCollection
+      "hay-el-gamaa-2": tAr.sellDressesCollection
     }
     const branchNameAr = branchMap[product.branch] || product.branch
 

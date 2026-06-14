@@ -119,7 +119,7 @@ const BRANCH_ADDRESSES: Record<string, Record<string, string>> = {
     en: "Cairo - Rehab - The yard mall.",
     ar: "القاهرة - الرحاب - The Yard Mall",
   },
-  "sell-dresses": {
+  "hay-el-gamaa-2": {
     en: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
     ar: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
   },

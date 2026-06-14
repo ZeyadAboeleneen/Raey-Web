@@ -64,6 +64,7 @@ export async function GET(
           ISNULL(i.IsBestseller, 0) AS IsBestseller,
           ISNULL(i.IsNew, 0)        AS IsNew,
           CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
+          opStore.OP_StoreID AS OpStoreID,
           i.Category_id AS LineId,
           c.Name        AS LineName,
           b.ID          AS BookingID,
@@ -97,6 +98,13 @@ export async function GET(
             WHERE b2.ModelTypeID = i.ID
             ORDER BY b2.ID DESC
         ) fallback
+        OUTER APPLY (
+            SELECT TOP 1 op.OP_StoreID
+            FROM tb_ItemOperations op
+            WHERE op.OP_ItemID = i.ID AND op.OP_StoreID IS NOT NULL
+            GROUP BY op.OP_StoreID
+            ORDER BY CASE WHEN op.OP_StoreID = 16 THEN 1 ELSE 0 END, COUNT(*) DESC
+        ) opStore
         WHERE i.ID = @itemId
           AND (i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")}) OR sellOp.OP_ItemID IS NOT NULL)
           ${includeInactive ? "" : "AND i.Item_Isdisabled = 0"}
@@ -180,13 +188,12 @@ export async function PUT(
     if (!Number.isFinite(price) || price <= 0) return errorResponse(400, "Price must be a positive number");
     if (!lineId) return errorResponse(400, "Valid collection is required");
 
-    const isSellDress = branchCode === "15";
     await pool
       .request()
       .input("itemId", sql.Int, itemId)
       .input("name", sql.NVarChar(sql.MAX), name)
       .input("price", sql.Decimal(18, 2), price)
-      .input("cost", sql.Decimal(18, 2), isSellDress ? 0 : price)
+      .input("cost", sql.Decimal(18, 2), price)
       .input("image", sql.NVarChar(sql.MAX), image || null)
       .input("lineId", sql.Int, lineId)
       .input("isDisabled", sql.Bit, isActive ? 0 : 1)

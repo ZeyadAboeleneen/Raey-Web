@@ -100,6 +100,8 @@ export async function GET(request: NextRequest) {
         ISNULL(i.IsBestseller, 0) AS IsBestseller,
         ISNULL(i.IsNew, 0)        AS IsNew,
         CASE WHEN sellOp.OP_ItemID IS NOT NULL THEN 1 ELSE 0 END AS IsSellDressOp,
+        opStore.OP_StoreID AS OpStoreID,
+        (SELECT COUNT(*) FROM Booking bkAll WHERE bkAll.ModelTypeID = i.ID) AS TotalBookings,
         i.Category_id AS LineId,
         c.Name        AS LineName,
         b.ID          AS BookingID,
@@ -133,6 +135,13 @@ export async function GET(request: NextRequest) {
           WHERE b2.ModelTypeID = i.ID
           ORDER BY b2.ID DESC
       ) fallback
+      OUTER APPLY (
+          SELECT TOP 1 op.OP_StoreID
+          FROM tb_ItemOperations op
+          WHERE op.OP_ItemID = i.ID AND op.OP_StoreID IS NOT NULL
+          GROUP BY op.OP_StoreID
+          ORDER BY CASE WHEN op.OP_StoreID = 16 THEN 1 ELSE 0 END, COUNT(*) DESC
+      ) opStore
       WHERE (
         i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
         OR sellOp.OP_ItemID IS NOT NULL

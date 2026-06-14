@@ -11,6 +11,7 @@ interface Offer {
   discountCode?: string
   isActive: boolean
   priority: number
+  expiresAt?: string
 }
 
 export function OffersBanner() {

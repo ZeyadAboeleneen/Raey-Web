@@ -163,12 +163,12 @@ export const translations = {
     elRaey1Collection: "El Mashaya 1",
     elRaey2Collection: "El Mashaya 2",
     elRaeyTheYardCollection: "The yard cairo",
-    sellDressesCollection: "Sell Dresses",
+    sellDressesCollection: "Main Branch",
     monaSalehDesc: "El Mansoura – Hay El Gamea",
     elRaey1Desc: "El Mansoura - El Mashaya - in front of El-Gezira sports club 2.",
     elRaey2Desc: "New silhouettes from the second Raey collection.",
     elRaeyTheYardDesc: "Cairo - Rehab - The yard mall.",
-    sellDressesDesc: "Ready-to-ship dresses available for immediate purchase.",
+    sellDressesDesc: "Dresses available to rent from our Main Branch.",
 
     // Products
     selectSize: "Select your preferred size",
@@ -578,12 +578,12 @@ export const translations = {
     elRaey1Collection: "Raey1 -mashaya 1",
     elRaey2Collection: "Raey 2- mashaya 2",
     elRaeyTheYardCollection: "raey the yard-The yard cairo",
-    sellDressesCollection: "مجموعة فساتين للبيع",
+    sellDressesCollection: "الفرع الرئيسي",
     monaSalehDesc: "المنصورة – حي الجامعة",
     elRaey1Desc: "المنصورة - المشايه امام بوابه نادي الجزيره ٢",
     elRaey2Desc: "القاهرة - الرحاب - The Yard Mall",
     elRaeyTheYardDesc: "إطلالات مميزة من مجموعة الراعي ذا يارد.",
-    sellDressesDesc: "فساتين جاهزة للبيع والشحن الفوري.",
+    sellDressesDesc: "فساتين متاحة للإيجار من الفرع الرئيسي.",
 
     // Products
     selectSize: "اختر المقاس المفضل",

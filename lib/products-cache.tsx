@@ -45,6 +45,12 @@ export interface CachedProduct {
   rentalPriceC?: number | null
   /** Raw cost from ERP — used for dynamic pricing calculations */
   cost?: number
+  /** Sell price (Item_sellpricNow) shown in Buy mode; null when not sellable. */
+  sellPrice?: number | null
+  /** True when the dress has never been booked (0 bookings) → can be bought. */
+  isSellable?: boolean
+  /** Raw sell price field from ERP. */
+  price?: number
 }
 
 interface ProductsCacheContextType {

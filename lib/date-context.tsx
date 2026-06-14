@@ -2,11 +2,16 @@
 
 import React, { createContext, useContext, useState, useMemo, useEffect, type ReactNode } from "react"
 
+export type ShoppingMode = "rent" | "buy"
+
 interface DateContextType {
   occasionDate: Date | null
   setOccasionDate: (date: Date | null) => void
   isBrowsingOnly: boolean
   setIsBrowsingOnly: (isBrowsing: boolean) => void
+  /** Whether the user is browsing to rent or to buy. Chosen before the date. */
+  mode: ShoppingMode
+  setMode: (mode: ShoppingMode) => void
   hasMadeSelection: boolean
   /** True when the selected occasion date is more than 45 days from today.
    *  Prices are NOT available online in this case — user must contact branch. */
@@ -18,6 +23,7 @@ const DateContext = createContext<DateContextType | undefined>(undefined)
 export function DateProvider({ children }: { children: ReactNode }) {
   const [occasionDate, setOccasionDate] = useState<Date | null>(null)
   const [isBrowsingOnly, setIsBrowsingOnly] = useState<boolean>(false)
+  const [mode, setMode] = useState<ShoppingMode>("rent")
   const [hydrated, setHydrated] = useState(false)
 
   // Load from localStorage on mount
@@ -25,7 +31,8 @@ export function DateProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       const savedDate = localStorage.getItem("raey_occasion_date")
       const savedBrowsing = localStorage.getItem("raey_browsing_only")
-      
+      const savedMode = localStorage.getItem("raey_shopping_mode")
+
       if (savedDate) {
         try {
           const date = new Date(savedDate)
@@ -36,9 +43,13 @@ export function DateProvider({ children }: { children: ReactNode }) {
           console.error("Error parsing saved date", e)
         }
       }
-      
+
       if (savedBrowsing === "true") {
         setIsBrowsingOnly(true)
+      }
+
+      if (savedMode === "buy" || savedMode === "rent") {
+        setMode(savedMode)
       }
     }
     setHydrated(true)
@@ -52,12 +63,15 @@ export function DateProvider({ children }: { children: ReactNode }) {
       } else {
         localStorage.removeItem("raey_occasion_date")
       }
-      
-      localStorage.setItem("raey_browsing_only", isBrowsingOnly ? "true" : "false")
-    }
-  }, [occasionDate, isBrowsingOnly, hydrated])
 
-  const hasMadeSelection = occasionDate !== null || isBrowsingOnly
+      localStorage.setItem("raey_browsing_only", isBrowsingOnly ? "true" : "false")
+      localStorage.setItem("raey_shopping_mode", mode)
+    }
+  }, [occasionDate, isBrowsingOnly, mode, hydrated])
+
+  // In Buy mode no date is needed — choosing Buy completes the selection.
+  // In Rent mode the user must pick a date or opt into browse-only.
+  const hasMadeSelection = mode === "buy" || occasionDate !== null || isBrowsingOnly
 
   // Mirror the rental-pricing `d` calculation: d = calendar days from today to (occasionDate - 1)
   const isOccasionPast45Days = useMemo(() => {
@@ -80,6 +94,8 @@ export function DateProvider({ children }: { children: ReactNode }) {
         setOccasionDate,
         isBrowsingOnly,
         setIsBrowsingOnly,
+        mode,
+        setMode,
         hasMadeSelection,
         isOccasionPast45Days,
       }}

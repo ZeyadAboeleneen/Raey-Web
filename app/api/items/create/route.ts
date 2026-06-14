@@ -38,13 +38,12 @@ export async function POST(request: NextRequest) {
 
     // ── Insert into MSSQL ERP (NO branch column) ────────────────
     const pool = await getMssqlPool();
-    const isSellDress = branchCode === "15";
     const result = await pool
       .request()
       .input("itemCode", sql.NVarChar(64), itemCode)
       .input("name", sql.NVarChar(sql.MAX), name)
       .input("price", sql.Decimal(18, 2), price)
-      .input("cost", sql.Decimal(18, 2), isSellDress ? 0 : price)
+      .input("cost", sql.Decimal(18, 2), price)
       .input("image", sql.NVarChar(sql.MAX), image || null)
       .input("lineId", sql.Int, lineId)
       .input("requestPoint", sql.Decimal(18, 2), 0)

@@ -28,7 +28,7 @@ import { useLocale } from "@/lib/locale-context"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { SizeChartRow } from "@/components/custom-size-form"
 import { useProductsCache } from "@/lib/products-cache"
-import { useDateContext } from "@/lib/date-context"
+import { useDateContext, type ShoppingMode } from "@/lib/date-context"
 import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
 
 const GiftPackageSelector = dynamic(
@@ -91,7 +91,7 @@ const collectionDetails: { [key: string]: { titleKey: any } } = {
   "el-raey-1": { titleKey: "elRaey1Collection" },
   "el-raey-2": { titleKey: "elRaey2Collection" },
   "el-raey-the-yard": { titleKey: "elRaeyTheYardCollection" },
-  "sell-dresses": { titleKey: "sellDressesCollection" },
+  "hay-el-gamaa-2": { titleKey: "sellDressesCollection" },
 }
 
 // WhatsApp ordering removed — using cart-based checkout
@@ -115,14 +115,18 @@ interface Props {
 export default function ProductDetailPageClient({ initialProduct }: Props) {
   const { branch, product: productId } = useParams() as { branch: string; product: string }
   const router = useRouter()
-  const isRentBranch = branch !== "sell-dresses"
+  const { occasionDate, setOccasionDate, mode, isOccasionPast45Days } = useDateContext()
   const { getById, getByBranch, loading: cacheLoading } = useProductsCache()
   const [product, setProduct] = useState<ProductDetail | null>(initialProduct ?? null)
+  // The shopper can flip between Rent and Buy on this page; defaults to the
+  // mode they chose globally. Buy is only available for never-rented dresses.
+  const [detailMode, setDetailMode] = useState<ShoppingMode>(mode)
+  const canBuy = (product as any)?.isSellable === true
+  const isRentBranch = !(detailMode === "buy" && canBuy)
   const [loading, setLoading] = useState(!initialProduct)
   const [selectedSize, setSelectedSize] = useState<number>(0)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const { occasionDate, setOccasionDate, isOccasionPast45Days } = useDateContext()
   const [rentEventDate, setRentEventDate] = useState<Date | undefined>(occasionDate || undefined)
   const [bookedRanges, setBookedRanges] = useState<{ from: Date, to: Date }[]>([])
   const [checkingAvailability, setCheckingAvailability] = useState(false)
@@ -1002,10 +1006,30 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                         ({product.rating}) • {product.reviews} {t("reviews" as TranslationKey)}
                       </span>
                     </div>
+                    {/* Rent / Buy toggle — Buy only offered for never-rented (sellable) dresses */}
+                    {canBuy && (
+                      <div className="inline-flex rounded-full border border-gray-200 p-1 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setDetailMode("rent")}
+                          className={`px-6 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] rounded-full transition-colors ${isRentBranch ? "bg-black text-white" : "text-gray-500 hover:text-gray-900"}`}
+                        >
+                          Rent
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDetailMode("buy")}
+                          className={`px-6 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] rounded-full transition-colors ${!isRentBranch ? "bg-black text-white" : "text-gray-500 hover:text-gray-900"}`}
+                        >
+                          Buy
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {(() => {
                     const isWeddingOrSoiree = product.collection?.toLowerCase().includes("wedding") || product.collection?.toLowerCase().includes("soiree")
-                    const showProductPrice = (showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)) && !(isRentBranch && isPast45Days)
+                    // Buy mode shows the sell price to every customer.
+                    const showProductPrice = (showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree) || !isRentBranch) && !(isRentBranch && isPast45Days)
                     const clientRentalPrice = isRentBranch && !isPast45Days && product.rentalPriceC && product.rentalPriceC > 0 ? product.rentalPriceC : null
                     if (!showProductPrice && !clientRentalPrice) return null
                     if (!showProductPrice && clientRentalPrice) {

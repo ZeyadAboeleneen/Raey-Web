@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -23,6 +23,8 @@ import { useProductsCache, type CachedProduct as Product, type ProductSize } fro
 import { QuickAddModal } from "@/components/quick-add-modal"
 import type { SizeChartRow } from "@/components/custom-size-form"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { useDateContext } from "@/lib/date-context"
+import { usePageParam } from "@/lib/use-page-param"
 
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
@@ -30,7 +32,7 @@ const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
   "el-raey-1": { titleKey: "elRaey1Collection", descKey: "elRaey1Desc" },
   "el-raey-2": { titleKey: "elRaey2Collection", descKey: "elRaey2Desc" },
   "el-raey-the-yard": { titleKey: "elRaeyTheYardCollection", descKey: "elRaeyTheYardDesc" },
-  "sell-dresses": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
+  "hay-el-gamaa-2": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
 }
 
 const CATEGORY_PAGE_SIZE = 10
@@ -39,15 +41,21 @@ const CATEGORY_PAGE_SIZE = 10
 
 export default function BranchProductsPage() {
   const { branch } = useParams() as { branch: string }
-  const isRentBranch = branch !== "sell-dresses"
+  const { mode } = useDateContext()
+  const isBuyMode = mode === "buy"
+  const isRentBranch = !isBuyMode && branch !== "sell-dresses"
   const { getByBranch, loading: cacheLoading } = useProductsCache()
-  const allBranchProducts = useMemo(() => getByBranch(branch), [getByBranch, branch])
+  const allBranchProducts = useMemo(() => {
+    const list = getByBranch(branch)
+    // Buy mode only offers never-rented (sellable) dresses.
+    return isBuyMode ? list.filter(p => p.isSellable === true) : list
+  }, [getByBranch, branch, isBuyMode])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePageParam()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
 
@@ -150,8 +158,14 @@ export default function BranchProductsPage() {
     }
   }, [cacheLoading, allBranchProducts])
 
-  // Reset page when branch changes
+  // Reset page when branch changes — but not on initial mount, so a page
+  // restored from the URL (?page=N) survives refresh / back navigation.
+  const didMountResetRef = useRef(false)
   useEffect(() => {
+    if (!didMountResetRef.current) {
+      didMountResetRef.current = true
+      return
+    }
     if (branch) {
       setPage(1)
     }
@@ -393,9 +407,11 @@ export default function BranchProductsPage() {
                   // For rental branches, prefer the Category A rental price (cost × 0.8)
                   const price = isGift
                     ? product.packagePrice || 0
-                    : (exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
-                      ? product.rentalPriceA
-                      : getSmallestPrice(product.sizes)))
+                    : isBuyMode
+                      ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
+                      : (exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
+                        ? product.rentalPriceA
+                        : getSmallestPrice(product.sizes)))
                   const originalPrice = isGift
                     ? product.packageOriginalPrice || 0
                     : getSmallestOriginalPrice(product.sizes)
@@ -498,7 +514,7 @@ export default function BranchProductsPage() {
                                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                   {(() => {
                                     const isWeddingOrSoiree = (product as any).collection?.toLowerCase().includes("wedding") || (product as any).collection?.toLowerCase().includes("soiree")
-                                    const showProductPrice = (showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)) && !(isRentBranch && isOccasionPast45Days)
+                                    const showProductPrice = isBuyMode || ((showPrices || (product.branch === "sell-dresses" && isWeddingOrSoiree)) && !(isRentBranch && isOccasionPast45Days))
                                     const clientRentalPrice = isRentBranch && !isOccasionPast45Days && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
                                     return (
                                       <>

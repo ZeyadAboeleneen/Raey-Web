@@ -22,6 +22,7 @@ import { useTranslation } from "@/lib/translations"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { useDateContext } from "@/lib/date-context"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -43,15 +44,19 @@ const QuickAddModal = dynamic(
 
 export default function WeddingProductsPage() {
   const { products: cachedProducts, loading, refresh } = useProductsCache()
+  const { mode } = useDateContext()
+  const isBuyMode = mode === "buy"
 
   // Filter for Wedding collection only
   const products = useMemo(() => {
     const target = "wedding"
     return cachedProducts.filter(p => {
       const pColl = (p.collection || "").toLowerCase().trim()
-      return (pColl.includes(target) || target.includes(pColl)) && p.isActive !== false
+      const inCollection = (pColl.includes(target) || target.includes(pColl)) && p.isActive !== false
+      // Buy mode only offers never-rented (sellable) dresses.
+      return inCollection && (isBuyMode ? p.isSellable === true : true)
     })
-  }, [cachedProducts])
+  }, [cachedProducts, isBuyMode])
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
@@ -105,7 +110,7 @@ export default function WeddingProductsPage() {
       accent: "after:content-[''] after:block after:w-10 after:h-px after:bg-gray-800/80 after:mt-3 after:transition-all after:duration-300 group-hover:after:w-16",
       buttonStyle: "border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white"
     },
-    "sell-dresses": {
+    "hay-el-gamaa-2": {
       title: t("sellDressesCollection"),
       description: t("sellDressesDesc"),
       className: "bg-white",
@@ -281,7 +286,7 @@ export default function WeddingProductsPage() {
       summer: products.filter((p) => p.branch === "el-raey-1" && p.isActive),
       fall: products.filter((p) => p.branch === "el-raey-2" && p.isActive),
       yard: products.filter((p) => p.branch === "el-raey-the-yard" && p.isActive),
-      sellDresses: products.filter((p) => p.branch === "sell-dresses" && p.isActive),
+      sellDresses: products.filter((p) => p.branch === "hay-el-gamaa-2" && p.isActive),
     }),
     [products]
   )
@@ -388,19 +393,21 @@ export default function WeddingProductsPage() {
     const priceData = useMemo(() => {
       // Dynamic price logic
       let exactDynamicPrice: number | null = null
-      const isRentBranch = product.branch !== "sell-dresses"
+      const isRentBranch = !isBuyMode && product.branch !== "sell-dresses"
       if (occasionDate && isRentBranch && !product.isGiftPackage) {
         if (dynamicPrices[product.id]) {
           exactDynamicPrice = dynamicPrices[product.id]
         }
       }
 
-      const price = exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
-        ? product.rentalPriceA
-        : getSmallestPrice(product.sizes))
+      const price = isBuyMode
+        ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
+        : (exactDynamicPrice || ((isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
+          ? product.rentalPriceA
+          : getSmallestPrice(product.sizes)))
       const original = getSmallestOriginalPrice(product.sizes)
       return { price, original, exactDynamicPrice }
-    }, [product, dynamicPrices, occasionDate])
+    }, [product, dynamicPrices, occasionDate, isBuyMode])
 
     const hasDiscount = product.branch === "sell-dresses" && priceData.original > 0 && priceData.price < priceData.original
 
@@ -428,7 +435,7 @@ export default function WeddingProductsPage() {
     const addToCartAriaLabel =
       layout === "desktop" && product.isGiftPackage
         ? "Customize Package"
-        : product.branch !== "sell-dresses"
+        : (!isBuyMode && product.branch !== "sell-dresses")
           ? "Rent Now"
           : "Buy Now"
 
@@ -495,9 +502,9 @@ export default function WeddingProductsPage() {
                 {/* Bottom overlay with name, price and cart button - mirror Best Sellers */}
                 <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12_rgba(0,0,0,0.9)]">
                   {(() => {
-                    const showProductPrice = showPrices || product.branch === "sell-dresses"
-                    const clientRentalPrice = priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
-                    const isRent = product.branch !== "sell-dresses"
+                    const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
+                    const clientRentalPrice = isBuyMode ? null : (priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null))
+                    const isRent = !isBuyMode && product.branch !== "sell-dresses"
 
                     return (
                       <>
@@ -974,7 +981,7 @@ export default function WeddingProductsPage() {
       </section>
 
       {/* Collection Section - Sell Dresses */}
-      <section className={`py-16 ${collectionDetails["sell-dresses"].className} transition-colors duration-300`}>
+      <section className={`py-16 ${collectionDetails["hay-el-gamaa-2"].className} transition-colors duration-300`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -987,20 +994,20 @@ export default function WeddingProductsPage() {
               <div className="space-y-3 max-w-2xl">
                 <div className="relative group">
                   <h2
-                    className={`text-3xl md:text-[2.1rem] font-light text-gray-900 tracking-[0.06em] ${collectionDetails["sell-dresses"].accent}`}
+                    className={`text-3xl md:text-[2.1rem] font-light text-gray-900 tracking-[0.06em] ${collectionDetails["hay-el-gamaa-2"].accent}`}
                     style={{ fontFamily: 'var(--font-playfair-display), "Playfair Display", serif' }}
                   >
-                    {collectionDetails["sell-dresses"].title}
+                    {collectionDetails["hay-el-gamaa-2"].title}
                   </h2>
                 </div>
                 <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
-                  {collectionDetails["sell-dresses"].description}
+                  {collectionDetails["hay-el-gamaa-2"].description}
                 </p>
               </div>
-              <Link href="/wedding/sell-dresses" className="mt-4 md:mt-0">
+              <Link href="/wedding/hay-el-gamaa-2" className="mt-4 md:mt-0">
                 <Button
                   variant="outline"
-                  className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["sell-dresses"].buttonStyle} transition-colors duration-300`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-[0.7rem] font-medium tracking-[0.18em] uppercase ${collectionDetails["hay-el-gamaa-2"].buttonStyle} transition-colors duration-300`}
                 >
                   {t("viewAll")}
                   <ArrowRight className="w-4 h-4" />
@@ -1017,7 +1024,7 @@ export default function WeddingProductsPage() {
                       <ProductCard
                         product={product}
                         layout="mobile"
-                        section="sell-dresses"
+                        section="hay-el-gamaa-2"
                         index={index}
                       />
                     </div>
@@ -1033,7 +1040,7 @@ export default function WeddingProductsPage() {
                   key={product._id}
                   product={product}
                   layout="desktop"
-                  section="sell-dresses"
+                  section="hay-el-gamaa-2"
                   index={index}
                 />
               ))}

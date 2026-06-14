@@ -25,7 +25,8 @@ import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 export default function FavoritesPage() {
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
   const { dispatch: cartDispatch } = useCart()
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
+  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, mode, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
+  const isBuyMode = mode === "buy"
 
   // Fetch prices for all favorites when a date is selected
   useEffect(() => {
@@ -166,8 +167,8 @@ export default function FavoritesPage() {
                             {/* Show prices if global showPrices is true OR if it's a sell dress in wedding/soiree */}
                             {(() => {
                               const isWeddingOrSoiree = item.collection?.toLowerCase().includes("wedding") || item.collection?.toLowerCase().includes("soiree") || item.name?.toLowerCase().includes("wedding") || item.name?.toLowerCase().includes("soiree")
-                              const showProductPrice = showPrices || (item.branch === "sell-dresses" && isWeddingOrSoiree)
-                              const isRentBranch = item.branch !== "sell-dresses"
+                              const showProductPrice = showPrices || (item.branch === "sell-dresses" && isWeddingOrSoiree) || isBuyMode
+                              const isRentBranch = !isBuyMode && item.branch !== "sell-dresses"
                               const isGift = item.isGiftPackage
 
                               // Dynamic price logic
@@ -178,7 +179,7 @@ export default function FavoritesPage() {
                                 }
                               }
 
-                              const price = isGift ? (item.packagePrice || 0) : (exactDynamicPrice || (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 ? item.rentalPriceA : getSmallestPrice(item.sizes || [])))
+                              const price = isGift ? (item.packagePrice || 0) : isBuyMode ? ((item as any).sellPrice ?? getSmallestPrice(item.sizes || [])) : (exactDynamicPrice || (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 ? item.rentalPriceA : getSmallestPrice(item.sizes || [])))
                               const originalPrice = isGift ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
                               const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
                               const clientRentalPrice = exactDynamicPrice || (isRentBranch && item.rentalPriceC && item.rentalPriceC > 0 ? item.rentalPriceC : null)

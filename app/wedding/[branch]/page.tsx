@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import Image from "next/image"
@@ -21,6 +21,8 @@ const QuickAddModal = dynamic(
 )
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
+import { useDateContext } from "@/lib/date-context"
+import { usePageParam } from "@/lib/use-page-param"
 import { GiftPackageSelector } from "@/components/gift-package-selector"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
 import { useCustomSize } from "@/hooks/use-custom-size"
@@ -63,7 +65,7 @@ const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
   "el-raey-1": { titleKey: "elRaey1Collection", descKey: "elRaey1Desc" },
   "el-raey-2": { titleKey: "elRaey2Collection", descKey: "elRaey2Desc" },
   "el-raey-the-yard": { titleKey: "elRaeyTheYardCollection", descKey: "elRaeyTheYardDesc" },
-  "sell-dresses": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
+  "hay-el-gamaa-2": { titleKey: "sellDressesCollection", descKey: "sellDressesDesc" },
 }
 
 const CATEGORY_PAGE_SIZE = 10
@@ -71,12 +73,14 @@ const CATEGORY_PAGE_SIZE = 10
 
 export default function WeddingBranchPage() {
   const { branch } = useParams() as { branch: string }
-  const isRentBranch = branch !== "sell-dresses"
+  const { mode } = useDateContext()
+  const isBuyMode = mode === "buy"
+  const isRentBranch = !isBuyMode && branch !== "sell-dresses"
 
   const { products: cachedProducts, loading: cacheLoading, getByCollection } = useProductsCache()
   const allProducts = useMemo(
-    () => getByCollection("wedding").filter(p => p.branch === branch),
-    [getByCollection, branch]
+    () => getByCollection("wedding").filter(p => p.branch === branch && (isBuyMode ? p.isSellable === true : true)),
+    [getByCollection, branch, isBuyMode]
   )
 
   const [products, setProducts] = useState<Product[]>([])
@@ -87,7 +91,7 @@ export default function WeddingBranchPage() {
   const [showSizeSelector, setShowSizeSelector] = useState(false)
   const [showGiftPackageSelector, setShowGiftPackageSelector] = useState(false)
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePageParam()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [occasionDate, setOccasionDate] = useState<Date | undefined>(undefined)
@@ -204,7 +208,14 @@ export default function WeddingBranchPage() {
   }, [cacheLoading, allProducts])
 
   // Reset page when branch changes
+  // Reset page when branch changes — but not on initial mount, so a page
+  // restored from the URL (?page=N) survives refresh / back navigation.
+  const didMountResetRef = useRef(false)
   useEffect(() => {
+    if (!didMountResetRef.current) {
+      didMountResetRef.current = true
+      return
+    }
     if (branch) {
       setPage(1)
     }
@@ -433,9 +444,11 @@ export default function WeddingBranchPage() {
                     const isGift = product.isGiftPackage
                     const price = isGift
                       ? product.packagePrice || 0
-                      : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
-                        ? (product as any).rentalPriceA
-                        : getSmallestPrice(product.sizes)
+                      : isBuyMode
+                        ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
+                        : (isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0)
+                          ? (product as any).rentalPriceA
+                          : getSmallestPrice(product.sizes)
                     const originalPrice = isGift
                       ? product.packageOriginalPrice || 0
                       : getSmallestOriginalPrice(product.sizes)
@@ -530,7 +543,7 @@ export default function WeddingBranchPage() {
                                   {/* Bottom overlay with name, price and cart button */}
                                   <div className="absolute inset-x-2 bottom-2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)]">
                                     {(() => {
-                                      const showProductPrice = showPrices || product.branch === "sell-dresses"
+                                      const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
                                       const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
                                       return (
                                         <>

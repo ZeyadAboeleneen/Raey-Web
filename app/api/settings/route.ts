@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
-import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
+import { getImageUploadService } from "@/lib/image-upload-service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -65,18 +65,19 @@ export async function PUT(request: NextRequest) {
 
     const updateData: any = {}
 
-    // Upload wedding hero image if provided as data URL
+    // Upload wedding hero image if provided as data URL.
+    // Stored locally under /uploads/hero-images — same pipeline as product images.
     if (weddingImage && weddingImage.startsWith("data:")) {
-      const url = await uploadDataUrlToCloudinary(weddingImage, "hero-images", `hero-wedding-${Date.now()}`)
+      const { url } = await getImageUploadService().uploadFromDataUrl(weddingImage, "hero-images")
       updateData.wedding = url
     } else if (weddingImage) {
       // If it's already a URL, store it directly
       updateData.wedding = weddingImage
     }
 
-    // Upload soiree hero image if provided as data URL
+    // Upload soiree hero image if provided as data URL.
     if (soireeImage && soireeImage.startsWith("data:")) {
-      const url = await uploadDataUrlToCloudinary(soireeImage, "hero-images", `hero-soiree-${Date.now()}`)
+      const { url } = await getImageUploadService().uploadFromDataUrl(soireeImage, "hero-images")
       updateData.soiree = url
     } else if (soireeImage) {
       updateData.soiree = soireeImage

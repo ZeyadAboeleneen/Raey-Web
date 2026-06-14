@@ -183,7 +183,7 @@ export function HomePageContent() {
         { slug: "el-raey-1", title: t("elRaey1Collection"), description: t("elRaey1Desc"), image: "/raey1.jpg" },
         { slug: "el-raey-2", title: t("elRaey2Collection"), description: t("elRaey2Desc"), image: "/raey2.jpg" },
         { slug: "el-raey-the-yard", title: t("elRaeyTheYardCollection"), description: t("elRaeyTheYardDesc"), image: "/yard.jpg" },
-        { slug: "sell-dresses", title: t("sellDressesCollection"), description: t("sellDressesDesc"), image: "/sell.jpg" },
+        { slug: "hay-el-gamaa-2", title: t("sellDressesCollection"), description: t("sellDressesDesc"), image: "/sell.jpg" },
     ]
 
     const isRentBranch = (branch: string) => branch !== "sell-dresses"

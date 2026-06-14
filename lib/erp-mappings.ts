@@ -4,6 +4,7 @@
  */
 
 import { resolveBranchSlugFromErpRow } from "@/lib/branch-map";
+import { mapOpStoreIdToBranchSlug } from "@/lib/erp-stores";
 
 // ── Line id (ERP Items.Category_id) → collection label ───────────────
 const LINE_ID_TO_COLLECTION: Record<number, string> = {
@@ -66,6 +67,8 @@ export interface ErpProduct {
   isActive: boolean;
   isBestseller: boolean;
   isNew: boolean;
+  /** Never been booked (0 total bookings) → can be sold as new, not only rented. */
+  isSellable: boolean;
   unavailableDates: UnavailableDateRange[];
 }
 
@@ -84,8 +87,12 @@ export interface ErpItemRow {
   Item_Isdisabled: boolean | number | null;
   IsBestseller: boolean | number | null;
   IsNew: boolean | number | null;
-  /** 1 if this item is linked to Store_name='15' via tb_ItemOperations — sell dress override */
+  /** 1 if this item is linked to Store_name='15' via tb_ItemOperations — Hay El-Gamaa2 branch */
   IsSellDressOp: boolean | number | null;
+  /** Most relevant tb_ItemOperations.OP_StoreID — used to resolve branch when no booking exists. */
+  OpStoreID?: number | null;
+  /** Total number of Booking rows ever recorded for this dress (0 = never rented). */
+  TotalBookings: number | null;
   LineId: number | null;
   LineName: string | null;
   BookingID: number | null;
@@ -108,19 +115,19 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
     const id = row.ItemID;
 
     if (!itemMap.has(id)) {
-      // tb_ItemOperations link to Store_name='15' is the authoritative sell-dress signal
-      const isSellDressOp = Boolean(row.IsSellDressOp);
-
+      // tb_ItemOperations link to Store_name='15' identifies the Hay El-Gamaa2 branch
       const branchIdToUse = row.ItemStoreBranchID ?? row.BranchID ?? null;
       const storeNameToUse = row.ItemStoreName ?? row.StoreName ?? row.FallbackStoreName ?? null;
 
-      const branch = isSellDressOp
-        ? "sell-dresses"
-        : resolveBranchSlugFromErpRow({
-            BranchID: branchIdToUse,
-            StoreName: storeNameToUse,
-            Item_name: row.Item_name,
-          });
+      const resolvedBranch = resolveBranchSlugFromErpRow({
+        BranchID: branchIdToUse,
+        StoreName: storeNameToUse,
+        Item_name: row.Item_name,
+      });
+
+      // No booking/store branch → fall back to the item's tb_ItemOperations store.
+      const opBranch = mapOpStoreIdToBranchSlug(row.OpStoreID);
+      const branch = resolvedBranch ?? opBranch;
       itemMap.set(id, {
         id,
         name: (row.Item_name || "").trim(),
@@ -135,6 +142,7 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
         isActive: !Boolean(row.Item_Isdisabled),
         isBestseller: Boolean(row.IsBestseller),
         isNew: Boolean(row.IsNew),
+        isSellable: (row.TotalBookings ?? 0) === 0,
         unavailableDates: [],
       });
     }
@@ -170,10 +178,9 @@ const round100 = (val: number) => Math.round(val / 100) * 100;
  */
 export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
   // Category A rental price = cost × 0.8, rounded to nearest 100, floor 3000
-  const isSellDress = p.branch === "sell-dresses";
-  const rentalPriceA = !isSellDress && p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
+  const rentalPriceA = p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
   // Category C rental price = cost × 0.4, rounded to nearest 100, floor 3000 (shown to clients)
-  const rentalPriceC = !isSellDress && p.cost > 0 ? Math.max(round100(p.cost * 0.4), 3000) : null;
+  const rentalPriceC = p.cost > 0 ? Math.max(round100(p.cost * 0.4), 3000) : null;
 
   return {
     _id: String(p.id),
@@ -184,6 +191,10 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     description: p.description || "",
     longDescription: "",
     price: p.price,
+    // Sell price (Item_sellpricNow) shown to customers in Buy mode. Only meaningful
+    // for never-rented dresses (isSellable); kept un-stripped so customers can see it.
+    sellPrice: p.isSellable ? p.price : null,
+    isSellable: p.isSellable,
     rentalPriceA,
     rentalPriceC,
     image: p.image,

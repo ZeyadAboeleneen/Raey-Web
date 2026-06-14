@@ -50,14 +50,45 @@ export async function POST(request: NextRequest) {
     bookDay.setHours(0,0,0,0)
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
+    // Fetch cost plus, per item: number of completed rentals (n) so POST4 dresses
+    // (5th rental onward) are priced correctly in listings.
     const query = `
-      SELECT ID, Item_buypric as cost 
-      FROM Items 
-      WHERE ID IN (${ids.join(',')})
+      SELECT
+        i.ID,
+        i.Item_buypric AS cost,
+        (SELECT COUNT(*) FROM Booking bk
+           WHERE bk.ModelTypeID = i.ID
+             AND bk.ReturnDate IS NOT NULL
+             AND CAST(bk.ReturnDate AS DATE) <= CAST(GETDATE() AS DATE)) AS n
+      FROM Items i
+      WHERE i.ID IN (${ids.join(',')})
     `
 
     const result = await req.query(query)
     const rows = result.recordset
+
+    // For POST4 items we need the first 4 completed rental Totals. Fetch them in one query.
+    const post4Ids = rows.filter((r: any) => (r.n ?? 0) >= 4).map((r: any) => r.ID)
+    const firstFourByItem: Record<number, number[]> = {}
+    if (post4Ids.length > 0) {
+      const ffReq = pool.request()
+      const ffResult = await ffReq.query(`
+        SELECT ID, ModelTypeID, Total
+        FROM (
+          SELECT ID, ModelTypeID, Total,
+                 ROW_NUMBER() OVER (PARTITION BY ModelTypeID ORDER BY ID ASC) AS rn
+          FROM Booking
+          WHERE ModelTypeID IN (${post4Ids.join(',')})
+            AND ReturnDate IS NOT NULL
+            AND Total > 0
+        ) t
+        WHERE t.rn <= 4
+      `)
+      for (const r of ffResult.recordset as { ModelTypeID: number; Total: number }[]) {
+        if (!firstFourByItem[r.ModelTypeID]) firstFourByItem[r.ModelTypeID] = []
+        firstFourByItem[r.ModelTypeID].push(r.Total)
+      }
+    }
 
     // 3. Apply the shared pricing logic in JS (lightweight)
     const prices: Record<string, number> = {}
@@ -67,9 +98,9 @@ export async function POST(request: NextRequest) {
       const res = calcPrice(
         row.cost,
         d,
-        0, // n is no longer used for date-based customer pricing
+        row.n ?? 0,
         false, // isExclusive
-        [] // previous prices no longer used
+        firstFourByItem[row.ID] ?? []
       )
       prices[String(row.ID)] = res.total
     }
