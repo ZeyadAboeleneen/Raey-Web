@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Script from "next/script"
 import { Playfair_Display, Crimson_Text } from 'next/font/google'
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
@@ -96,6 +97,19 @@ export default async function RootLayout({
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=AW-11160121095"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads-tag" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-11160121095');
+          `}
+        </Script>
       </head>
       <body className="font-sans">
         <GoogleAnalytics gaId="G-F487HSDE42" />
