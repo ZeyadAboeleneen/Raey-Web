@@ -23,6 +23,7 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     subject: "",
     message: "",
   })
@@ -36,6 +37,12 @@ export default function ContactPage() {
     setError("")
     setSuccess(false)
 
+    if (!formData.subject && !formData.message) {
+      setError(t("subjectOrMessageRequired"))
+      setLoading(false)
+      return
+    }
+
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
@@ -47,7 +54,7 @@ export default function ContactPage() {
 
       if (response.ok) {
         setSuccess(true)
-        setFormData({ name: "", email: "", subject: "", message: "" })
+        setFormData({ name: "", email: "", phone: "", subject: "", message: "" })
         setTimeout(() => setSuccess(false), 5000)
       } else {
         const errorData = await response.json()
@@ -156,6 +163,21 @@ export default function ContactPage() {
                     </div>
 
                     <div>
+                      <Label htmlFor="phone" className="text-sm font-medium mb-2 block">
+                        {t("phone")}
+                      </Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder={t("yourPhone")}
+                        className="border-gray-300 focus:border-black"
+                      />
+                    </div>
+
+                    <div>
                       <Label htmlFor="subject" className="text-sm font-medium mb-2 block">
                         {t("subject")}
                       </Label>
@@ -165,7 +187,6 @@ export default function ContactPage() {
                         value={formData.subject}
                         onChange={handleChange}
                         placeholder={t("howCanWeHelp")}
-                        required
                         className="border-gray-300 focus:border-black"
                       />
                     </div>
@@ -181,7 +202,6 @@ export default function ContactPage() {
                         onChange={handleChange}
                         placeholder={t("tellUsMore")}
                         rows={6}
-                        required
                         className="border-gray-300 focus:border-black resize-none"
                       />
                     </div>

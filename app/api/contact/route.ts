@@ -4,10 +4,10 @@ import { sendEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, subject, message } = await request.json()
+    const { name, email, phone, subject, message } = await request.json()
 
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
+    if (!name || !email || (!subject && !message)) {
+      return NextResponse.json({ error: "Please provide at least a subject or a message" }, { status: 400 })
     }
 
     // Create email content sections
@@ -38,7 +38,14 @@ export async function POST(request: NextRequest) {
               <a href="mailto:${email}" style="color: currentColor; text-decoration: none;">${email}</a>
             </div>
           </div>
-          
+
+          ${phone ? `<div style="margin-bottom: 15px;">
+            <strong style="color: currentColor;">Phone:</strong>
+            <div style="margin-top: 5px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 6px;">
+              ${phone}
+            </div>
+          </div>` : ""}
+
           <div style="margin-bottom: 15px;">
             <strong style="color: currentColor;">Subject:</strong>
             <div style="margin-top: 5px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 6px;">
@@ -75,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // Send email via Brevo
     await sendEmail({
-      to: process.env.EMAIL_USER || "",
+      to: process.env.CONTACT_EMAIL || "",
       subject: `Contact Form: ${subject}`,
       html: htmlContent,
       replyTo: { email },
