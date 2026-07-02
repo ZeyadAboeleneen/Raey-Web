@@ -12,7 +12,17 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Truck, CreditCard, MapPin, Sparkles, Upload, ExternalLink, Phone, Landmark, Smartphone, CheckCircle2, X } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { ArrowLeft, Truck, CreditCard, MapPin, Sparkles, Upload, ExternalLink, Phone, Landmark, Smartphone, CheckCircle2, X, Wallet } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/auth-context"
@@ -246,8 +256,74 @@ export default function CheckoutPage() {
   }, 0);
 
   const depositRatio = subtotal > 0 ? baseDeposit / subtotal : 0;
-  const depositAmount = discountAmount > 0 ? Math.round(total * depositRatio) : baseDeposit;
-  const remainingAmount = total - depositAmount;
+  const customerDepositAmount = discountAmount > 0 ? Math.round(total * depositRatio) : baseDeposit;
+
+  // ── Employee order mode ────────────────────────────────────────────────
+  // Employees place orders without payment; they may edit each item's dress
+  // price and deposit. Amounts are posted to their CashID in the ERP.
+  const isEmployee = authState.user?.isEmployee === true || authState.user?.role === "admin"
+
+  const defaultDepositForItem = (item: any): number => {
+    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch
+    if (!isRent) return Math.round(item.price * item.quantity)
+    if (item.isExclusive) return Math.round(item.price * item.quantity * 0.5)
+    if ((item.collection || "").toLowerCase() === "wedding") return 5000 * item.quantity
+    return 1000 * item.quantity
+  }
+
+  const [empPrices, setEmpPrices] = useState<Record<string, number>>({})
+  const [empDeposits, setEmpDeposits] = useState<Record<string, number>>({})
+  const [empPriceRaw, setEmpPriceRaw] = useState<Record<string, string>>({})
+  const [empDepositRaw, setEmpDepositRaw] = useState<Record<string, string>>({})
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // Seed editable price/deposit from the cart once we know this is an employee.
+  useEffect(() => {
+    if (!isEmployee) return
+    setEmpPrices((prev) => {
+      const next = { ...prev }
+      cartState.items.forEach((item) => {
+        if (next[item.id] === undefined) next[item.id] = item.price * item.quantity
+      })
+      return next
+    })
+    setEmpDeposits((prev) => {
+      const next = { ...prev }
+      cartState.items.forEach((item) => {
+        if (next[item.id] === undefined) next[item.id] = defaultDepositForItem(item)
+      })
+      return next
+    })
+    setEmpPriceRaw((prev) => {
+      const next = { ...prev }
+      cartState.items.forEach((item) => {
+        if (next[item.id] === undefined) next[item.id] = String(item.price * item.quantity)
+      })
+      return next
+    })
+    setEmpDepositRaw((prev) => {
+      const next = { ...prev }
+      cartState.items.forEach((item) => {
+        if (next[item.id] === undefined) next[item.id] = String(defaultDepositForItem(item))
+      })
+      return next
+    })
+  }, [isEmployee, cartState.items])
+
+  const empSubtotal = cartState.items.reduce(
+    (sum, item) => sum + (empPrices[item.id] ?? item.price * item.quantity),
+    0,
+  )
+  const empDepositTotal = cartState.items.reduce(
+    (sum, item) => sum + (empDeposits[item.id] ?? defaultDepositForItem(item)),
+    0,
+  )
+  const empRemaining = Math.max(0, empSubtotal - empDepositTotal)
+
+  // Effective totals used by the summary + submit. Employees ignore discounts.
+  const effectiveTotal = isEmployee ? empSubtotal : total
+  const depositAmount = isEmployee ? empDepositTotal : customerDepositAmount
+  const remainingAmount = isEmployee ? empRemaining : total - customerDepositAmount
 
 
   const handleInputChange = (field: string, value: string) => {
@@ -381,7 +457,7 @@ export default function CheckoutPage() {
   };
 
   const validateForm = () => {
-    const required = ["firstName", "lastName", "email", "phone", "address", "city"]
+    const required = ["firstName", "lastName", "phone", "address", "city"]
 
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
@@ -410,15 +486,16 @@ export default function CheckoutPage() {
       return false
     }
 
-    // Validate email
+    // Validate email only if provided
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
+    if (formData.email && !emailRegex.test(formData.email)) {
       setError("Please enter a valid email address")
       return false
     }
 
-    // Validate payment screenshot
-    if (!paymentScreenshot) {
+    // Customers must upload a payment screenshot. Employees place orders
+    // without any payment, so this proof is not required for them.
+    if (!isEmployee && !paymentScreenshot) {
       setError("Please upload a payment screenshot as proof of payment")
       return false
     }
@@ -435,6 +512,16 @@ export default function CheckoutPage() {
 
     if (!validateForm()) return
 
+    // Employees confirm before the (no-payment) order is placed.
+    if (isEmployee) {
+      setConfirmOpen(true)
+      return
+    }
+
+    await doSubmit()
+  }
+
+  const doSubmit = async () => {
     setLoading(true)
 
     try {
@@ -444,9 +531,18 @@ export default function CheckoutPage() {
       const primaryCountryCode = phoneCountry || selectedCountryCode
       const secondaryCountryCode = altPhoneCountry || selectedCountryCode
 
+      // Employees can override each item's dress price and deposit.
+      const outgoingItems = isEmployee
+        ? cartState.items.map((item) => ({
+            ...item,
+            price: (empPrices[item.id] ?? item.price * item.quantity) / (item.quantity || 1),
+            employeeDeposit: empDeposits[item.id] ?? defaultDepositForItem(item),
+          }))
+        : cartState.items
+
       const orderData = {
-        items: cartState.items,
-        total: total,
+        items: outgoingItems,
+        total: effectiveTotal,
         shippingAddress: {
           name: `${formData.firstName} ${formData.lastName}`,
           email: formData.email,
@@ -904,7 +1000,103 @@ export default function CheckoutPage() {
                   </Card>
                 </motion.div>
 
-                {/* Payment Information */}
+                {/* Employee Order — editable dress price & deposit (no payment) */}
+                {isEmployee && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8, delay: 0.1 }}
+                  >
+                    <Card className="border-0 shadow-lg">
+                      <CardHeader className="pb-4">
+                        <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                          <Wallet className={`h-5 w-5 text-rose-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                          Employee Order
+                        </CardTitle>
+                        {authState.user?.cashName && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Deposits are recorded to cash drawer: <span className="font-semibold">{authState.user.cashName}</span>
+                          </p>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Alert className="bg-blue-50 border-blue-100">
+                          <AlertDescription className="text-blue-800 text-xs sm:text-sm">
+                            No payment is required. Set the dress price and deposit for each item — the remaining is collected on pickup.
+                          </AlertDescription>
+                        </Alert>
+                        {cartState.items.map((item) => {
+                          const lineTotal = empPrices[item.id] ?? item.price * item.quantity
+                          const dep = empDeposits[item.id] ?? defaultDepositForItem(item)
+                          const rem = Math.max(0, lineTotal - dep)
+                          return (
+                            <div key={item.id} className="rounded-lg border border-gray-200 p-3">
+                              <p className="text-sm font-medium text-gray-900 mb-2">
+                                {item.name} {item.quantity > 1 ? `× ${item.quantity}` : ""}
+                                {item.size ? <span className="text-gray-400"> — {item.size}</span> : null}
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-600">Dress price</Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={empPriceRaw[item.id] ?? String(lineTotal)}
+                                    onChange={(e) => {
+                                      const raw = e.target.value
+                                      setEmpPriceRaw((p) => ({ ...p, [item.id]: raw }))
+                                      const v = parseFloat(raw)
+                                      if (!isNaN(v) && v >= 0) {
+                                        setEmpPrices((p) => ({ ...p, [item.id]: v }))
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const v = Math.max(0, parseFloat(e.target.value) || 0)
+                                      setEmpPrices((p) => ({ ...p, [item.id]: v }))
+                                      setEmpPriceRaw((p) => ({ ...p, [item.id]: String(v) }))
+                                    }}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-600">Deposit</Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={empDepositRaw[item.id] ?? String(dep)}
+                                    onChange={(e) => {
+                                      const raw = e.target.value
+                                      setEmpDepositRaw((p) => ({ ...p, [item.id]: raw }))
+                                      const v = parseFloat(raw)
+                                      if (!isNaN(v) && v >= 0) {
+                                        setEmpDeposits((p) => ({ ...p, [item.id]: v }))
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const v = Math.max(0, parseFloat(e.target.value) || 0)
+                                      setEmpDeposits((p) => ({ ...p, [item.id]: v }))
+                                      setEmpDepositRaw((p) => ({ ...p, [item.id]: String(v) }))
+                                    }}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-600">Remaining</Label>
+                                  <div className="mt-1 h-10 flex items-center px-3 rounded-md bg-gray-50 border border-gray-200 text-sm font-medium text-gray-700">
+                                    {formatPrice(rem)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+
+                {/* Payment Information (customers only) */}
+                {!isEmployee && (
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1173,6 +1365,7 @@ export default function CheckoutPage() {
                     </CardContent>
                   </Card>
                 </motion.div>
+                )}
               </div>
 
               {/* Order Summary */}
@@ -1185,8 +1378,8 @@ export default function CheckoutPage() {
                   <div className="sticky top-24">
                     <OrderSummary
                       items={cartState.items as any}
-                      subtotal={subtotal}
-                      total={total}
+                      subtotal={isEmployee ? empSubtotal : subtotal}
+                      total={effectiveTotal}
                       depositAmount={depositAmount}
                       remainingAmount={remainingAmount}
                       discountCode={discountCode}
@@ -1227,6 +1420,36 @@ export default function CheckoutPage() {
       >
         <Sparkles className="h-4 w-4 text-pink-400" />
       </motion.div>
+
+      {/* Employee confirmation before placing a no-payment order */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Place this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You're placing an employee order with no payment.
+              {" "}Total <span className="font-semibold">{formatPrice(effectiveTotal)}</span>,
+              deposit <span className="font-semibold">{formatPrice(depositAmount)}</span>,
+              remaining <span className="font-semibold">{formatPrice(remainingAmount)}</span>.
+              {authState.user?.cashName ? <> The deposit will be recorded to <span className="font-semibold">{authState.user.cashName}</span>.</> : null}
+              {" "}Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={loading}
+              onClick={(e) => {
+                e.preventDefault()
+                setConfirmOpen(false)
+                doSubmit()
+              }}
+            >
+              {loading ? "Placing…" : "Yes, place order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

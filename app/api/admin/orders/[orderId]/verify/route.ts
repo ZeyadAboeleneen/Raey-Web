@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
+import { getErpUserById } from "@/lib/erp-users"
 import { verifyPaymentReceiptWithGemini } from "@/lib/payment-verification"
 import { runFraudDecisionEngine } from "@/lib/fraud-engine"
 import { syncOrderToErp } from "@/lib/erp-sync"
@@ -16,7 +17,7 @@ const requireAdminOrPermission = async (request: NextRequest, permissionKey: str
     if (decoded.role === "admin") return { decoded }
     
     if (decoded.employeeId) {
-      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      const employee = await getErpUserById(decoded.employeeId)
       if (!employee || !employee.isActive) return { error: "Unauthorized", status: 401 }
       if (employee[permissionKey as keyof typeof employee]) return { decoded, employee }
     }

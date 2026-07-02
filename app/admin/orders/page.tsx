@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Package, User, MapPin, Eye, Trash2, CreditCard, ImageIcon } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { ArrowLeft, Package, User, MapPin, Eye, Trash2, CreditCard, ImageIcon, Wallet } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
 import { useCurrencyFormatter } from "@/hooks/use-currency"
@@ -20,6 +21,11 @@ export default function AdminOrdersPage() {
   const { formatPrice } = useCurrencyFormatter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [depositDialog, setDepositDialog] = useState<{ open: boolean; orderId: string; deposit: number }>({
+    open: false,
+    orderId: "",
+    deposit: 0,
+  })
 
   useEffect(() => {
     if (authState.isLoading) return
@@ -69,13 +75,23 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const handleDeleteOrder = async (orderId: string) => {
+  const handleDeleteOrder = (orderId: string) => {
     if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
       return
     }
 
+    const order = orders.find((o) => o.id === orderId)
+    if ((order?.depositAmount || 0) > 0) {
+      setDepositDialog({ open: true, orderId, deposit: order?.depositAmount || 0 })
+      return
+    }
+
+    void deleteOrder(orderId, false)
+  }
+
+  const deleteOrder = async (orderId: string, refundDeposit: boolean) => {
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
+      const response = await fetch(`/api/admin/orders/${orderId}?refundDeposit=${refundDeposit}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authState.token}`,
@@ -91,6 +107,14 @@ export default function AdminOrdersPage() {
     } catch (error) {
       console.error("Error deleting order:", error)
       alert("An error occurred while deleting order")
+    }
+  }
+
+  const resolveDepositDialog = (refundDeposit: boolean) => {
+    const { orderId } = depositDialog
+    setDepositDialog({ open: false, orderId: "", deposit: 0 })
+    if (orderId) {
+      void deleteOrder(orderId, refundDeposit)
     }
   }
 
@@ -277,6 +301,32 @@ export default function AdminOrdersPage() {
           </Card>
         </div>
       </section>
+
+      <Dialog open={depositDialog.open} onOpenChange={(open) => !open && setDepositDialog({ open: false, orderId: "", deposit: 0 })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 mb-2">
+              <Wallet className="h-6 w-6 text-amber-600" />
+            </div>
+            <DialogTitle className="text-center">Return the deposit?</DialogTitle>
+            <DialogDescription className="text-center">
+              This order has a deposit of{" "}
+              <span className="font-semibold text-gray-900">{formatPrice(depositDialog.deposit)}</span>{" "}
+              recorded in the cash drawer (خزنة).
+              <br />
+              Choose whether to return it to the customer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-col gap-2 mt-2">
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => resolveDepositDialog(true)}>
+              Return Deposit
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => resolveDepositDialog(false)}>
+              Don't Return
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

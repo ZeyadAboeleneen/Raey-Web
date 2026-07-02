@@ -7,12 +7,17 @@ export const MIN_RENTAL_PRICE = 3000
 
 const round100 = (val: number) => Math.round(val / 100) * 100
 
+export interface Post4Input {
+    lastReceivedPrice?: number | null  // Total of the most recent rental received by the rent-start date
+    isLatest?: boolean                 // true if no existing booking starts after this one's pickup
+}
+
 export function calculateRentalPrice(
     cost: number,
     d: number,           // days between booking date and rent start (min 1)
-    n: number,           // number of previous completed rentals
+    n: number,           // number of rentals RECEIVED by the rent-start date
     isExclusive: boolean,
-    firstFourPrices: number[] = [],
+    post4: Post4Input = {},
 ): RentalPricingResult {
     d = Math.max(1, d)
 
@@ -37,14 +42,17 @@ export function calculateRentalPrice(
             formula = `cost × ${multiplier.toFixed(4)}`
         }
     } else {
-        // POST4 (5th rental onward): minimum of first 4 rental prices, dropping 500 per extra rental
-        const pMin =
-            firstFourPrices.length > 0
-                ? Math.min(...firstFourPrices)
-                : round100(cost * 0.8) // fallback if first-4 prices not provided
-        total = pMin - 500 * (n - 3)
+        // POST4 (5th rental onward): anchor to the most recent received rental's price; drop 500
+        // only when this booking extends the queue past every existing booking, otherwise match it.
+        const base =
+            post4.lastReceivedPrice && post4.lastReceivedPrice > 0
+                ? post4.lastReceivedPrice
+                : round100(cost * 0.8) // fallback if no received price available
+        total = post4.isLatest ? base - 500 : base
         category = "POST4"
-        formula = `P_min(${pMin}) − 500 × (${n} − 3)`
+        formula = post4.isLatest
+            ? `last received(${base}) − 500`
+            : `last received(${base}) — gap-fill, no decrement`
     }
 
     const floored = total < MIN_RENTAL_PRICE

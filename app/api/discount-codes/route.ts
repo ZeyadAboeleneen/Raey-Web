@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
+import { getErpUserById } from "@/lib/erp-users"
 
 export const dynamic = "force-dynamic"
 
@@ -13,7 +14,7 @@ const requireAdminOrPermission = async (request: NextRequest) => {
     if (decoded.role === "admin") return { decoded }
     
     if (decoded.employeeId) {
-      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      const employee = await getErpUserById(decoded.employeeId)
       if (employee && employee.isActive && employee.canManageDiscountCodes) return { decoded, employee }
     }
     

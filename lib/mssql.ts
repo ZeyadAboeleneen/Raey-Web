@@ -24,7 +24,9 @@ const config: sql.config = {
     trustServerCertificate: true,
   },
   pool: {
-    max: isBuild ? 1 : 10,
+    // Shared site4now SQL hosting caps concurrent connections and will reject
+    // logins ("Login failed for user") once the cap is exceeded. Keep this low.
+    max: isBuild ? 1 : 5,
     min: 0,
     idleTimeoutMillis: 30_000,
   },

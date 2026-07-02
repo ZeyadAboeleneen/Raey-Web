@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2, ImageIcon, DollarSign } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Phone, Mail, Ruler, Trash2, ImageIcon, DollarSign, Wallet } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
 
@@ -129,6 +130,10 @@ export default function AdminOrderDetailsPage() {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [depositDialog, setDepositDialog] = useState<{ open: boolean; mode: "cancel" | "delete"; pendingStatus?: string }>({
+    open: false,
+    mode: "cancel",
+  })
 
   const handleAdminDecision = async (decision: "approved" | "rejected") => {
     setUpdating(true)
@@ -221,7 +226,7 @@ export default function AdminOrderDetailsPage() {
     }
   }
 
-  const updateOrderStatus = async (newStatus: string) => {
+  const updateOrderStatus = async (newStatus: string, refundDeposit?: boolean) => {
     setUpdating(true)
     setError("")
     setSuccess("")
@@ -232,7 +237,7 @@ export default function AdminOrderDetailsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authState.token}`,
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, refundDeposit }),
       })
       if (response.ok) {
         setOrder((prev) => (prev ? { ...prev, status: newStatus as any } : null))
@@ -250,25 +255,44 @@ export default function AdminOrderDetailsPage() {
     }
   }
 
-  const handleDeleteOrder = async () => {
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus === "cancelled" && order?.status !== "cancelled") {
+      if (!confirm("Cancel this order? This will release any reserved dates for these items.")) return
+      if ((order?.depositAmount || 0) > 0) {
+        setDepositDialog({ open: true, mode: "cancel", pendingStatus: newStatus })
+        return
+      }
+      updateOrderStatus(newStatus, false)
+      return
+    }
+    updateOrderStatus(newStatus)
+  }
+
+  const handleDeleteOrder = () => {
     if (!confirm("Are you sure you want to delete this order? This action cannot be undone and will release any reserved dates for these items.")) {
       return
     }
-    
+    if ((order?.depositAmount || 0) > 0) {
+      setDepositDialog({ open: true, mode: "delete" })
+      return
+    }
+    void deleteOrder(false)
+  }
+
+  const deleteOrder = async (refundDeposit: boolean) => {
     setUpdating(true)
     setError("")
-    
+
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
+      const response = await fetch(`/api/admin/orders/${orderId}?refundDeposit=${refundDeposit}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authState.token}`,
         },
       })
-      
+
       if (response.ok) {
-        alert("Order deleted successfully.");
-        router.push("/admin/dashboard");
+        router.push("/admin/dashboard")
       } else {
         const errorData = await response.json()
         setError(errorData.error || "Failed to delete order")
@@ -278,6 +302,16 @@ export default function AdminOrderDetailsPage() {
       setError("An error occurred while deleting order")
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const resolveDepositDialog = (refundDeposit: boolean) => {
+    const { mode, pendingStatus } = depositDialog
+    setDepositDialog({ open: false, mode: "cancel" })
+    if (mode === "cancel" && pendingStatus) {
+      updateOrderStatus(pendingStatus, refundDeposit)
+    } else if (mode === "delete") {
+      void deleteOrder(refundDeposit)
     }
   }
 
@@ -550,7 +584,7 @@ export default function AdminOrderDetailsPage() {
                   <CardTitle>Update Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating || !canUpdateOrders}>
+                  <Select value={order.status} onValueChange={handleStatusChange} disabled={updating || !canUpdateOrders}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -775,6 +809,39 @@ export default function AdminOrderDetailsPage() {
           </div>
         </div>
       </section>
+
+      <Dialog open={depositDialog.open} onOpenChange={(open) => !open && setDepositDialog({ open: false, mode: "cancel" })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 mb-2">
+              <Wallet className="h-6 w-6 text-amber-600" />
+            </div>
+            <DialogTitle className="text-center">Return the deposit?</DialogTitle>
+            <DialogDescription className="text-center">
+              This order has a deposit of{" "}
+              <span className="font-semibold text-gray-900">{formatPriceEGP(order?.depositAmount || 0)}</span>{" "}
+              recorded in the cash drawer (خزنة).
+              <br />
+              Choose whether to return it to the customer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-col gap-2 mt-2">
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => resolveDepositDialog(true)}
+            >
+              Return Deposit
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => resolveDepositDialog(false)}
+            >
+              Don't Return
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

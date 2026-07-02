@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import bcrypt from "bcryptjs"
+import { listErpUsers, createErpUser } from "@/lib/erp-users"
 import { withPipeline } from "@/lib/api-pipeline"
 
 function formatEmployeeForClient(emp: any) {
@@ -37,68 +36,37 @@ function formatEmployeeForClient(emp: any) {
 }
 
 export const GET = withPipeline(async (request) => {
-  const employees = await prisma.employee.findMany({
-    orderBy: { createdAt: "desc" },
-  })
+  const employees = await listErpUsers()
   return NextResponse.json(employees.map(formatEmployeeForClient))
 }, { role: "admin" })
 
-import { OutboxService } from "@/services/outbox.service"
-import { getRequestMetadata } from "@/lib/audit"
-
-export const POST = withPipeline(async (request, currentEmployee) => {
+export const POST = withPipeline(async (request) => {
   const body = await request.json()
-  const { name, email, password, phone, role, isActive, permissions } = body
+  const { userName, password, cashId, branchId, repId, email, address, tel, notes, active } = body
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 })
+  if (!userName || !password || cashId == null || branchId == null || repId == null) {
+    return NextResponse.json(
+      { error: "userName, password, cashId, branchId, and repId are required" },
+      { status: 400 }
+    )
   }
 
-  const passwordHash = await bcrypt.hash(password, 10)
-
-  // ATOMIC TRANSACTION: Business Data + Outbox Event
-  const newEmployee = await prisma.$transaction(async (tx) => {
-    // 1. Check uniqueness
-    const existing = await tx.employee.findUnique({ where: { email } })
-    if (existing) throw new Error("Employee with this email already exists")
-
-    // 2. Create record
-    const emp = await tx.employee.create({
-      data: {
-        fullName: name,
-        email,
-        username: email.split("@")[0],
-        passwordHash,
-        phone: phone || null,
-        role: role || "staff",
-        isActive: isActive !== undefined ? isActive : true,
-        canAddProducts: permissions?.canAddProducts || false,
-        canEditProducts: permissions?.canEditProducts || false,
-        canDeleteProducts: permissions?.canDeleteProducts || false,
-        canViewProducts: permissions?.canViewProducts || false,
-        canViewOrders: permissions?.canViewOrders || false,
-        canUpdateOrders: permissions?.canUpdateOrders || false,
-        canDeleteOrders: permissions?.canDeleteOrders || false,
-        canViewPricesInDashboard: permissions?.canViewPricesInDashboard || false,
-        canViewPricesOnWebsite: permissions?.canViewPricesOnWebsite || false,
-        canManageDiscountCodes: permissions?.canManageDiscountCodes || false,
-        canManageOffers: permissions?.canManageOffers || false,
-        favorites: [],
-      },
-    })
-
-    // 3. Enqueue Audit Event into Outbox (Transactional)
-    await OutboxService.enqueue("AUDIT_LOG", {
-      action: "EMPLOYEE_CREATE",
-      actorId: currentEmployee.id,
-      entity: "Employee",
-      entityId: emp.id,
-      after: formatEmployeeForClient(emp),
-      metadata: getRequestMetadata(request)
-    }, tx)
-
-    return emp
+  const id = await createErpUser({
+    userName,
+    password,
+    cashId: Number(cashId),
+    branchId: Number(branchId),
+    repId: Number(repId),
+    email: email ?? "",
+    address: address ?? "",
+    tel: tel ?? "",
+    notes: notes ?? "",
+    active: active !== false,
   })
 
-  return NextResponse.json(formatEmployeeForClient(newEmployee), { status: 201 })
-}, { role: "admin", idempotent: true })
+  if (id === -1) {
+    return NextResponse.json({ error: "ERP returned no ID — check sp_users parameters" }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, id }, { status: 201 })
+}, { role: "admin" })

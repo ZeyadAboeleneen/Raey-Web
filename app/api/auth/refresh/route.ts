@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getErpUserById } from "@/lib/erp-users"
 import jwt from "jsonwebtoken"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
@@ -13,12 +14,50 @@ export async function POST(request: NextRequest) {
 
     const oldToken = authHeader.substring(7)
 
-    // Verify old token (allow slightly expired tokens so refresh works)
-    let decoded: { userId: string; email: string }
+    // Decode old token — allow expired tokens so refresh still works
+    let decoded: any
     try {
-      decoded = jwt.verify(oldToken, JWT_SECRET) as { userId: string; email: string }
+      decoded = jwt.verify(oldToken, JWT_SECRET, { ignoreExpiration: true }) as any
     } catch {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
+
+    // ── Employee tokens (MSSQL ERP) ──────────────────────────────────────
+    if (decoded.employeeId) {
+      const employee = await getErpUserById(decoded.employeeId)
+      if (!employee || !employee.isActive) {
+        return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+      }
+
+      const newToken = jwt.sign(
+        {
+          employeeId: employee.id,
+          employeeName: employee.username,
+          role: employee.role,
+          type: "employee",
+          repId: employee.repId,
+          branchId: employee.branchId,
+          cashId: employee.cashId,
+          cashName: employee.cashName,
+        },
+        JWT_SECRET,
+        { expiresIn: "30d" }
+      )
+
+      return NextResponse.json({
+        user: {
+          id: employee.id,
+          email: employee.email,
+          name: employee.fullName,
+          role: employee.role,
+          isEmployee: true,
+          repId: employee.repId,
+          branchId: employee.branchId,
+          cashId: employee.cashId,
+          cashName: employee.cashName,
+        },
+        token: newToken,
+      })
     }
 
     // Find user in MySQL

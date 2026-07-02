@@ -33,6 +33,9 @@ const DEFAULT_EMPLOYEE = {
   phone: "",
   role: "staff",
   isActive: true,
+  cashId: "",
+  branchId: "",
+  repId: "",
   canAddProducts: false,
   canEditProducts: false,
   canDeleteProducts: false,
@@ -55,13 +58,26 @@ export function EmployeeManagement() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState<any>(DEFAULT_EMPLOYEE)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState("")
+
+  type LookupOption = { id: number; name: string }
+  const [lookups, setLookups] = useState<{ cashes: LookupOption[]; reps: LookupOption[]; branches: LookupOption[] }>({
+    cashes: [],
+    reps: [],
+    branches: [],
+  })
+
+  const getToken = () => authState.token || (() => {
+    try { return JSON.parse(localStorage.getItem("sense_auth") || "{}").token } catch { return null }
+  })()
 
   const fetchEmployees = async () => {
     try {
       setLoading(true)
+      const token = getToken()
       const res = await fetch("/api/employees", {
         headers: {
-          Authorization: `Bearer ${authState.token || localStorage.getItem("token")}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       })
       if (!res.ok) throw new Error("Failed to fetch employees")
@@ -74,14 +90,34 @@ export function EmployeeManagement() {
     }
   }
 
+  const fetchLookups = async () => {
+    try {
+      const token = getToken()
+      const res = await fetch("/api/admin/erp-lookups", {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setLookups({
+        cashes: data.cashes || [],
+        reps: data.reps || [],
+        branches: data.branches || [],
+      })
+    } catch {
+      /* dropdowns just stay empty if lookups fail to load */
+    }
+  }
+
   useEffect(() => {
     fetchEmployees()
+    fetchLookups()
   }, [])
 
   const handleOpenDialog = (employee?: Employee) => {
+    setFormError("")
     if (employee) {
       setSelectedEmployee(employee)
-      setFormData({ ...employee, password: "" }) // Password blank on edit
+      setFormData({ ...employee, password: "" })
     } else {
       setSelectedEmployee(null)
       setFormData(DEFAULT_EMPLOYEE)
@@ -90,28 +126,55 @@ export function EmployeeManagement() {
   }
 
   const handleSave = async () => {
-    if (!formData.fullName || !formData.email || !formData.username) {
-      toast.error("Please fill in all required fields")
+    setFormError("")
+    if (!formData.username) {
+      setFormError("Username is required")
       return
     }
     if (!selectedEmployee && !formData.password) {
-      toast.error("Password is required for new employees")
+      setFormError("Password is required for new employees")
+      return
+    }
+    if (!selectedEmployee && (!formData.cashId || !formData.branchId || !formData.repId)) {
+      setFormError("Cash register, branch, and representative are required")
       return
     }
 
     try {
       setSaving(true)
+      setFormError("")
       const url = selectedEmployee ? `/api/employees/${selectedEmployee.id}` : "/api/employees"
       const method = selectedEmployee ? "PUT" : "POST"
 
-      const payload = { ...formData }
-      if (!payload.password) delete payload.password // Don't send empty password on edit
+      const payload: any = {
+        userName: formData.username,
+        password: formData.password || undefined,
+        email: formData.email || "",
+        address: formData.phone || "",
+        active: formData.isActive !== false,
+        cashId: formData.cashId ? Number(formData.cashId) : undefined,
+        branchId: formData.branchId ? Number(formData.branchId) : undefined,
+        repId: formData.repId ? Number(formData.repId) : undefined,
+        canAddProducts: formData.canAddProducts ?? false,
+        canEditProducts: formData.canEditProducts ?? false,
+        canDeleteProducts: formData.canDeleteProducts ?? false,
+        canViewProducts: formData.canViewProducts ?? true,
+        canViewOrders: formData.canViewOrders ?? false,
+        canUpdateOrders: formData.canUpdateOrders ?? false,
+        canDeleteOrders: formData.canDeleteOrders ?? false,
+        canViewPricesInDashboard: formData.canViewPricesInDashboard ?? false,
+        canViewPricesOnWebsite: formData.canViewPricesOnWebsite ?? true,
+        canManageDiscountCodes: formData.canManageDiscountCodes ?? false,
+        canManageOffers: formData.canManageOffers ?? false,
+      }
+      if (!payload.password) delete payload.password
 
+      const token = getToken()
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${authState.token || localStorage.getItem("token")}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(payload),
       })
@@ -123,7 +186,7 @@ export function EmployeeManagement() {
       setDialogOpen(false)
       fetchEmployees()
     } catch (err: any) {
-      toast.error(err.message || "An error occurred")
+      setFormError(err.message || "An error occurred")
     } finally {
       setSaving(false)
     }
@@ -133,10 +196,11 @@ export function EmployeeManagement() {
     if (!selectedEmployee) return
     try {
       setSaving(true)
+      const token = getToken()
       const res = await fetch(`/api/employees/${selectedEmployee.id}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${authState.token || localStorage.getItem("token")}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       })
       const data = await res.json()
@@ -341,6 +405,49 @@ export function EmployeeManagement() {
                       </Select>
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cashId" className="text-xs font-semibold text-gray-600 ml-1">Cash Register</Label>
+                      <Select value={formData.cashId ? String(formData.cashId) : ""} onValueChange={(v) => setFormData({ ...formData, cashId: v })}>
+                        <SelectTrigger id="cashId" className="rounded-xl border-gray-100 focus:border-black">
+                          <SelectValue placeholder="Select cash register" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                          {lookups.cashes.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)} className="rounded-lg">{c.name} <span className="text-gray-400">#{c.id}</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="branchId" className="text-xs font-semibold text-gray-600 ml-1">Branch</Label>
+                      <Select value={formData.branchId ? String(formData.branchId) : ""} onValueChange={(v) => setFormData({ ...formData, branchId: v })}>
+                        <SelectTrigger id="branchId" className="rounded-xl border-gray-100 focus:border-black">
+                          <SelectValue placeholder="Select branch" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                          {lookups.branches.map((b) => (
+                            <SelectItem key={b.id} value={String(b.id)} className="rounded-lg">{b.name} <span className="text-gray-400">#{b.id}</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="repId" className="text-xs font-semibold text-gray-600 ml-1">Representative</Label>
+                      <Select value={formData.repId !== "" && formData.repId !== undefined && formData.repId !== null ? String(formData.repId) : ""} onValueChange={(v) => setFormData({ ...formData, repId: v })}>
+                        <SelectTrigger id="repId" className="rounded-xl border-gray-100 focus:border-black">
+                          <SelectValue placeholder="Select representative" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                          <SelectItem value="0" className="rounded-lg">None</SelectItem>
+                          {lookups.reps.map((r) => (
+                            <SelectItem key={r.id} value={String(r.id)} className="rounded-lg">{r.name} <span className="text-gray-400">#{r.id}</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -392,8 +499,13 @@ export function EmployeeManagement() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-10 pt-6 border-t border-gray-50">
-              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl px-8 text-gray-500">Cancel</Button>
+            {formError && (
+              <div className="mx-8 mb-2 mt-6 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                {formError}
+              </div>
+            )}
+            <div className="flex justify-end gap-3 mt-4 pt-6 border-t border-gray-50">
+              <Button variant="ghost" onClick={() => { setDialogOpen(false); setFormError("") }} className="rounded-xl px-8 text-gray-500">Cancel</Button>
               <Button onClick={handleSave} disabled={saving} className="bg-black text-white hover:bg-gray-800 rounded-xl px-10 shadow-lg shadow-black/10">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {selectedEmployee ? "Update Account" : "Initialize Account"}

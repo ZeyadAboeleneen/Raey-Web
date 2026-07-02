@@ -73,17 +73,58 @@ export function useDateFilteredProducts(products: Product[]) {
 
   const fetchingIdsRef = useRef<Set<string>>(new Set())
 
-  // 2. Dynamic pricing for listing cards is computed entirely client-side via
-  // `speculativePrices` below. That uses the SAME formula and inputs
-  // (cost, date-derived `d`, n=0) as the /api/rental/bulk-pricing endpoint, so a
-  // server round-trip produces an identical number while adding latency and, at
-  // scale, a perpetual `loadingPrices` state that froze every card on
-  // "Calculating…". These fetchers are intentionally no-ops; the detail page /
-  // quick-add modal still call the server directly when an exact (n-aware) price
-  // is needed. Kept as stable callbacks so the page effects that call them don't loop.
-  const fetchPricesForIds = useCallback(async (_productIds: string[]) => {}, [])
+  // 2. Dynamic pricing for listing cards. The client-side estimate (getDynamicPrice
+  // below) assumes n=0, which is only correct for dresses still in their first 4
+  // rentals. POST4 dresses (5th rental onward) are priced from rental history and
+  // can't be derived client-side, so we fetch the n-aware price from
+  // /api/rental/bulk-pricing and override the estimate with it.
+  const fetchPricesForIds = useCallback(async (productIds: string[]) => {
+    const date = currentDateRef.current
+    if (!date || !productIds.length) return
 
-  const fetchPricesForPage = useCallback(async (_pageProducts: Product[]) => {}, [])
+    // Only fetch ids we don't already have a server price for and aren't fetching.
+    const toFetch = productIds.filter(
+      (id) => serverPricesRef.current[id] === undefined && !fetchingIdsRef.current.has(id)
+    )
+    if (!toFetch.length) return
+
+    toFetch.forEach((id) => fetchingIdsRef.current.add(id))
+    activeFetchCountRef.current += 1
+    setLoadingPrices(true)
+
+    try {
+      const res = await fetch("/api/rental/bulk-pricing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productIds: toFetch, occasionDate: date.toISOString() }),
+      })
+      // Discard stale results if the occasion date changed mid-flight.
+      if (currentDateRef.current !== date) return
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.prices) {
+          setServerPrices((prev) => ({ ...prev, ...data.prices }))
+        }
+      }
+    } catch (err) {
+      console.error("[useDateFilteredProducts] bulk price fetch failed:", err)
+    } finally {
+      toFetch.forEach((id) => fetchingIdsRef.current.delete(id))
+      activeFetchCountRef.current = Math.max(0, activeFetchCountRef.current - 1)
+      if (activeFetchCountRef.current === 0) setLoadingPrices(false)
+    }
+  }, [])
+
+  const fetchPricesForPage = useCallback(
+    async (pageProducts: Product[]) => {
+      await fetchPricesForIds(
+        pageProducts
+          .filter((p) => p.branch !== "sell-dresses" && !p.isGiftPackage)
+          .map((p) => p.id)
+      )
+    },
+    [fetchPricesForIds]
+  )
 
   // Clear server prices and fetching cache when date changes
   useEffect(() => {
@@ -115,10 +156,13 @@ export function useDateFilteredProducts(products: Product[]) {
   const getDynamicPrice = useCallback((product: Product): number | null => {
     if (dayOffset === null) return null
     if (!product || product.branch === "sell-dresses" || product.isGiftPackage) return null
+    // The server price is n-aware (handles POST4); prefer it once it's loaded.
+    const serverPrice = serverPrices[product.id]
+    if (serverPrice !== undefined) return serverPrice
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
     if (costBase <= 0) return null
     return calculateRentalPrice(costBase, dayOffset, 0, false).total
-  }, [dayOffset])
+  }, [dayOffset, serverPrices])
 
   // Map form (id → price) for the products passed to this hook, for callers that
   // index by id. Individual cards should prefer getDynamicPrice(product).

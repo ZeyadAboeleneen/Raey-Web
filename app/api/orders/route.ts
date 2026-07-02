@@ -9,6 +9,8 @@ import { clearErpProductCaches } from "@/lib/erp-items"
 import { getStoredResponse, storeResponse } from "@/lib/idempotency"
 import { OutboxService } from "@/services/outbox.service"
 import { rateLimit, generateCheckoutRateLimitKey } from "@/lib/rate-limit"
+import { getErpUserById } from "@/lib/erp-users"
+import { syncEmployeeOrderToErp, syncOrderToErp } from "@/lib/erp-sync"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -51,9 +53,9 @@ export async function GET(request: NextRequest) {
     let isStandardUser = false
 
     if (decoded.employeeId) {
-      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      const employee = await getErpUserById(decoded.employeeId)
       if (!employee || !employee.isActive) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      
+
       if (employee.role === "admin" || employee.canViewOrders) {
         isEmployeeWithAccess = true
       } else {
@@ -108,42 +110,75 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
     let userId: string | "guest" = "guest"
     let isLoggedIn = false
+    let employeeIdFromToken: string | null = null
+    let isAdminOrder = false
 
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-        userId = decoded.userId
-        isLoggedIn = true
-      } catch { }
-    }
-
-    // ── Rate Limiting ─────────────────────────────────────────
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1"
-    const sessionId = request.cookies.get("sessionId")?.value || null
-    const rateLimitKey = generateCheckoutRateLimitKey(ip, userId, sessionId)
-    
-    // Allow max 10 requests per 15 minutes (900 seconds)
-    const { success, remaining, reset } = await rateLimit(rateLimitKey, 10, 900)
-    
-    if (!success) {
-      console.warn(`[Rate Limit] Blocked checkout attempt for IP: ${ip}, User: ${userId}`)
-      return NextResponse.json(
-        { error: "Too many checkout attempts. Please try again later." },
-        { 
-          status: 429,
-          headers: {
-            "Retry-After": Math.ceil((reset - Date.now()) / 1000).toString(),
-            "X-RateLimit-Limit": "10",
-            "X-RateLimit-Remaining": remaining.toString()
+        console.log(`[Orders/POST] token decoded: employeeId=${decoded.employeeId} userId=${decoded.userId} role=${decoded.role} type=${decoded.type}`)
+        if (decoded.employeeId) {
+          employeeIdFromToken = decoded.employeeId
+        } else if (decoded.userId) {
+          userId = decoded.userId
+          isLoggedIn = true
+          if (decoded.role === "admin") {
+            isAdminOrder = true
           }
         }
-      )
+      } catch (jwtErr: any) {
+        console.log(`[Orders/POST] JWT verify failed: ${jwtErr?.message}`)
+      }
+    } else {
+      console.log(`[Orders/POST] no token — guest order`)
+    }
+
+    // ── Employee context (orders placed from the dashboard) ───────────────
+    let employee = null
+    let erpLookupFailed = false
+    if (employeeIdFromToken) {
+      try {
+        employee = await getErpUserById(employeeIdFromToken)
+        if (!employee || !employee.isActive) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+      } catch (erpLookupErr) {
+        // MSSQL is down — still allow the order to be saved; ERP sync will be skipped.
+        console.error("[Orders] MSSQL employee lookup failed, proceeding without ERP context:", erpLookupErr)
+        erpLookupFailed = true
+      }
+    }
+    const isEmployeeOrder = !!employee || isAdminOrder || (!!employeeIdFromToken && erpLookupFailed)
+
+    // ── Rate Limiting (skip for trusted employee orders) ──────────────────
+    if (!isEmployeeOrder) {
+      const ip = request.headers.get("x-forwarded-for") || "127.0.0.1"
+      const sessionId = request.cookies.get("sessionId")?.value || null
+      const rateLimitKey = generateCheckoutRateLimitKey(ip, userId, sessionId)
+
+      // Allow max 10 requests per 15 minutes (900 seconds)
+      const { success, remaining, reset } = await rateLimit(rateLimitKey, 10, 900)
+
+      if (!success) {
+        console.warn(`[Rate Limit] Blocked checkout attempt for IP: ${ip}, User: ${userId}`)
+        return NextResponse.json(
+          { error: "Too many checkout attempts. Please try again later." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": Math.ceil((reset - Date.now()) / 1000).toString(),
+              "X-RateLimit-Limit": "10",
+              "X-RateLimit-Remaining": remaining.toString()
+            }
+          }
+        )
+      }
     }
 
     const { items, total, shippingAddress, paymentMethod, paymentDetails, paymentScreenshot, discountCode, discountAmount, depositAmount, remainingAmount } =
       await request.json()
 
-    if (!items?.length || !total || !shippingAddress) {
+    if (!items?.length || (total == null && !isEmployeeOrder) || !shippingAddress) {
       return NextResponse.json({ error: "Items, total, and shipping address are required" }, { status: 400 })
     }
 
@@ -151,6 +186,12 @@ export async function POST(request: NextRequest) {
     
     let finalPaymentScreenshot = paymentScreenshot || null
     let initialPaymentStatus = "pending"
+
+    // Employee orders need no payment or proof — auto-approve and never require a screenshot.
+    if (isEmployeeOrder) {
+      finalPaymentScreenshot = null
+      initialPaymentStatus = "approved"
+    }
 
     // If it's a base64 image, upload it securely to Cloudinary before saving the order
     if (finalPaymentScreenshot && finalPaymentScreenshot.startsWith("data:image/")) {
@@ -206,8 +247,24 @@ export async function POST(request: NextRequest) {
         orderId,
         items: items.map((item: any) => ({ ...item, reviewed: false })),
         total, shippingAddress,
-        paymentMethod: paymentMethod || "instapay",
-        paymentDetails: paymentDetails || null,
+        paymentMethod: isEmployeeOrder ? "employee" : (paymentMethod || "instapay"),
+        paymentDetails: isEmployeeOrder
+          ? {
+              ...(paymentDetails || {}),
+              placedByEmployee: employee
+                ? {
+                    id: employee.id,
+                    name: employee.username,
+                    repId: employee.repId,
+                    branchId: employee.branchId,
+                    cashId: employee.cashId,
+                    cashName: employee.cashName,
+                  }
+                : employeeIdFromToken
+                  ? { employeeId: employeeIdFromToken, erpLookupFailed: true }
+                  : { role: "admin", userId },
+            }
+          : (paymentDetails || null),
         paymentScreenshot: finalPaymentScreenshot,
         discountCode: discountCode || null,
         discountAmount: discountAmount || 0,
@@ -289,10 +346,44 @@ export async function POST(request: NextRequest) {
     // 4. Invalidate caches after successful transaction
     clearErpProductCaches()
 
+    // 5. Staff orders (employee- or admin-placed) are auto-approved and sync to
+    //    the ERP Booking table immediately at placement. Customer orders sync
+    //    later, after payment verification, via the outbox worker.
+    //    - Resolved employee → full employee sync (booking + deposit journal to CashID).
+    //    - Admin (no employee record) → standard booking sync (no cash journal).
+    if (isEmployeeOrder && employee) {
+      const erpResult = await syncEmployeeOrderToErp(result.orderId, {
+        id: employee.id,
+        repId: employee.repId,
+        branchId: employee.branchId,
+        cashId: employee.cashId,
+      })
+      if (!erpResult.success) {
+        // Keep the local order — ERP sync can be retried manually. Don't roll back.
+        console.error(`[Orders] Employee ERP sync failed for ${result.orderId} (order kept):`, erpResult.error)
+      } else {
+        console.log(`[Orders] Employee ERP sync succeeded for ${result.orderId}: ${erpResult.message || "ok"}`)
+      }
+    } else if (isAdminOrder) {
+      // Admin-placed orders have no employee cash drawer; sync as a standard
+      // approved booking so the dress is reserved in the ERP right away.
+      try {
+        const erpResult = await syncOrderToErp(result.orderId)
+        if (!erpResult.success) {
+          console.error(`[Orders] Admin ERP sync failed for ${result.orderId} (order kept):`, erpResult.error)
+        } else {
+          console.log(`[Orders] Admin ERP sync succeeded for ${result.orderId}: ${erpResult.message || "ok"}`)
+        }
+      } catch (erpError) {
+        console.error(`[Orders] Admin ERP sync threw for ${result.orderId} (order kept):`, erpError)
+      }
+    }
+
     const responseData = {
       success: true,
       order: transformOrder(result),
       orderId: result.orderId,
+      erpSyncStatus: (isEmployeeOrder && employee) ? "attempted" : "skipped",
     }
 
     if (idempotencyKey) {

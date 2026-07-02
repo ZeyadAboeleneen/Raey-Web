@@ -78,6 +78,7 @@ model Order {
   updatedAt         DateTime @updatedAt @map("updated_at")
   depositAmount     Float    @default(0) @map("deposit_amount")
   remainingAmount   Float    @default(0) @map("remaining_amount")
+  depositRefunded   Boolean  @default(false) @map("deposit_refunded")
   paymentScreenshot      String?       @map("payment_screenshot") @db.LongText
   paymentTransactionId   String?       @unique @map("payment_transaction_id")
   paymentReceiptHash     String?       @map("payment_receipt_hash")
@@ -93,6 +94,24 @@ model Order {
 
   @@index([userId], map: "orders_user_id_fkey")
   @@map("orders")
+}
+
+model EmployeePermissions {
+  employeeId               String   @id @map("employee_id")
+  canAddProducts           Boolean  @default(false) @map("can_add_products")
+  canEditProducts          Boolean  @default(false) @map("can_edit_products")
+  canDeleteProducts        Boolean  @default(false) @map("can_delete_products")
+  canViewProducts          Boolean  @default(true)  @map("can_view_products")
+  canViewOrders            Boolean  @default(false) @map("can_view_orders")
+  canUpdateOrders          Boolean  @default(false) @map("can_update_orders")
+  canDeleteOrders          Boolean  @default(false) @map("can_delete_orders")
+  canViewPricesInDashboard Boolean  @default(false) @map("can_view_prices_in_dashboard")
+  canViewPricesOnWebsite   Boolean  @default(true)  @map("can_view_prices_on_website")
+  canManageDiscountCodes   Boolean  @default(false) @map("can_manage_discount_codes")
+  canManageOffers          Boolean  @default(false) @map("can_manage_offers")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("employee_permissions")
 }
 
 model Review {
@@ -146,6 +165,7 @@ model Offer {
   discountCode String?   @map("discount_code")
   isActive     Boolean   @default(true) @map("is_active")
   priority     Int       @default(0) @map("display_order")
+  startsAt     DateTime? @map("starts_at")
   expiresAt    DateTime? @map("expires_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")

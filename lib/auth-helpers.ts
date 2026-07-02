@@ -1,7 +1,9 @@
 import jwt from "jsonwebtoken"
-import { prisma } from "@/lib/prisma"
 import { type NextRequest, NextResponse } from "next/server"
-import type { Employee } from "@prisma/client"
+import { getErpUserById, type ErpEmployee } from "@/lib/erp-users"
+
+// Employees now come from the MSSQL ERP `Users` table (not Prisma/MySQL).
+export type Employee = ErpEmployee
 
 export type PermissionKey =
   | "canAddProducts"
@@ -58,10 +60,7 @@ export async function getEmployeeFromRequest(
   if (!decoded) return null
 
   try {
-    const employee = await prisma.employee.findUnique({
-      where: { id: decoded.employeeId },
-    })
-    return employee
+    return await getErpUserById(decoded.employeeId)
   } catch {
     return null
   }
@@ -97,9 +96,7 @@ export async function requirePermission(
     }
   }
 
-  const employee = await prisma.employee.findUnique({
-    where: { id: decoded.employeeId },
-  })
+  const employee = await getErpUserById(decoded.employeeId)
 
   if (!employee) {
     return {
@@ -150,9 +147,7 @@ export async function requireAdmin(
     }
   }
 
-  const employee = await prisma.employee.findUnique({
-    where: { id: empDecoded.employeeId },
-  })
+  const employee = await getErpUserById(empDecoded.employeeId)
 
   if (!employee) {
     return {

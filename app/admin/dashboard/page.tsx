@@ -98,6 +98,7 @@ interface Offer {
   discountCode?: string
   isActive: boolean
   priority: number
+  startsAt?: string
   expiresAt?: string
   createdAt: string
 }
@@ -173,12 +174,17 @@ export default function AdminDashboard() {
   })
 
   // Offer form
-  const [offerForm, setOfferForm] = useState({
-    title: "",
-    description: "",
-    discountCode: "",
-    priority: "",
-    expiresAt: "",
+  const [offerForm, setOfferForm] = useState(() => {
+    const d = new Date()
+    const localNow = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    return {
+      title: "",
+      description: "",
+      discountCode: "",
+      priority: "",
+      startsAt: localNow,
+      expiresAt: "",
+    }
   })
 
   const getAuthToken = () => {
@@ -195,6 +201,10 @@ export default function AdminDashboard() {
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
     return localDate.toISOString().slice(0, 16)
   }
+
+  // Current local date/time formatted for a datetime-local input — used as the
+  // default offer start date.
+  const nowForInput = () => formatDateForInput(new Date().toISOString())
 
   // DASHBOARD USES EGP ONLY - NO CURRENCY CONVERSION NEEDED
   // All prices in database are stored in EGP
@@ -598,6 +608,7 @@ export default function AdminDashboard() {
           description: offerForm.description,
           discountCode: offerForm.discountCode || undefined,
           priority: offerForm.priority ? Number.parseInt(offerForm.priority) : 0,
+          startsAt: offerForm.startsAt || undefined,
           expiresAt: offerForm.expiresAt || undefined,
         }),
       })
@@ -612,6 +623,7 @@ export default function AdminDashboard() {
           description: "",
           discountCode: "",
           priority: "",
+          startsAt: nowForInput(),
           expiresAt: "",
         })
       }
@@ -627,6 +639,7 @@ export default function AdminDashboard() {
       description: offer.description,
       discountCode: offer.discountCode || "",
       priority: (offer.priority ?? 0).toString(),
+      startsAt: offer.startsAt ? formatDateForInput(offer.startsAt) : nowForInput(),
       expiresAt: offer.expiresAt ? formatDateForInput(offer.expiresAt) : "",
     })
   }
@@ -648,6 +661,7 @@ export default function AdminDashboard() {
           description: offerForm.description,
           discountCode: offerForm.discountCode || undefined,
           priority: offerForm.priority ? Number.parseInt(offerForm.priority) : 0,
+          startsAt: offerForm.startsAt || undefined,
           expiresAt: offerForm.expiresAt || undefined,
           isActive: editingOffer.isActive,
         }),
@@ -664,6 +678,7 @@ export default function AdminDashboard() {
           description: "",
           discountCode: "",
           priority: "",
+          startsAt: nowForInput(),
           expiresAt: "",
         })
       }
@@ -1838,6 +1853,7 @@ export default function AdminDashboard() {
                                 description: "",
                                 discountCode: "",
                                 priority: "",
+                                startsAt: nowForInput(),
                                 expiresAt: "",
                               })
                             }}
@@ -1899,6 +1915,18 @@ export default function AdminDashboard() {
                         </div>
 
                         <div>
+                          <Label htmlFor="offerStartsAt" className="text-sm">Start Date</Label>
+                          <Input
+                            id="offerStartsAt"
+                            type="datetime-local"
+                            value={offerForm.startsAt}
+                            onChange={(e) => setOfferForm({ ...offerForm, startsAt: e.target.value })}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">The offer stays hidden until this date &amp; time. Defaults to now.</p>
+                        </div>
+
+                        <div>
                           <Label htmlFor="offerExpiresAt" className="text-sm">Expires At</Label>
                           <Input
                             id="offerExpiresAt"
@@ -1943,6 +1971,11 @@ export default function AdminDashboard() {
                                     >
                                       {offer.isActive ? "Active" : "Inactive"}
                                     </Button>
+                                    {offer.startsAt && new Date(offer.startsAt) > new Date() && (
+                                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
+                                        Scheduled
+                                      </Badge>
+                                    )}
                                     <Badge variant={offer.isActive ? "default" : "secondary"} className="text-xs">
                                       Priority: {offer.priority}
                                     </Badge>
@@ -1951,6 +1984,7 @@ export default function AdminDashboard() {
                                 <p className="text-xs sm:text-sm text-gray-600 mb-2">{offer.description}</p>
                                 <div className="text-xs text-gray-500 space-y-1">
                                   {offer.discountCode && <p>Code: {offer.discountCode}</p>}
+                                  {offer.startsAt && <p>Starts: {formatDate(offer.startsAt)}</p>}
                                   {offer.expiresAt && <p>Expires: {formatDate(offer.expiresAt)}</p>}
                                   <p>Created: {formatDate(offer.createdAt)}</p>
                                 </div>

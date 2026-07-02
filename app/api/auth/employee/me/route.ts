@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
       phone: employee.phone,
       role: employee.role,
       isActive: employee.isActive,
+      repId: employee.repId,
+      branchId: employee.branchId,
+      cashId: employee.cashId,
+      cashName: employee.cashName,
       permissions: {
         canAddProducts:            isAdmin || employee.canAddProducts,
         canEditProducts:           isAdmin || employee.canEditProducts,

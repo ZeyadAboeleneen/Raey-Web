@@ -154,11 +154,17 @@ export async function POST(request: NextRequest) {
     // Gate sync by payment status
     if (order.paymentStatus !== "approved") {
       console.log(`[ERP/Sync] Order ${orderId} has status ${order.paymentStatus}. Sync deferred until approved.`)
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: `Awaiting payment verification. Status: ${order.paymentStatus}`,
         screenshotUrl: finalScreenshot
       })
+    }
+
+    // Employee and admin orders are synced inline at order creation (or skipped for admin).
+    // Re-running syncOrderToErp here would overwrite the correct deposit with the default.
+    if (order.paymentMethod === "employee") {
+      return NextResponse.json({ success: true, message: "Employee order — ERP already handled at placement" })
     }
 
     const result = await syncOrderToErp(orderId, paymentScreenshot)

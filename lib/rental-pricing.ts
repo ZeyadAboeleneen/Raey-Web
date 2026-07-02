@@ -56,17 +56,19 @@ export async function calculateRentalPrice(
 
   if (!cost || cost <= 0) throw new Error(`Invalid Item_buypric for item ${modelTypeId}: ${cost}`)
 
-  // 2. Count previous completed rentals for this dress (n)
+  // 2. Count previous RECEIVED rentals as of this booking's pickup (rent-start) date (n).
+  //    A rental only counts once it has been returned on/before the day this new rental starts,
+  //    so a booking placed before an earlier rental is returned still sees the lower count.
   const countReq = await makeRequest()
   const rentalCountResult = await countReq
     .input("ModelTypeID", sql.Int, modelTypeId)
-    .input("BookingDate", sql.VarChar, actualBookingDate.toLocaleDateString("en-CA"))
+    .input("RentStart", sql.VarChar, rentStartStr)
     .query(`
       SELECT COUNT(*) AS n
       FROM Booking
       WHERE ModelTypeID = @ModelTypeID
         AND ReturnDate IS NOT NULL
-        AND CAST(ReturnDate AS DATE) <= CAST(@BookingDate AS DATE)
+        AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
     `)
   const n: number = rentalCountResult.recordset[0].n
 
@@ -91,26 +93,48 @@ export async function calculateRentalPrice(
       formula = `cost(${cost}) × ${multiplier.toFixed(4)}`
     }
   } else {
-    // POST4 (5th rental onward): minimum of first 4 rental Totals, dropping 500 per extra rental
-    const firstFourReq = await makeRequest()
-    const firstFourResult = await firstFourReq
+    // POST4 (5th rental onward): anchor to the price of the most recently RECEIVED rental as of
+    // this booking's pickup date, dropping 500 only when this booking extends the queue past every
+    // existing booking. A booking that slots in before an already-scheduled later rental just
+    // matches the last received price (no decrement).
+    const lastReq = await makeRequest()
+    const lastResult = await lastReq
       .input("ModelTypeID", sql.Int, modelTypeId)
+      .input("RentStart", sql.VarChar, rentStartStr)
       .query(`
-        SELECT TOP 4 Total
+        SELECT TOP 1 Total
         FROM Booking
         WHERE ModelTypeID = @ModelTypeID
           AND ReturnDate IS NOT NULL
           AND Total > 0
-        ORDER BY ID ASC
+          AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
+        ORDER BY CAST(ReturnDate AS DATE) DESC, ID DESC
       `)
-    const firstFourPrices: number[] = firstFourResult.recordset
-      .map((r: { Total: number }) => r.Total)
-      .filter((t) => typeof t === "number" && t > 0)
+    const lastReceivedPrice: number | null = lastResult.recordset.length
+      ? lastResult.recordset[0].Total
+      : null
 
-    const pMin = firstFourPrices.length > 0 ? Math.min(...firstFourPrices) : round100(cost * 0.8)
-    total = pMin - 500 * (n - 3)
+    // Is this the latest booking in the queue? (no existing booking starts after this one's pickup)
+    const laterReq = await makeRequest()
+    const laterResult = await laterReq
+      .input("ModelTypeID", sql.Int, modelTypeId)
+      .input("RentStart", sql.VarChar, rentStartStr)
+      .query(`
+        SELECT COUNT(*) AS c
+        FROM Booking
+        WHERE ModelTypeID = @ModelTypeID
+          AND ReceivedDate IS NOT NULL
+          AND CAST(ReceivedDate AS DATE) > CAST(@RentStart AS DATE)
+      `)
+    const isLatest = (laterResult.recordset[0].c ?? 0) === 0
+
+    const base =
+      lastReceivedPrice && lastReceivedPrice > 0 ? lastReceivedPrice : round100(cost * 0.8)
+    total = isLatest ? base - 500 : base
     category = "POST4"
-    formula = `P_min(${pMin}) − 500 × (${n} − 3)`
+    formula = isLatest
+      ? `last received(${base}) − 500`
+      : `last received(${base}) — gap-fill, no decrement`
   }
   const floored = total < MIN_RENTAL_PRICE
   total = Math.max(total, MIN_RENTAL_PRICE)

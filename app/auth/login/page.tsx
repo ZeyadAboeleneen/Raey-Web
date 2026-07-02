@@ -137,15 +137,16 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="email">{t("emailAddress")}</Label>
+                    <Label htmlFor="email">Email or Username</Label>
                     <Input
                       id="email"
-                      type="email"
+                      type="text"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       required
                       className="mt-1"
-                      placeholder={t("enterYourEmail")}
+                      placeholder="Email or username"
+                      autoComplete="username"
                     />
                   </div>
 

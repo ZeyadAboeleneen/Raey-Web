@@ -1410,20 +1410,37 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                     />
                   </div>
                   <div className="mt-4 flex justify-center">
-                    <Button
-                      className={`px-6 py-3 rounded-full flex items-center bg-[#25D366] hover:bg-[#1da851] text-white`}
-                      disabled={
-                        product.isOutOfStock ||
-                        (isRentBranch && !rentEventDate && !isPast45Days) ||
-                        (isCustomSizeMode && !isMeasurementsValid)
-                      }
-                      onClick={handleWhatsAppOrder}
-                    >
-                      <MessageCircle className="mr-2 h-5 w-5" />
-                      {product.isOutOfStock
-                         ? t("outOfStockLabel" as TranslationKey)
-                         : t("orderViaWhatsApp" as TranslationKey)}
-                    </Button>
+                    {(authState.user?.isEmployee || authState.user?.role === "admin") ? (
+                      <Button
+                        className="px-6 py-3 rounded-full flex items-center bg-black hover:bg-gray-800 text-white"
+                        disabled={
+                          product.isOutOfStock ||
+                          (isRentBranch && !rentEventDate && !isPast45Days) ||
+                          (isCustomSizeMode && !isMeasurementsValid)
+                        }
+                        onClick={handleAddToCart}
+                      >
+                        <ShoppingCart className="mr-2 h-5 w-5" />
+                        {product.isOutOfStock
+                          ? t("outOfStockLabel" as TranslationKey)
+                          : t("addToCart" as TranslationKey)}
+                      </Button>
+                    ) : (
+                      <Button
+                        className="px-6 py-3 rounded-full flex items-center bg-[#25D366] hover:bg-[#1da851] text-white"
+                        disabled={
+                          product.isOutOfStock ||
+                          (isRentBranch && !rentEventDate && !isPast45Days) ||
+                          (isCustomSizeMode && !isMeasurementsValid)
+                        }
+                        onClick={handleWhatsAppOrder}
+                      >
+                        <MessageCircle className="mr-2 h-5 w-5" />
+                        {product.isOutOfStock
+                          ? t("outOfStockLabel" as TranslationKey)
+                          : t("orderViaWhatsApp" as TranslationKey)}
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}

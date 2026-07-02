@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
-import { prisma } from "./prisma"
+import { getErpUserById } from "./erp-users"
 import { validateCsrf, validateOrigin } from "./csrf"
 import { logAudit, getRequestMetadata } from "./audit"
 
@@ -41,19 +41,11 @@ export async function verifyAuth(
       return NextResponse.json({ error: "Invalid token payload" }, { status: 401 })
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-    })
+    const employee = await getErpUserById(employeeId)
 
     if (!employee || !employee.isActive) {
       logAudit({ action: "AUTH_DEACTIVATED_ACCESS", actorId: employeeId, metadata: getRequestMetadata(request) })
       return NextResponse.json({ error: "Account deactivated or not found" }, { status: 403 })
-    }
-
-    // Verify token version for immediate revocation
-    if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== employee.tokenVersion) {
-      logAudit({ action: "AUTH_SESSION_REVOKED", actorId: employeeId, metadata: getRequestMetadata(request) })
-      return NextResponse.json({ error: "Session expired: Please login again" }, { status: 401 })
     }
 
     // Role check

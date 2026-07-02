@@ -23,6 +23,11 @@ interface User {
   role: string
   isEmployee?: boolean
   permissions?: EmployeePermissions
+  // ERP employee identifiers (present for employee logins)
+  repId?: number | null
+  branchId?: number | null
+  cashId?: number | null
+  cashName?: string | null
 }
 
 interface AuthState {

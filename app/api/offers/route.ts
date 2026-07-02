@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { NextResponse as NR } from "next/server"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
+import { getErpUserById } from "@/lib/erp-users"
 import { sendEmail } from "@/lib/email"
 
 export const dynamic = "force-dynamic"
@@ -14,7 +15,7 @@ const requireAdminOrPermission = async (request: NextRequest) => {
     if (decoded.role === "admin") return { decoded }
 
     if (decoded.employeeId) {
-      const employee = await prisma.employee.findUnique({ where: { id: decoded.employeeId } })
+      const employee = await getErpUserById(decoded.employeeId)
       if (employee && employee.isActive && employee.canManageOffers) return { decoded, employee }
     }
 
@@ -36,6 +37,7 @@ const transformOffer = (offer: any) => ({
   is_active: offer.isActive,
   isActive: offer.isActive,
   priority: offer.priority,
+  startsAt: offer.startsAt,
   expiresAt: offer.expiresAt,
   created_at: offer.createdAt,
   updated_at: offer.updatedAt,
@@ -84,7 +86,11 @@ export async function GET(request: NextRequest) {
     })
     if (expired.count > 0) invalidateCache()
 
-    const where: any = activeOnly ? { isActive: true } : {}
+    // For the public list, hide offers that haven't reached their start date yet
+    // (startsAt in the future). Admin "all" view (activeOnly=false) shows everything.
+    const where: any = activeOnly
+      ? { isActive: true, OR: [{ startsAt: null }, { startsAt: { lte: now } }] }
+      : {}
     const offers = await prisma.offer.findMany({ where, orderBy: { priority: "asc" } })
     const body = JSON.stringify(offers.map(transformOffer))
 
@@ -125,6 +131,7 @@ export async function POST(request: NextRequest) {
       isActive,
       display_order,
       priority,
+      startsAt,
       expiresAt,
       send_email_notification,
     } = body
@@ -135,6 +142,8 @@ export async function POST(request: NextRequest) {
     const resolvedIsActive = (isActive ?? is_active) !== false
     const resolvedPriority = Number(priority ?? display_order) || 0
     const resolvedExpiresAt = expiresAt ? new Date(expiresAt) : null
+    // Default the start date to "now" so an offer with no explicit start goes live immediately.
+    const resolvedStartsAt = startsAt ? new Date(startsAt) : new Date()
 
     const offer = await prisma.offer.create({
       data: {
@@ -145,6 +154,7 @@ export async function POST(request: NextRequest) {
         discountCode: resolvedDiscountCode || null,
         isActive: resolvedIsActive,
         priority: resolvedPriority,
+        startsAt: resolvedStartsAt,
         expiresAt: resolvedExpiresAt,
       },
     })
@@ -211,6 +221,7 @@ export async function PUT(request: NextRequest) {
       isActive,
       display_order,
       priority,
+      startsAt,
       expiresAt,
     } = body
 
@@ -236,6 +247,7 @@ export async function PUT(request: NextRequest) {
             : existing.discountCode,
         isActive: resolvedIsActive,
         priority: priority !== undefined ? (Number(priority) || 0) : display_order !== undefined ? (Number(display_order) || 0) : existing.priority,
+        startsAt: startsAt !== undefined ? (startsAt ? new Date(startsAt) : null) : existing.startsAt,
         expiresAt: expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : existing.expiresAt,
       },
     })

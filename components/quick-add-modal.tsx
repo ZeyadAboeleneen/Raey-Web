@@ -712,20 +712,33 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                         )}
                       </div>
 
-                      <Button
-                        onClick={handleWhatsAppOrder}
-                        className={`rounded-full px-6 bg-[#25D366] hover:bg-[#1da851] text-white`}
-                        disabled={
-                          product.isOutOfStock || 
-                          (isRentBranch && !rentEventDate && !isPast45Days) || 
-                          (isCustomSizeMode && !isMeasurementsValid)
-                        }
-                      >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        {isRentBranch 
-                          ? (t("orderViaWhatsApp" as TranslationKey)) 
-                          : (t("orderViaWhatsApp" as TranslationKey))}
-                      </Button>
+                      {(authState.user?.isEmployee || authState.user?.role === "admin") ? (
+                        <Button
+                          onClick={handleAddToCart}
+                          className="rounded-full px-6 bg-black hover:bg-gray-800 text-white"
+                          disabled={
+                            product.isOutOfStock ||
+                            (isRentBranch && !rentEventDate && !isPast45Days) ||
+                            (isCustomSizeMode && !isMeasurementsValid)
+                          }
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          {t("addToCart" as TranslationKey)}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleWhatsAppOrder}
+                          className="rounded-full px-6 bg-[#25D366] hover:bg-[#1da851] text-white"
+                          disabled={
+                            product.isOutOfStock ||
+                            (isRentBranch && !rentEventDate && !isPast45Days) ||
+                            (isCustomSizeMode && !isMeasurementsValid)
+                          }
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          {t("orderViaWhatsApp" as TranslationKey)}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

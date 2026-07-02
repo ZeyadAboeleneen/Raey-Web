@@ -50,8 +50,10 @@ export async function POST(request: NextRequest) {
     bookDay.setHours(0,0,0,0)
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
-    // Fetch cost plus, per item: number of completed rentals (n) so POST4 dresses
-    // (5th rental onward) are priced correctly in listings.
+    // Fetch cost plus, per item, keyed to the rent-start date (@RentStart):
+    //  - n          = rentals RECEIVED by the rent-start date (drives POST4 threshold)
+    //  - laterCount = existing bookings that start AFTER the rent-start date (frontier check)
+    // so POST4 dresses (5th rental onward) are priced correctly in listings.
     const query = `
       SELECT
         i.ID,
@@ -59,7 +61,11 @@ export async function POST(request: NextRequest) {
         (SELECT COUNT(*) FROM Booking bk
            WHERE bk.ModelTypeID = i.ID
              AND bk.ReturnDate IS NOT NULL
-             AND CAST(bk.ReturnDate AS DATE) <= CAST(GETDATE() AS DATE)) AS n
+             AND CAST(bk.ReturnDate AS DATE) <= CAST(@RentStart AS DATE)) AS n,
+        (SELECT COUNT(*) FROM Booking bk
+           WHERE bk.ModelTypeID = i.ID
+             AND bk.ReceivedDate IS NOT NULL
+             AND CAST(bk.ReceivedDate AS DATE) > CAST(@RentStart AS DATE)) AS laterCount
       FROM Items i
       WHERE i.ID IN (${ids.join(',')})
     `
@@ -67,26 +73,29 @@ export async function POST(request: NextRequest) {
     const result = await req.query(query)
     const rows = result.recordset
 
-    // For POST4 items we need the first 4 completed rental Totals. Fetch them in one query.
+    // For POST4 items we need the price of the most recently received rental as of the rent-start
+    // date. Fetch one row (latest ReturnDate) per item in a single query.
     const post4Ids = rows.filter((r: any) => (r.n ?? 0) >= 4).map((r: any) => r.ID)
-    const firstFourByItem: Record<number, number[]> = {}
+    const lastReceivedByItem: Record<number, number> = {}
     if (post4Ids.length > 0) {
-      const ffReq = pool.request()
-      const ffResult = await ffReq.query(`
-        SELECT ID, ModelTypeID, Total
+      const lrReq = pool.request()
+      lrReq.input("RentStart", sql.VarChar, rentStart.toLocaleDateString("en-CA"))
+      const lrResult = await lrReq.query(`
+        SELECT ModelTypeID, Total
         FROM (
-          SELECT ID, ModelTypeID, Total,
-                 ROW_NUMBER() OVER (PARTITION BY ModelTypeID ORDER BY ID ASC) AS rn
+          SELECT ModelTypeID, Total,
+                 ROW_NUMBER() OVER (PARTITION BY ModelTypeID
+                   ORDER BY CAST(ReturnDate AS DATE) DESC, ID DESC) AS rn
           FROM Booking
           WHERE ModelTypeID IN (${post4Ids.join(',')})
             AND ReturnDate IS NOT NULL
             AND Total > 0
+            AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
         ) t
-        WHERE t.rn <= 4
+        WHERE t.rn = 1
       `)
-      for (const r of ffResult.recordset as { ModelTypeID: number; Total: number }[]) {
-        if (!firstFourByItem[r.ModelTypeID]) firstFourByItem[r.ModelTypeID] = []
-        firstFourByItem[r.ModelTypeID].push(r.Total)
+      for (const r of lrResult.recordset as { ModelTypeID: number; Total: number }[]) {
+        lastReceivedByItem[r.ModelTypeID] = r.Total
       }
     }
 
@@ -100,7 +109,10 @@ export async function POST(request: NextRequest) {
         d,
         row.n ?? 0,
         false, // isExclusive
-        firstFourByItem[row.ID] ?? []
+        {
+          lastReceivedPrice: lastReceivedByItem[row.ID] ?? null,
+          isLatest: (row.laterCount ?? 0) === 0,
+        }
       )
       prices[String(row.ID)] = res.total
     }
