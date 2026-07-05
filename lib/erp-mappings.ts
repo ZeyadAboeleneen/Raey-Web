@@ -9,6 +9,7 @@ import { mapOpStoreIdToBranchSlug } from "@/lib/erp-stores";
 // ── Line id (ERP Items.Category_id) → collection label ───────────────
 const LINE_ID_TO_COLLECTION: Record<number, string> = {
   1: "Soiree",
+<<<<<<< HEAD
   5: "Soiree",
   10: "Soiree",
   12: "Soiree",
@@ -17,11 +18,20 @@ const LINE_ID_TO_COLLECTION: Record<number, string> = {
   11: "Wedding",
   13: "Wedding",
   15: "Wedding",
+=======
+  18: "Soiree",
+  6: "Wedding",
+  15: "Wedding", // Second Look
+>>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
   9: "Fionka",
 };
 
 /** Only these line ids are valid for the website catalog. */
+<<<<<<< HEAD
 export const VALID_ERP_LINE_IDS = [1, 5, 6, 9, 10, 11, 12, 13, 15, 18];
+=======
+export const VALID_ERP_LINE_IDS = [1, 6, 9, 15, 18];
+>>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
 
 export function mapLineIdToCollection(lineId: number | null | undefined): string {
   if (lineId == null) return "Unknown";

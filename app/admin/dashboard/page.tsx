@@ -1114,6 +1114,16 @@ export default function AdminDashboard() {
                             <SelectItem value="without-image">Without Images</SelectItem>
                           </SelectContent>
                         </Select>
+                        <Select value={productImageFilter} onValueChange={setProductImageFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Images" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Images</SelectItem>
+                            <SelectItem value="with-image">With Images</SelectItem>
+                            <SelectItem value="without-image">Without Images</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </CardHeader>
