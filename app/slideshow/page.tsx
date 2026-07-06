@@ -8,6 +8,7 @@ import { useProductsCache, type CachedProduct } from "@/lib/products-cache"
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const INTERVAL_MS = 3000
+const DURATION_STORAGE_KEY = "slideshow-duration-sec"
 
 const COLLECTIONS = [
   { value: "", label: "All Categories" },
@@ -52,13 +53,22 @@ function ControlPanel({
   onStart,
 }: {
   products: CachedProduct[]
-  onStart: (images: SlideshowImage[]) => void
+  onStart: (images: SlideshowImage[], intervalMs: number) => void
 }) {
   const [selectedCollection, setSelectedCollection] = useState("")
   const [selectedBranch, setSelectedBranch] = useState("")
   const [selectedDressIds, setSelectedDressIds] = useState<Set<string>>(new Set())
   const [dressSearch, setDressSearch] = useState("")
   const [error, setError] = useState("")
+  const [durationSec, setDurationSec] = useState(3)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(DURATION_STORAGE_KEY)
+    if (saved) {
+      const parsed = Number(saved)
+      if (!isNaN(parsed) && parsed > 0) setDurationSec(parsed)
+    }
+  }, [])
 
   // Candidate products after collection + branch filters (used to populate dress list)
   const filteredForList = useMemo(() => {
@@ -133,7 +143,9 @@ function ControlPanel({
       }))
     )
 
-    onStart(shuffle(images))
+    const finalDuration = Math.max(0.5, durationSec)
+    localStorage.setItem(DURATION_STORAGE_KEY, String(finalDuration))
+    onStart(shuffle(images), finalDuration * 1000)
   }
 
   return (
@@ -201,6 +213,22 @@ function ControlPanel({
                 ? "No dresses with images match the current filters."
                 : `${filteredForList.length} dress${filteredForList.length !== 1 ? "es" : ""} with images match the current filters.`}
             </p>
+
+            {/* Slide duration */}
+            <div>
+              <label className="block text-gray-400 text-xs mb-2 tracking-wide uppercase">
+                Slide Duration (seconds)
+              </label>
+              <input
+                id="slideshow-duration-input"
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={durationSec}
+                onChange={(e) => setDurationSec(Number(e.target.value) || 0.5)}
+                className="w-full sm:w-40 bg-black/40 border border-white/15 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-rose-500 transition-colors"
+              />
+            </div>
           </div>
 
           {/* ── Specific Dress Selection ── */}
@@ -326,19 +354,24 @@ function ControlPanel({
 
 function SlideshowView({
   images,
+  intervalMs,
   onBack,
 }: {
   images: SlideshowImage[]
+  intervalMs: number
   onBack: () => void
 }) {
   const [index, setIndex] = useState(0)
   const [deck, setDeck] = useState<SlideshowImage[]>(images)
   const [paused, setPaused] = useState(false)
   const [showUI, setShowUI] = useState(false)
+  const [rotation, setRotation] = useState(0)
   const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const current = deck[index]
+
+  const rotate = () => setRotation((r) => (r + 90) % 360)
 
   // Auto-advance
   useEffect(() => {
@@ -353,11 +386,11 @@ function SlideshowView({
         }
         return next
       })
-    }, INTERVAL_MS)
+    }, intervalMs)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [paused, deck])
+  }, [paused, deck, intervalMs])
 
   // Mouse / touch movement → show UI temporarily
   const revealUI = useCallback(() => {
@@ -415,15 +448,26 @@ function SlideshowView({
           transition={{ duration: 0.7, ease: "easeInOut" }}
           className="absolute inset-0 flex items-center justify-center"
         >
-          <Image
-            src={current.url}
-            alt={current.dressName}
-            fill
-            sizes="100vw"
-            className="object-contain"
-            priority
-            unoptimized
-          />
+          <div
+            className="relative transition-transform duration-300 ease-in-out"
+            style={{
+              transform: `rotate(${rotation}deg)`,
+              width: rotation % 180 === 0 ? "100%" : "100vh",
+              height: rotation % 180 === 0 ? "100%" : "100vw",
+              maxWidth: rotation % 180 === 0 ? "100%" : "100vh",
+              maxHeight: rotation % 180 === 0 ? "100%" : "100vw",
+            }}
+          >
+            <Image
+              src={current.url}
+              alt={current.dressName}
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+              unoptimized
+            />
+          </div>
           {/* Very subtle vignette */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.5)_100%)]" />
         </motion.div>
@@ -480,28 +524,42 @@ function SlideshowView({
                 {index + 1} / {deck.length}
               </span>
 
-              {/* Pause / Resume */}
-              <button
-                id="slideshow-pause-btn"
-                onClick={() => setPaused((v) => !v)}
-                className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm tracking-wide"
-              >
-                {paused ? (
-                  <>
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Resume
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                    Pause
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-5">
+                {/* Rotate */}
+                <button
+                  id="slideshow-rotate-btn"
+                  onClick={rotate}
+                  className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm tracking-wide"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M5.5 9A7 7 0 0119 12M18.5 15A7 7 0 015 12" />
+                  </svg>
+                  Rotate
+                </button>
+
+                {/* Pause / Resume */}
+                <button
+                  id="slideshow-pause-btn"
+                  onClick={() => setPaused((v) => !v)}
+                  className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm tracking-wide"
+                >
+                  {paused ? (
+                    <>
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      Resume
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                      </svg>
+                      Pause
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -550,7 +608,7 @@ function SlideshowView({
           className="h-full bg-rose-500/70"
           initial={{ width: "0%" }}
           animate={{ width: "100%" }}
-          transition={{ duration: INTERVAL_MS / 1000, ease: "linear" }}
+          transition={{ duration: intervalMs / 1000, ease: "linear" }}
         />
       </div>
     </div>
@@ -575,6 +633,7 @@ function LoadingScreen() {
 export default function SlideshowPage() {
   const { products, loading } = useProductsCache()
   const [slideshowImages, setSlideshowImages] = useState<SlideshowImage[] | null>(null)
+  const [intervalMs, setIntervalMs] = useState(INTERVAL_MS)
 
   if (loading && products.length === 0) return <LoadingScreen />
 
@@ -582,6 +641,7 @@ export default function SlideshowPage() {
     return (
       <SlideshowView
         images={slideshowImages}
+        intervalMs={intervalMs}
         onBack={() => setSlideshowImages(null)}
       />
     )
@@ -590,7 +650,10 @@ export default function SlideshowPage() {
   return (
     <ControlPanel
       products={products}
-      onStart={(imgs) => setSlideshowImages(imgs)}
+      onStart={(imgs, ms) => {
+        setIntervalMs(ms)
+        setSlideshowImages(imgs)
+      }}
     />
   )
 }
