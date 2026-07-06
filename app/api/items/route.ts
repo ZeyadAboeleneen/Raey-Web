@@ -135,7 +135,6 @@ export async function GET(request: NextRequest) {
           WHERE b2.ModelTypeID = i.ID
           ORDER BY b2.ID DESC
       ) fallback
-<<<<<<< HEAD
       OUTER APPLY (
           SELECT TOP 1 op.OP_StoreID
           FROM tb_ItemOperations op
@@ -147,9 +146,6 @@ export async function GET(request: NextRequest) {
         i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
         OR sellOp.OP_ItemID IS NOT NULL
       )
-=======
-      WHERE i.Category_id IN (${VALID_ERP_LINE_IDS.join(",")})
->>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
       AND i.Item_sellpricNow > 0
     `;
 
@@ -159,18 +155,7 @@ export async function GET(request: NextRequest) {
 
     // Optional filters
     if (collection) {
-<<<<<<< HEAD
       const catIds = collection.toLowerCase() === "wedding" ? [6, 11, 13, 15] : collection.toLowerCase() === "soiree" ? [1, 5, 10, 12, 18] : collection.toLowerCase() === "fionka" ? [9] : null;
-=======
-      const catIds =
-        collection.toLowerCase() === "wedding"
-          ? [6, 15]
-          : collection.toLowerCase() === "soiree"
-          ? [1, 18]
-          : collection.toLowerCase() === "fionka"
-          ? [9]
-          : null;
->>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
       if (catIds !== null) {
         query += ` AND i.Category_id IN (${catIds.join(",")})`;
       }

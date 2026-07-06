@@ -264,11 +264,7 @@ export async function PUT(
         name,
         price,
         image,
-<<<<<<< HEAD
         collection: mapLineIdToCollection(lineId).toLowerCase(),
-=======
-        collection: [6, 15].includes(lineId) ? "wedding" : lineId === 9 ? "fionka" : "soiree",
->>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
         isActive,
       },
       message: "Product updated successfully",

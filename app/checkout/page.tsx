@@ -320,10 +320,11 @@ export default function CheckoutPage() {
   )
   const empRemaining = Math.max(0, empSubtotal - empDepositTotal)
 
-  // Effective totals used by the summary + submit. Employees ignore discounts.
-  const effectiveTotal = isEmployee ? empSubtotal : total
+  // Effective totals used by the summary + submit.
+  const empTotal = Math.max(0, empSubtotal - discountAmount)
+  const effectiveTotal = isEmployee ? empTotal : total
   const depositAmount = isEmployee ? empDepositTotal : customerDepositAmount
-  const remainingAmount = isEmployee ? empRemaining : total - customerDepositAmount
+  const remainingAmount = isEmployee ? Math.max(0, empTotal - empDepositTotal) : total - customerDepositAmount
 
 
   const handleInputChange = (field: string, value: string) => {

@@ -490,7 +490,7 @@ export default function AdminDashboard() {
         min_purchase: discountForm.minOrderAmount ? Number.parseFloat(discountForm.minOrderAmount) : undefined,
         usage_limit: discountForm.maxUses ? Number.parseInt(discountForm.maxUses) : undefined,
         valid_until: discountForm.expiresAt || undefined,
-        isActive: editingDiscount.isActive,
+        is_active: editingDiscount.isActive,
         description: discountForm.description || undefined,
       }
 
@@ -578,7 +578,7 @@ export default function AdminDashboard() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          isActive: !code.isActive,
+          is_active: !code.isActive,
         }),
       })
 

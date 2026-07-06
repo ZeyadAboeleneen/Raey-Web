@@ -21,7 +21,6 @@ import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
 import { MetaPixel, MetaPixelNoscript } from "@/components/meta-pixel"
 import { initOutboxWorker } from "@/lib/worker-init"
-import { MetaPixel } from "@/components/meta-pixel"
 
 // Start background outbox worker (skip during build)
 if (process.env.NEXT_PHASE !== 'phase-production-build') {
@@ -121,10 +120,7 @@ export default async function RootLayout({
       <body className="font-sans">
         <GoogleAnalytics gaId="G-F487HSDE42" />
         <MetaPixel />
-<<<<<<< HEAD
         <MetaPixelNoscript />
-=======
->>>>>>> 5270b62d89cf27b9e6962b1b45f56ac2232df669
         <LocaleProvider>
           <HtmlLangWrapper>
             <AuthProvider>

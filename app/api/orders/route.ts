@@ -278,6 +278,13 @@ export async function POST(request: NextRequest) {
 
       const order = await tx.order.create({ data: orderData })
 
+      if (discountCode) {
+        await tx.discountCode.updateMany({
+          where: { code: discountCode },
+          data: { usageCount: { increment: 1 } },
+        })
+      }
+
       // 3. Queue Verification Job if pending
       if (initialPaymentStatus === "pending" && finalPaymentScreenshot) {
         await OutboxService.enqueue(
