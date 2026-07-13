@@ -463,7 +463,7 @@ function SlideshowView({
               alt={current.dressName}
               fill
               sizes="100vw"
-              className="object-contain"
+              className={rotation % 180 === 0 ? "object-contain" : "object-cover"}
               priority
               unoptimized
             />
