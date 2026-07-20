@@ -30,6 +30,7 @@ import {
   LogOut,
   X,
   Settings,
+  MessageCircle,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { Navigation } from "@/components/navigation"
@@ -956,6 +957,15 @@ export default function AdminDashboard() {
                     <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
                       <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       Bulk Upload
+                    </Button>
+                  </Link>
+                )}
+
+                {isAdmin && (
+                  <Link href="/admin/whatsapp-marketing" prefetch={true}>
+                    <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
+                      <MessageCircle className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      WhatsApp Marketing
                     </Button>
                   </Link>
                 )}
