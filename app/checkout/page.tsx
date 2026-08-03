@@ -494,12 +494,10 @@ export default function CheckoutPage() {
       return false
     }
 
-    // Customers must upload a payment screenshot. Employees place orders
-    // without any payment, so this proof is not required for them.
-    if (!isEmployee && !paymentScreenshot) {
-      setError("Please upload a payment screenshot as proof of payment")
-      return false
-    }
+    // No screenshot is required from anyone any more: customers pay online
+    // through Fawry, and staff orders take no payment at checkout. The manual
+    // transfer methods stay available on staff-placed orders, where the upload
+    // is optional supporting evidence rather than the proof of payment.
 
     return true
   }
@@ -562,12 +560,17 @@ export default function CheckoutPage() {
             pickupDate: item.rentStart
           })) : null
         },
-        paymentMethod: formData.paymentMethod,
+        // Customers always pay through Fawry. Staff pick from the full list,
+        // Fawry included.
+        paymentMethod: isEmployee ? formData.paymentMethod : "fawry",
+        // Staff orders are stored server-side as paymentMethod "employee"
+        // (except Fawry ones), so keep the method actually chosen on the record.
+        ...(isEmployee ? { paymentDetails: { staffSelectedMethod: formData.paymentMethod } } : {}),
         // paymentScreenshot: paymentScreenshot, // Send in background sync to keep checkout instant
         discountCode: appliedDiscount?.code,
-        discountAmount: appliedDiscount?.discountAmount,
-        depositAmount,
-        remainingAmount,
+        // total / discountAmount / depositAmount / remainingAmount are deliberately
+        // NOT sent: the server recomputes every one of them from ERP prices and
+        // the discount table. Anything we put here would be ignored.
       }
 
       const token = authState.token
@@ -593,9 +596,42 @@ export default function CheckoutPage() {
           localStorage.setItem(`pending_screenshot_${orderId}`, paymentScreenshot)
         }
 
-        // Clear cart
+        // ── Hand off to Fawry's hosted checkout ───────────────────────────
+        // Driven by the chosen method, not by the role: customers always pay
+        // this way, and staff do too when they pick Fawry.
+        // The cart is NOT cleared yet — if the payment is abandoned the
+        // customer still has it. It clears on the success page once the order
+        // is confirmed placed.
+        if (!isEmployee || formData.paymentMethod === "fawry") {
+          const payResponse = await fetch("/api/payments/fawry/init", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ orderId }),
+          })
+
+          if (payResponse.ok) {
+            const { redirectUrl } = await payResponse.json()
+            if (redirectUrl) {
+              window.location.href = redirectUrl
+              return
+            }
+          }
+
+          // The order exists but we couldn't start the payment. Send them to
+          // the success page, which shows the unpaid state and a retry button —
+          // never silently imply the order is paid.
+          const payError = await payResponse.json().catch(() => ({}))
+          console.error("Fawry init failed:", payError)
+          router.push(`/checkout/success?orderId=${orderId}&payment=unstarted`)
+          return
+        }
+
+        // Staff orders on the manual methods take no payment here — straight
+        // to confirmation.
         cartDispatch({ type: "CLEAR_CART" })
-        // Redirect to success page
         router.push(`/checkout/success?orderId=${orderId}`)
       } else {
         const errorData = await response.json()
@@ -1096,8 +1132,48 @@ export default function CheckoutPage() {
                   </motion.div>
                 )}
 
-                {/* Payment Information (customers only) */}
+                {/* Payment — customers pay online through Fawry */}
                 {!isEmployee && (
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, delay: 0.1 }}
+                >
+                  <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <CardHeader className="pb-4">
+                      <CardTitle className={`flex items-center text-lg sm:text-xl ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                        <CreditCard className={`h-5 w-5 text-rose-600 ${settings.language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("paymentMethod")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+                        <div className={`flex items-center gap-3 ${settings.language === "ar" ? "flex-row-reverse text-right" : ""}`}>
+                          <Wallet className="h-6 w-6 text-rose-600 shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm sm:text-base">
+                              {settings.language === "ar" ? "الدفع الإلكتروني عبر فوري" : "Secure online payment with Fawry"}
+                            </p>
+                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                              {settings.language === "ar"
+                                ? "بطاقة بنكية أو محفظة إلكترونية. سيتم تحويلك إلى صفحة الدفع الآمنة الخاصة بفوري لإتمام الدفع."
+                                : "Card or mobile wallet. You'll be taken to Fawry's secure payment page to complete your order."}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">
+                          {settings.language === "ar"
+                            ? "لن يتم تأكيد طلبك إلا بعد تأكيد فوري لعملية الدفع."
+                            : "Your order is confirmed only once Fawry confirms the payment."}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                )}
+
+                {/* Payment Information (staff-placed orders only) */}
+                {isEmployee && (
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1138,6 +1214,44 @@ export default function CheckoutPage() {
                         onValueChange={(value) => handleInputChange("paymentMethod", value)}
                         className="space-y-3"
                       >
+                        {/* Fawry — online payment. Unlike the manual methods
+                            below, a Fawry staff order is NOT auto-approved:
+                            it goes through the same hosted checkout and is
+                            confirmed only by Fawry's signed callback. */}
+                        <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "fawry" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
+                          <div className="flex items-center space-x-3 p-4">
+                            <RadioGroupItem value="fawry" id="fawry" className="text-rose-600" />
+                            <Label htmlFor="fawry" className="flex-1 cursor-pointer">
+                              <div className={`flex items-center justify-between ${settings.language === "ar" ? "flex-row-reverse" : ""}`}>
+                                <div>
+                                  <p className="font-medium text-sm sm:text-base">Fawry</p>
+                                  <p className="text-xs sm:text-sm text-gray-600">
+                                    Card or wallet — customer pays online now
+                                  </p>
+                                </div>
+                                <Wallet className="h-5 w-5 text-rose-400" />
+                              </div>
+                            </Label>
+                          </div>
+                          {formData.paymentMethod === "fawry" && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="px-4 pb-4 border-t border-rose-200"
+                            >
+                              <div className="pt-3 text-xs sm:text-sm text-gray-600 space-y-1">
+                                <p>You'll be taken to Fawry's secure payment page to complete the payment.</p>
+                                <p className="text-amber-700">
+                                  This order stays unpaid until Fawry confirms it — the booking is
+                                  created then, not now.
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+
                         {/* Instapay */}
                         <div className={`border rounded-lg transition-all duration-300 ${formData.paymentMethod === "instapay" ? "border-rose-400 bg-rose-50/50 shadow-md" : "border-gray-200 hover:bg-gray-50 hover:border-rose-300"}`}>
                           <div className="flex items-center space-x-3 p-4">
@@ -1276,9 +1390,9 @@ export default function CheckoutPage() {
                       <div className="mt-6 pt-4 border-t border-gray-200">
                         <Label className="text-sm font-semibold text-gray-800 flex items-center gap-2 mb-3">
                           <Upload className="h-4 w-4 text-rose-600" />
-                          Upload Payment Screenshot *
+                          Upload Payment Screenshot
                         </Label>
-                        <p className="text-xs text-gray-500 mb-3">Upload a screenshot of your payment confirmation as proof.</p>
+                        <p className="text-xs text-gray-500 mb-3">Optional — attach a screenshot of the customer's transfer for the record.</p>
 
                         {!paymentScreenshot ? (
                           <label
@@ -1428,11 +1542,18 @@ export default function CheckoutPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Place this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              You're placing an employee order with no payment.
+              {formData.paymentMethod === "fawry"
+                ? "You're placing an order to be paid online through Fawry."
+                : "You're placing an employee order with no payment."}
               {" "}Total <span className="font-semibold">{formatPrice(effectiveTotal)}</span>,
               deposit <span className="font-semibold">{formatPrice(depositAmount)}</span>,
               remaining <span className="font-semibold">{formatPrice(remainingAmount)}</span>.
-              {authState.user?.cashName ? <> The deposit will be recorded to <span className="font-semibold">{authState.user.cashName}</span>.</> : null}
+              {formData.paymentMethod === "fawry" ? (
+                <> You'll be taken to Fawry's payment page next. The booking is created only
+                  once Fawry confirms the payment — not now.</>
+              ) : authState.user?.cashName ? (
+                <> The deposit will be recorded to <span className="font-semibold">{authState.user.cashName}</span>.</>
+              ) : null}
               {" "}Are you sure?
             </AlertDialogDescription>
           </AlertDialogHeader>

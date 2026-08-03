@@ -400,13 +400,16 @@ export function GiftPackageSelector({
               })()}
             </div>
 
+            {/* Add to cart for everyone — see ProductDetailPageClient. */}
             <Button
-              onClick={handleWhatsAppOrder}
-              className="flex items-center justify-center bg-[#25D366] hover:bg-[#1da851] text-white rounded-full px-4 sm:px-6 py-3 sm:py-5 w-full sm:w-auto text-sm sm:text-base"
-              disabled={!isAllSizesSelected()}
+              onClick={addToCart}
+              className="flex items-center justify-center bg-black hover:bg-gray-800 text-white rounded-full px-4 sm:px-6 py-3 sm:py-5 w-full sm:w-auto text-sm sm:text-base"
+              disabled={!isAllSizesSelected() || product.isOutOfStock}
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              {t("orderViaWhatsApp" as TranslationKey)}
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {product.isOutOfStock
+                ? t("outOfStockLabel" as TranslationKey)
+                : t("addToCart" as TranslationKey)}
             </Button>
           </div>
         </div>

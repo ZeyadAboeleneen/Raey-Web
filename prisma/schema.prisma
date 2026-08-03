@@ -7,6 +7,8 @@ enum PaymentStatus {
   approved
   pending_review
   rejected
+  expired
+  refunded
 }
 
 datasource db {

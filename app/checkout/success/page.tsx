@@ -6,16 +6,28 @@ import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Package, Mail, Instagram, Phone } from "lucide-react"
+import { CheckCircle, Package, Mail, Instagram, Phone, AlertCircle, Loader2 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation, TranslationKey } from "@/lib/translations"
+import { useCart } from "@/lib/cart-context"
 
 function CheckoutSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const orderId = searchParams?.get("orderId")
+  const { dispatch: cartDispatch } = useCart()
   const [orderDetails, setOrderDetails] = useState<any>(null)
+  const [retryingPayment, setRetryingPayment] = useState(false)
+  const [pollExhausted, setPollExhausted] = useState(false)
+
+  // Fawry appends its result to the return URL. These params are UNSIGNED and a
+  // customer can edit them, so they are used for one thing only: showing a
+  // *more pessimistic* screen sooner. They can never mark an order paid — that
+  // comes exclusively from our own record, set by the signed callback.
+  // Fawry uses 200 for success; anything else (e.g. 9949) is a failure.
+  const returnStatusCode = searchParams?.get("statusCode")
+  const returnSaysFailed = Boolean(returnStatusCode && returnStatusCode !== "200")
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
 
@@ -27,6 +39,9 @@ function CheckoutSuccessContent() {
         .then(data => {
           if (data && !data.error) {
             setOrderDetails(data)
+            // The cart only clears once the order is confirmed to exist, so an
+            // abandoned Fawry payment leaves the customer's cart intact.
+            cartDispatch({ type: "CLEAR_CART" })
           } else {
             // Fallback for demo or if fetch fails
             setOrderDetails({
@@ -62,13 +77,121 @@ function CheckoutSuccessContent() {
     }
   }, [orderId])
 
+  // Fawry's callback usually lands within a few seconds of the customer being
+  // redirected back, but the redirect can beat it. Poll our own record — never
+  // the URL parameters — until it settles.
+  const paymentStatus = orderDetails?.paymentStatus
+  const isFawryPending = orderDetails?.paymentMethod === "fawry" && paymentStatus === "pending"
+
+  // The customer is back in front of us on a still-unpaid Fawry order. Don't
+  // wait for a callback that may never come (3DS errored, tab closed, back
+  // button) — ask Fawry now and settle the order either way.
+  useEffect(() => {
+    if (!orderId || !isFawryPending) return
+    let cancelled = false
+
+    fetch("/api/payments/fawry/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled || !data?.changed) return
+        // Re-read the order so the screen reflects the settled state.
+        return fetch(`/api/orders/public/${orderId}`, { cache: "no-store" })
+          .then(r => r.json())
+          .then(fresh => { if (!cancelled && fresh && !fresh.error) setOrderDetails(fresh) })
+      })
+      .catch(e => console.error("Fawry sync failed:", e))
+
+    return () => { cancelled = true }
+  }, [orderId, isFawryPending])
+
+  useEffect(() => {
+    if (!orderId || !isFawryPending) return
+
+    setPollExhausted(false)
+    let attempts = 0
+    const timer = setInterval(async () => {
+      attempts += 1
+      if (attempts > 10) {
+        clearInterval(timer)
+        // Stop claiming "confirming" forever. A payment that never confirms is
+        // an unresolved payment, and the page has to say so.
+        setPollExhausted(true)
+        return
+      }
+      try {
+        const res = await fetch(`/api/orders/public/${orderId}`, { cache: "no-store" })
+        const data = await res.json()
+        if (data && !data.error) {
+          setOrderDetails(data)
+          if (data.paymentStatus !== "pending") clearInterval(timer)
+        }
+      } catch {
+        /* keep polling */
+      }
+    }, 3000)
+
+    return () => clearInterval(timer)
+  }, [orderId, isFawryPending])
+
+  const retryPayment = async () => {
+    if (!orderId) return
+    setRetryingPayment(true)
+    try {
+      const res = await fetch("/api/payments/fawry/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      })
+      const data = await res.json()
+      if (res.ok && data.redirectUrl) {
+        window.location.href = data.redirectUrl
+        return
+      }
+    } catch (e) {
+      console.error("Retry payment failed:", e)
+    }
+    setRetryingPayment(false)
+  }
+
   const isSaleOnly = orderDetails?.items?.every((item: any) => 
     item.branch === "sell-dresses" || item.type === "buy"
   )
 
-  const hasRental = orderDetails?.items?.some((item: any) => 
+  const hasRental = orderDetails?.items?.some((item: any) =>
     item.type === "rent" || (item.branch && item.branch !== "sell-dresses")
   )
+
+  const isArabic = settings.language === "ar"
+
+  // Precedence matters. Our own record always wins; the URL can only make the
+  // screen more cautious, never more optimistic.
+  //   approved            → confirmed
+  //   rejected / expired  → failed
+  //   pending + failure hint from Fawry's return URL → failed
+  //   pending + polling gave up → unresolved (never a green tick)
+  //   pending, still polling → "confirming"
+  // Until the order has loaded we know nothing, and "nothing" must never render
+  // as a green tick — that produced a real flash of "Order Confirmed!" before
+  // the failure state appeared.
+  const orderLoaded = Boolean(orderDetails)
+  const isFawryOrder = orderDetails?.paymentMethod === "fawry"
+  const isPaymentApproved = orderLoaded && orderDetails?.paymentStatus === "approved"
+  const isPaymentFailed =
+    !isPaymentApproved &&
+    // Fawry told the browser it failed — trust that immediately, even before
+    // the order loads. It can only ever make the screen more pessimistic.
+    (returnSaysFailed ||
+      (isFawryOrder && ["rejected", "expired"].includes(orderDetails?.paymentStatus)))
+  const isPaymentUnresolved =
+    isFawryOrder && !isPaymentApproved && !isPaymentFailed && isFawryPending && pollExhausted
+  const isPaymentPending =
+    !isPaymentApproved && !isPaymentFailed && orderLoaded && isFawryPending && !pollExhausted
+  // Neutral state while the order is still being fetched — no verdict either way.
+  const isLoadingOrder = !orderLoaded && !isPaymentFailed
 
   return (
     <div className="min-h-screen bg-white">
@@ -83,12 +206,79 @@ function CheckoutSuccessContent() {
               transition={{ duration: 0.8 }}
               className="mb-8"
             >
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-              <h1 className="text-3xl font-light tracking-wider mb-4">{t("orderConfirmed" as TranslationKey)}</h1>
-              <p className="text-gray-600 text-lg mb-4">
-                {t("thankYouPurchase" as TranslationKey)}
-              </p>
-              
+              {/* A green tick is shown only when OUR record says approved, which
+                  only the signed Fawry callback can set. The redirect's status
+                  params can bring the failure screen forward, never a success. */}
+              {isLoadingOrder ? (
+                <>
+                  <Loader2 className="h-16 w-16 text-gray-300 mx-auto mb-6 animate-spin" />
+                  <h1 className="text-3xl font-light tracking-wider mb-4">
+                    {isArabic ? "جارٍ تحميل طلبك" : "Loading your order"}
+                  </h1>
+                </>
+              ) : isPaymentFailed ? (
+                <>
+                  <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-6" />
+                  <h1 className="text-3xl font-light tracking-wider mb-4">
+                    {isArabic ? "لم تكتمل عملية الدفع" : "Payment not completed"}
+                  </h1>
+                  <p className="text-gray-600 text-lg mb-4">
+                    {isArabic
+                      ? "تم حفظ طلبك ولكن لم يتم استلام الدفع. يمكنك المحاولة مرة أخرى."
+                      : "Your order is saved, but we haven't received the payment. You can try again."}
+                  </p>
+                  <Button
+                    onClick={retryPayment}
+                    disabled={retryingPayment}
+                    className="bg-black text-white hover:bg-gray-800 rounded-full px-8"
+                  >
+                    {retryingPayment
+                      ? (isArabic ? "جارٍ التحويل..." : "Redirecting…")
+                      : (isArabic ? "إعادة محاولة الدفع" : "Retry payment")}
+                  </Button>
+                </>
+              ) : isPaymentUnresolved ? (
+                <>
+                  <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-6" />
+                  <h1 className="text-3xl font-light tracking-wider mb-4">
+                    {isArabic ? "لم يتم تأكيد الدفع بعد" : "Payment not confirmed"}
+                  </h1>
+                  <p className="text-gray-600 text-lg mb-4">
+                    {isArabic
+                      ? "لم نستلم تأكيداً من فوري لهذا الطلب. إذا تم خصم المبلغ فسيتم تأكيد طلبك تلقائياً، وإلا يمكنك إعادة المحاولة أو التواصل معنا."
+                      : "We haven't received confirmation from Fawry for this order. If you were charged, it will be confirmed automatically — otherwise you can try again or contact us."}
+                  </p>
+                  <Button
+                    onClick={retryPayment}
+                    disabled={retryingPayment}
+                    className="bg-black text-white hover:bg-gray-800 rounded-full px-8"
+                  >
+                    {retryingPayment
+                      ? (isArabic ? "جارٍ التحويل..." : "Redirecting…")
+                      : (isArabic ? "إعادة محاولة الدفع" : "Retry payment")}
+                  </Button>
+                </>
+              ) : isPaymentPending ? (
+                <>
+                  <Loader2 className="h-16 w-16 text-rose-400 mx-auto mb-6 animate-spin" />
+                  <h1 className="text-3xl font-light tracking-wider mb-4">
+                    {isArabic ? "جارٍ تأكيد الدفع" : "Confirming your payment"}
+                  </h1>
+                  <p className="text-gray-600 text-lg mb-4">
+                    {isArabic
+                      ? "تم استلام طلبك. ننتظر تأكيد فوري لعملية الدفع — قد يستغرق ذلك لحظات."
+                      : "We've received your order and are waiting for Fawry to confirm the payment. This usually takes a few moments."}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
+                  <h1 className="text-3xl font-light tracking-wider mb-4">{t("orderConfirmed" as TranslationKey)}</h1>
+                  <p className="text-gray-600 text-lg mb-4">
+                    {t("thankYouPurchase" as TranslationKey)}
+                  </p>
+                </>
+              )}
             </motion.div>
 
             {orderDetails && (

@@ -3,6 +3,10 @@ import { getMssqlPool, sql } from "@/lib/mssql"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
 import { getImageUploadService } from "@/lib/image-upload-service"
 import type { ErpEmployee } from "@/lib/erp-users"
+import { mapBranchSlugToBranchId } from "@/lib/branch-map"
+
+/** Main branch (Co-Branches ID 1) — used when an item's branch slug can't be mapped. */
+const ERP_FALLBACK_BRANCH_ID = 1
 
 // GL accounts used by the ERP when it records a reservation deposit
 // ("عربون اذن حجز"): debit the cash drawer's GL account, credit the
@@ -87,7 +91,12 @@ export async function syncOrderToErp(
 
     for (const item of items) {
       if (item.type === "rent" && item.rentStart && item.rentEnd) {
-        const branchId = 10 // All web orders go to BranchID 10
+        // BranchID must be a real Co-Branches row — the Booking table has an FK
+        // (FK_Booking_Co-Branches) on it. Valid ids are 1, 3, 5, 7, 8, 9; there
+        // is no branch 10, so the previous hardcoded value made every customer
+        // booking insert fail. Derive it from the item's branch instead, and
+        // fall back to the main branch when the slug can't be mapped.
+        const branchId = mapBranchSlugToBranchId(item.branch) ?? ERP_FALLBACK_BRANCH_ID
         const modelTypeId = parseInt(item.productId, 10)
 
         if (isNaN(modelTypeId)) continue

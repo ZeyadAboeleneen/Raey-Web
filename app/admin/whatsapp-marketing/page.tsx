@@ -32,8 +32,14 @@ import * as XLSX from "xlsx"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
+interface Contact {
+  phone: string
+  name?: string
+}
+
 interface SendResult {
   phone: string
+  name?: string
   success: boolean
   error?: string
 }
@@ -52,18 +58,36 @@ function extractPhoneColumn(row: Record<string, any>): string | null {
   return val !== undefined && val !== null && String(val).trim() !== "" ? String(val).trim() : null
 }
 
+// Any column that looks like it holds a customer name
+function extractNameColumn(row: Record<string, any>): string | null {
+  const keys = Object.keys(row)
+  const nameKey = keys.find((k) => /^name$|customer|client|اسم|عميل/i.test(k))
+  if (!nameKey) return null
+  const val = row[nameKey]
+  return val !== undefined && val !== null && String(val).trim() !== "" ? String(val).trim() : null
+}
+
+function extractContact(row: Record<string, any>): Contact | null {
+  const phone = extractPhoneColumn(row)
+  if (!phone) return null
+  const name = extractNameColumn(row)
+  return { phone, name: name || undefined }
+}
+
 export default function WhatsAppMarketingPage() {
   const router = useRouter()
   const { state: authState } = useAuth()
   const isAdmin = authState.user?.role === "admin"
 
   const [message, setMessage] = useState("")
+  const [templateName, setTemplateName] = useState("")
+  const [templateLanguage, setTemplateLanguage] = useState("ar")
   const [token, setToken] = useState("")
   const [phoneNumberId, setPhoneNumberId] = useState("")
   const [credsSaved, setCredsSaved] = useState(false)
   const [savingCreds, setSavingCreds] = useState(false)
   const [dataFile, setDataFile] = useState<File | null>(null)
-  const [phones, setPhones] = useState<string[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [report, setReport] = useState<SendReport | null>(null)
@@ -89,8 +113,16 @@ export default function WhatsAppMarketingPage() {
   }, [isAdmin])
 
   const handleSaveCredentials = async () => {
-    if (!token.trim() || !phoneNumberId.trim()) {
-      toast.error("أدخل Token ورقم الهاتف (Phone Number ID) الخاصين بواتساب")
+    if (!token.trim() && !phoneNumberId.trim()) {
+      toast.error("أدخل Token أو رقم الهاتف (Phone Number ID) على الأقل")
+      return
+    }
+    if (!token.trim() && !credsSaved) {
+      toast.error("أدخل الـ Access Token")
+      return
+    }
+    if (!phoneNumberId.trim() && !credsSaved) {
+      toast.error("أدخل الـ Phone Number ID")
       return
     }
     setSavingCreds(true)
@@ -139,12 +171,15 @@ export default function WhatsAppMarketingPage() {
       const wsName = wb.SheetNames[0]
       if (!wsName) throw new Error("لا توجد بيانات في الملف")
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wsName], { defval: "" }) as Record<string, any>[]
-      const extracted = rows.map(extractPhoneColumn).filter((p): p is string => !!p)
+      const extracted = rows.map(extractContact).filter((c): c is Contact => !!c)
       if (extracted.length === 0) throw new Error("لم يتم العثور على أرقام هواتف في الملف")
       setDataFile(file)
-      setPhones(extracted)
+      setContacts(extracted)
       setError("")
-      toast.success(`تم العثور على ${extracted.length} رقم`)
+      const withNames = extracted.filter((c) => c.name).length
+      toast.success(
+        withNames > 0 ? `تم العثور على ${extracted.length} رقم (${withNames} منهم بالاسم)` : `تم العثور على ${extracted.length} رقم`
+      )
     } catch (err: any) {
       setError(err.message || "فشل قراءة الملف")
       toast.error(err.message || "فشل قراءة الملف")
@@ -158,11 +193,15 @@ export default function WhatsAppMarketingPage() {
   }
 
   const handleSend = async () => {
+    if (!templateName.trim()) {
+      toast.error("اكتب اسم الـ Template المعتمد من ميتا أولاً")
+      return
+    }
     if (!message.trim()) {
       toast.error("اكتب نص الرسالة أولاً")
       return
     }
-    if (phones.length === 0) {
+    if (contacts.length === 0) {
       toast.error("ارفع ملف إكسيل يحتوي على أرقام العملاء")
       return
     }
@@ -182,7 +221,12 @@ export default function WhatsAppMarketingPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getAuthToken()}`,
         },
-        body: JSON.stringify({ message, phones }),
+        body: JSON.stringify({
+          message,
+          contacts,
+          templateName: templateName.trim(),
+          templateLanguage: templateLanguage.trim() || "ar",
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -202,7 +246,7 @@ export default function WhatsAppMarketingPage() {
 
   const handleReset = () => {
     setDataFile(null)
-    setPhones([])
+    setContacts([])
     setReport(null)
     setError("")
   }
@@ -221,7 +265,8 @@ export default function WhatsAppMarketingPage() {
   if (!authState.isAuthenticated || !isAdmin) return null
 
   const messageLen = message.length
-  const readyToSend = phones.length > 0 && message.trim() && credsSaved
+  const namedCount = contacts.filter((c) => c.name).length
+  const readyToSend = contacts.length > 0 && message.trim() && templateName.trim() && credsSaved
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -323,6 +368,46 @@ export default function WhatsAppMarketingPage() {
             </Card>
           </motion.div>
 
+          {/* Template settings */}
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileSpreadsheet className="h-4.5 w-4.5" /> إعدادات الـ Template
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="templateName" className="text-sm text-gray-600">اسم الـ Template المعتمد</Label>
+                    <Input
+                      id="templateName"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="مثال: new_offer"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="templateLanguage" className="text-sm text-gray-600">لغة الـ Template</Label>
+                    <Input
+                      id="templateLanguage"
+                      value={templateLanguage}
+                      onChange={(e) => setTemplateLanguage(e.target.value)}
+                      placeholder="ar"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">
+                  الـ Template لازم يكون متغيرين في نص الرسالة: <code className="bg-gray-100 px-1 rounded">{"{{1}}"}</code> لاسم
+                  العميل (يُملأ تلقائيًا من عمود الاسم في ملف الإكسيل) و <code className="bg-gray-100 px-1 rounded">{"{{2}}"}</code> لنص
+                  الرسالة اللي هتكتبه تحت.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           <div className="grid md:grid-cols-2 gap-6 mb-6">
             {/* Message */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -330,7 +415,7 @@ export default function WhatsAppMarketingPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <Sparkles className="h-4.5 w-4.5" /> نص الرسالة
+                      <Sparkles className="h-4.5 w-4.5" /> نص الرسالة ({"{{2}}"})
                     </span>
                     <span className={`text-xs font-normal ${messageLen > 1000 ? "text-red-500" : "text-gray-400"}`}>
                       {messageLen} حرف
@@ -371,7 +456,8 @@ export default function WhatsAppMarketingPage() {
                         <CheckCircle2 className="h-9 w-9 text-green-500" />
                         <p className="font-medium text-green-700 text-sm break-all px-2">{dataFile.name}</p>
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100 gap-1 font-normal">
-                          <Users className="h-3 w-3" /> {phones.length} رقم هاتف
+                          <Users className="h-3 w-3" /> {contacts.length} رقم هاتف
+                          {namedCount > 0 && ` (${namedCount} بالاسم)`}
                         </Badge>
                         <button
                           onClick={(e) => {
@@ -387,7 +473,7 @@ export default function WhatsAppMarketingPage() {
                       <div className="flex flex-col items-center gap-3">
                         <FileSpreadsheet className="h-10 w-10 text-gray-400" />
                         <p className="font-medium text-gray-700 text-sm">اسحب ملف Excel/CSV هنا أو اضغط للاختيار</p>
-                        <p className="text-xs text-gray-400">.xlsx, .xls, .csv — يحتوي على عمود أرقام الهواتف</p>
+                        <p className="text-xs text-gray-400">.xlsx, .xls, .csv — يحتوي على عمود أرقام الهواتف (وعمود الاسم اختياري)</p>
                       </div>
                     )}
                   </div>
@@ -417,14 +503,20 @@ export default function WhatsAppMarketingPage() {
             <div className="text-sm text-gray-500">
               {readyToSend ? (
                 <span className="flex items-center gap-1.5 text-green-700">
-                  <CheckCircle2 className="h-4 w-4" /> جاهز للإرسال إلى {phones.length} عميل
+                  <CheckCircle2 className="h-4 w-4" /> جاهز للإرسال إلى {contacts.length} عميل
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  أكمل الخطوات: {!credsSaved && "إعدادات واتساب"} {!credsSaved && phones.length === 0 && "، "}
-                  {phones.length === 0 && "ملف العملاء"} {(phones.length === 0 || !credsSaved) && !message.trim() && "، "}
-                  {!message.trim() && "نص الرسالة"}
+                  أكمل الخطوات:{" "}
+                  {[
+                    !credsSaved && "إعدادات واتساب",
+                    !templateName.trim() && "اسم الـ Template",
+                    contacts.length === 0 && "ملف العملاء",
+                    !message.trim() && "نص الرسالة",
+                  ]
+                    .filter(Boolean)
+                    .join("، ")}
                 </span>
               )}
             </div>
@@ -439,7 +531,7 @@ export default function WhatsAppMarketingPage() {
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" /> إرسال إلى {phones.length} عميل
+                  <Send className="h-4 w-4" /> إرسال إلى {contacts.length} عميل
                 </>
               )}
             </Button>
@@ -499,6 +591,7 @@ export default function WhatsAppMarketingPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b bg-red-50">
+                              <th className="text-left p-3 font-medium text-red-700">الاسم</th>
                               <th className="text-left p-3 font-medium text-red-700">الرقم</th>
                               <th className="text-left p-3 font-medium text-red-700">الحالة</th>
                             </tr>
@@ -508,6 +601,7 @@ export default function WhatsAppMarketingPage() {
                               .filter((r) => !r.success)
                               .map((r, i) => (
                                 <tr key={i} className="border-b last:border-0">
+                                  <td className="p-3 text-gray-600">{r.name || "—"}</td>
                                   <td className="p-3 font-mono text-gray-600">{r.phone}</td>
                                   <td className="p-3 text-red-600 flex items-center gap-1">
                                     <XCircle className="h-3 w-3 flex-shrink-0" /> {r.error}

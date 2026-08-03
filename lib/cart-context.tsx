@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from "react"
 import { useAuth } from "@/lib/auth-context"
 
 interface CustomMeasurements {
@@ -426,8 +426,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return GUEST_CART_KEY
   }
 
+  // Guards the save effect against writing state that predates a load.
+  //
+  // Both effects run in the same commit. On mount the load effect dispatches
+  // LOAD_CART, but React hasn't applied it yet when the save effect runs — so
+  // the save effect would see `items: []` and persist an empty cart over the
+  // real one. It normally self-corrects on the next render, but if the page is
+  // reloaded or navigated inside that window the cart is lost for good.
+  //
+  // The same window opens on sign-in: the save effect can run with the guest
+  // items but the new user key, overwriting the merge the load effect just did.
+  //
+  // A ref (not state) is required because it has to be readable synchronously
+  // within the very commit that schedules the load.
+  const canPersistRef = useRef(false)
+
   // Load cart from localStorage on mount and when user changes
   useEffect(() => {
+    // Block persistence until the loaded items are actually in state.
+    canPersistRef.current = false
+
     const loadCart = () => {
       try {
         if (authState.isAuthenticated && authState.user?.id) {
@@ -465,8 +483,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     loadCart()
   }, [authState.isAuthenticated, authState.user?.id])
 
-  // Save cart to localStorage whenever items change
+  // Save cart to localStorage whenever items change.
+  //
+  // Skips exactly one run after each load (see canPersistRef above): that run
+  // is the one holding pre-load state. The next commit — carrying the loaded
+  // items — persists normally, as does every subsequent change.
   useEffect(() => {
+    if (!canPersistRef.current) {
+      canPersistRef.current = true
+      return
+    }
     const cartKey = getCartKey()
     saveCartToStorage(cartKey, state.items)
   }, [state.items, authState.isAuthenticated, authState.user?.id])

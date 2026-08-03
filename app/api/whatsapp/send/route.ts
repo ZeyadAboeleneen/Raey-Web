@@ -5,8 +5,14 @@ import { decryptSecret } from "@/lib/whatsapp-crypto"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
+interface Contact {
+  phone: string
+  name?: string
+}
+
 interface SendResult {
   phone: string
+  name?: string
   success: boolean
   error?: string
 }
@@ -36,16 +42,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { message, phones } = body as {
+  const { message, contacts, templateName, templateLanguage } = body as {
     message?: string
-    phones?: string[]
+    contacts?: Contact[]
+    templateName?: string
+    templateLanguage?: string
   }
 
   if (!message || !message.trim()) {
     return NextResponse.json({ error: "Message text is required" }, { status: 400 })
   }
-  if (!Array.isArray(phones) || phones.length === 0) {
-    return NextResponse.json({ error: "No phone numbers provided" }, { status: 400 })
+  if (!Array.isArray(contacts) || contacts.length === 0) {
+    return NextResponse.json({ error: "No contacts provided" }, { status: 400 })
+  }
+  if (!templateName || !templateName.trim()) {
+    return NextResponse.json({ error: "Template name is required" }, { status: 400 })
   }
 
   const encToken = request.cookies.get("wa_token")?.value
@@ -66,15 +77,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "بيانات واتساب المحفوظة غير صالحة، من فضلك أدخلها من جديد." }, { status: 400 })
   }
 
-  const normalized = phones
-    .map((p) => ({ original: p, normalized: normalizeEgyptPhone(p) }))
-    .filter((p) => p.normalized !== null) as { original: string; normalized: string }[]
+  const normalized = contacts
+    .map((c) => ({ name: c.name?.trim() || "عميلنا العزيز", normalized: normalizeEgyptPhone(c.phone) }))
+    .filter((c) => c.normalized !== null) as { name: string; normalized: string }[]
 
-  const invalid = phones.length - normalized.length
+  const invalid = contacts.length - normalized.length
 
   const results: SendResult[] = []
+  const lang = templateLanguage?.trim() || "ar"
 
-  for (const { normalized: to } of normalized) {
+  for (const { name, normalized: to } of normalized) {
     try {
       const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
         method: "POST",
@@ -85,23 +97,36 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           messaging_product: "whatsapp",
           to,
-          type: "text",
-          text: { body: message },
+          type: "template",
+          template: {
+            name: templateName.trim(),
+            language: { code: lang },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: name },
+                  { type: "text", text: message },
+                ],
+              },
+            ],
+          },
         }),
       })
 
       if (res.ok) {
-        results.push({ phone: to, success: true })
+        results.push({ phone: to, name, success: true })
       } else {
         const errData = await res.json().catch(() => ({}))
         results.push({
           phone: to,
+          name,
           success: false,
           error: errData?.error?.message || `HTTP ${res.status}`,
         })
       }
     } catch (err: any) {
-      results.push({ phone: to, success: false, error: err?.message || "Network error" })
+      results.push({ phone: to, name, success: false, error: err?.message || "Network error" })
     }
   }
 
@@ -110,7 +135,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     summary: {
-      total: phones.length,
+      total: contacts.length,
       invalid,
       sent,
       failed,

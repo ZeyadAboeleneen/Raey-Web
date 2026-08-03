@@ -7,6 +7,7 @@ import { calculateRentalPrice } from "@/lib/rental-pricing"
 import { uploadDataUrlToCloudinary } from "@/lib/cloudinary"
 import { clearErpProductCaches } from "@/lib/erp-items"
 import { getStoredResponse, storeResponse } from "@/lib/idempotency"
+import { priceCart, PricingError } from "@/lib/pricing/server-pricing"
 import { OutboxService } from "@/services/outbox.service"
 import { rateLimit, generateCheckoutRateLimitKey } from "@/lib/rate-limit"
 import { getErpUserById } from "@/lib/erp-users"
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId")
     const status = searchParams.get("status")
     const paymentStatus = searchParams.get("paymentStatus")
+    const includeUnpaid = searchParams.get("includeUnpaid") === "true"
 
     const where: any = {}
     if (isStandardUser) {
@@ -84,6 +86,22 @@ export async function GET(request: NextRequest) {
     }
     if (status) where.status = status
     if (paymentStatus) where.paymentStatus = paymentStatus
+
+    // A Fawry order row is created *before* the customer pays, so every
+    // abandoned or declined card attempt leaves one behind. Those aren't real
+    // orders and shouldn't clutter the dashboard.
+    //
+    // Hidden, not deleted: pass ?includeUnpaid=true to see them (support and
+    // finance need to, e.g. when a customer says they were charged), and an
+    // explicit ?paymentStatus= filter always wins so the pending-review queues
+    // keep working. Manual-transfer orders awaiting screenshot review are
+    // untouched — only Fawry attempts that never got paid are filtered.
+    if (!includeUnpaid && !paymentStatus) {
+      where.NOT = {
+        paymentMethod: "fawry",
+        paymentStatus: { in: ["pending", "rejected", "expired"] },
+      }
+    }
 
     const orders = await prisma.order.findMany({ where, orderBy: { createdAt: "desc" } })
 
@@ -175,20 +193,94 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { items, total, shippingAddress, paymentMethod, paymentDetails, paymentScreenshot, discountCode, discountAmount, depositAmount, remainingAmount } =
-      await request.json()
+    const body = await request.json()
+    const { items, shippingAddress, paymentMethod, paymentDetails, paymentScreenshot, discountCode } = body
 
-    if (!items?.length || (total == null && !isEmployeeOrder) || !shippingAddress) {
-      return NextResponse.json({ error: "Items, total, and shipping address are required" }, { status: 400 })
+    if (!items?.length || !shippingAddress) {
+      return NextResponse.json({ error: "Items and shipping address are required" }, { status: 400 })
     }
+
+    // ── Authoritative pricing ─────────────────────────────────────────────
+    // Every money figure below is recomputed on the server. `total`,
+    // `discountAmount`, `depositAmount` and `remainingAmount` from the request
+    // body are read only to log a mismatch — they never reach the database for
+    // a customer order.
+    //
+    // Staff price overrides are still honoured, but only once `isEmployeeOrder`
+    // has been established above from a verified JWT plus an ERP employee
+    // lookup. A customer sending the same fields gets them ignored.
+    const staffOverrides = isEmployeeOrder
+      ? Object.fromEntries(
+          (items as any[]).map((item) => [
+            String(item.id ?? item.productId ?? ""),
+            {
+              lineTotal:
+                typeof item.price === "number"
+                  ? item.price * Math.max(1, Number(item.quantity) || 1)
+                  : undefined,
+              deposit: typeof item.employeeDeposit === "number" ? item.employeeDeposit : undefined,
+            },
+          ]),
+        )
+      : undefined
+
+    let priced
+    try {
+      priced = await priceCart({
+        items: items as any[],
+        discountCode: discountCode || null,
+        userId: isLoggedIn ? userId : "guest",
+        email: shippingAddress?.email,
+        staffOverrides,
+      })
+    } catch (pricingError: any) {
+      if (pricingError instanceof PricingError) {
+        console.warn(`[Orders] Pricing rejected: ${pricingError.message} (item ${pricingError.itemId ?? "?"})`)
+        return NextResponse.json({ error: pricingError.message, pricingFailed: true }, { status: 400 })
+      }
+      console.error("[Orders] Pricing failed:", pricingError)
+      return NextResponse.json(
+        { error: "We couldn't confirm current prices. Please try again." },
+        { status: 503 },
+      )
+    }
+
+    // A code that no longer applies must surface, not silently vanish from a
+    // total the customer already saw.
+    if (discountCode && priced.discountError) {
+      return NextResponse.json(
+        { error: priced.discountError.message, discountRejected: true, ...(priced.discountError.details || {}) },
+        { status: 400 },
+      )
+    }
+
+    // Fraud signal: a customer whose submitted total disagrees with ours.
+    if (!isEmployeeOrder && typeof body.total === "number" && Math.abs(body.total - priced.total) > 1) {
+      console.warn(
+        `[Orders][PRICE-MISMATCH] client=${body.total} server=${priced.total} user=${userId} ` +
+        `ip=${request.headers.get("x-forwarded-for") || "?"} — server price enforced`,
+      )
+    }
+
+    const total = priced.total
+    const discountAmount = priced.discountAmount
+    const depositAmount = priced.depositAmount
+    const remainingAmount = priced.remainingAmount
 
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     
     let finalPaymentScreenshot = paymentScreenshot || null
     let initialPaymentStatus = "pending"
 
-    // Employee orders need no payment or proof — auto-approve and never require a screenshot.
-    if (isEmployeeOrder) {
+    // A staff member can choose to collect payment through Fawry instead of
+    // taking it in person. Such an order must follow the customer payment
+    // lifecycle — no auto-approval, no booking until Fawry confirms — otherwise
+    // staff could mark an order paid without any money moving.
+    const isStaffFawryOrder = isEmployeeOrder && paymentMethod === "fawry"
+
+    // Employee orders need no payment or proof — auto-approve and never require
+    // a screenshot. The Fawry case above is the one exception.
+    if (isEmployeeOrder && !isStaffFawryOrder) {
       finalPaymentScreenshot = null
       initialPaymentStatus = "approved"
     }
@@ -215,7 +307,7 @@ export async function POST(request: NextRequest) {
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Validate stock for each item inside the transaction
-      for (const item of items) {
+      for (const item of priced.items) {
         if (!item.productId || !item.size || item.quantity === undefined) continue
 
         const product = await tx.product.findUnique({ where: { productId: item.productId } })
@@ -245,9 +337,24 @@ export async function POST(request: NextRequest) {
       // 2. Create the order
       const orderData: any = {
         orderId,
-        items: items.map((item: any) => ({ ...item, reviewed: false })),
+        // Server-priced items. `price` here is the authoritative unit price, so
+        // the stored order and every downstream consumer (emails, ERP sync,
+        // admin dashboard) reflect what was actually charged.
+        items: priced.items.map((item) => ({
+          ...item,
+          price: item.unitPrice,
+          reviewed: false,
+          pricing: { source: item.priceSource, formula: item.priceFormula, lineTotal: item.lineTotal },
+        })),
         total, shippingAddress,
-        paymentMethod: isEmployeeOrder ? "employee" : (paymentMethod || "instapay"),
+        // Staff-Fawry orders are stored as "fawry" so the callback, the
+        // reconciliation cron and the success page all treat them like any
+        // other online payment. Who placed it is kept in paymentDetails.
+        paymentMethod: isStaffFawryOrder
+          ? "fawry"
+          : isEmployeeOrder
+            ? "employee"
+            : (paymentMethod || "instapay"),
         paymentDetails: isEmployeeOrder
           ? {
               ...(paymentDetails || {}),
@@ -266,7 +373,7 @@ export async function POST(request: NextRequest) {
             }
           : (paymentDetails || null),
         paymentScreenshot: finalPaymentScreenshot,
-        discountCode: discountCode || null,
+        discountCode: priced.discountCode,
         discountAmount: discountAmount || 0,
         depositAmount: depositAmount || 0,
         remainingAmount: remainingAmount || 0,
@@ -278,9 +385,10 @@ export async function POST(request: NextRequest) {
 
       const order = await tx.order.create({ data: orderData })
 
-      if (discountCode) {
+      // Only a code the server actually applied counts against its usage limit.
+      if (priced.discountCode) {
         await tx.discountCode.updateMany({
-          where: { code: discountCode },
+          where: { code: priced.discountCode },
           data: { usageCount: { increment: 1 } },
         })
       }
@@ -302,7 +410,7 @@ export async function POST(request: NextRequest) {
       // 4. Update local stock ONLY IF APPROVED (e.g. COD). 
       // If pending, stock will be reserved later by the verification worker.
       if (initialPaymentStatus === "approved") {
-        for (const item of items) {
+        for (const item of priced.items) {
           if (!item.productId || !item.size || item.quantity === undefined) continue
 
           const product = await tx.product.findUnique({ where: { productId: item.productId } })
@@ -358,7 +466,13 @@ export async function POST(request: NextRequest) {
     //    later, after payment verification, via the outbox worker.
     //    - Resolved employee → full employee sync (booking + deposit journal to CashID).
     //    - Admin (no employee record) → standard booking sync (no cash journal).
-    if (isEmployeeOrder && employee) {
+    //
+    //    A staff order being paid through Fawry is excluded from both: no money
+    //    has moved yet, so the booking (and its journal entry) waits for the
+    //    Fawry callback, exactly like a customer order.
+    if (isStaffFawryOrder) {
+      console.log(`[Orders] ${result.orderId} is a staff order paid via Fawry — ERP sync deferred until payment confirms`)
+    } else if (isEmployeeOrder && employee) {
       const erpResult = await syncEmployeeOrderToErp(result.orderId, {
         id: employee.id,
         repId: employee.repId,
@@ -390,7 +504,9 @@ export async function POST(request: NextRequest) {
       success: true,
       order: transformOrder(result),
       orderId: result.orderId,
-      erpSyncStatus: (isEmployeeOrder && employee) ? "attempted" : "skipped",
+      erpSyncStatus: isStaffFawryOrder
+        ? "deferred-until-payment"
+        : (isEmployeeOrder && employee) ? "attempted" : "skipped",
     }
 
     if (idempotencyKey) {

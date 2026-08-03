@@ -28,13 +28,21 @@ export async function POST(request: NextRequest) {
   }
 
   const { token, phoneNumberId } = body as { token?: string; phoneNumberId?: string }
-  if (!token?.trim() || !phoneNumberId?.trim()) {
-    return NextResponse.json({ error: "Token and phoneNumberId are required" }, { status: 400 })
+  const hasExistingToken = !!request.cookies.get(TOKEN_COOKIE)?.value
+  const hasExistingPhoneId = !!request.cookies.get(PHONE_ID_COOKIE)?.value
+
+  // Allow updating just one field at a time, as long as the other one is
+  // already saved (either in this request or from a previous save).
+  if (!token?.trim() && !hasExistingToken) {
+    return NextResponse.json({ error: "Access Token is required" }, { status: 400 })
+  }
+  if (!phoneNumberId?.trim() && !hasExistingPhoneId) {
+    return NextResponse.json({ error: "Phone Number ID is required" }, { status: 400 })
   }
 
   const res = NextResponse.json({ success: true })
-  res.cookies.set(TOKEN_COOKIE, encryptSecret(token.trim()), cookieOpts)
-  res.cookies.set(PHONE_ID_COOKIE, encryptSecret(phoneNumberId.trim()), cookieOpts)
+  if (token?.trim()) res.cookies.set(TOKEN_COOKIE, encryptSecret(token.trim()), cookieOpts)
+  if (phoneNumberId?.trim()) res.cookies.set(PHONE_ID_COOKIE, encryptSecret(phoneNumberId.trim()), cookieOpts)
   return res
 }
 

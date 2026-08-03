@@ -24,7 +24,9 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
-    // Return only necessary info for the success page
+    // Return only necessary info for the success page.
+    // paymentStatus comes from our own record — set only by a verified Fawry
+    // event — so the success page never has to trust the redirect URL.
     const publicOrder = {
       id: order.orderId,
       items: order.items,
@@ -32,6 +34,10 @@ export async function GET(
       status: order.status,
       shippingAddress: order.shippingAddress,
       createdAt: order.createdAt,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      depositAmount: order.depositAmount,
+      remainingAmount: order.remainingAmount,
     }
 
     return NextResponse.json(publicOrder)

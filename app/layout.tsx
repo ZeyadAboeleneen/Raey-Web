@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma"
 import { CartSuccessNotification } from "@/components/cart-success-notification"
 import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner"
 import { GlobalDateModal } from "@/components/global-date-modal"
 import { warmProductsServerCache } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
@@ -153,6 +154,7 @@ export default async function RootLayout({
                               {children}
                               <CartSuccessNotification />
                               <Toaster />
+                              <SonnerToaster position="top-center" richColors closeButton />
                             </SiteSettingsProvider>
                           </ScrollProvider>
                         </DateProvider>
