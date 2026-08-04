@@ -11,6 +11,7 @@ import { Navigation } from "@/components/navigation"
 import { useLocale } from "@/lib/locale-context"
 import { useTranslation, TranslationKey } from "@/lib/translations"
 import { useCart } from "@/lib/cart-context"
+import { getFawryErrorMessage } from "@/lib/fawry-error-codes"
 
 function CheckoutSuccessContent() {
   const router = useRouter()
@@ -20,6 +21,12 @@ function CheckoutSuccessContent() {
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [retryingPayment, setRetryingPayment] = useState(false)
   const [pollExhausted, setPollExhausted] = useState(false)
+  // Has this page load asked Fawry for a *fresh* status at least once? A
+  // "rejected"/"expired" DB status may be left over from an earlier attempt —
+  // it must never be shown as conclusive until we've re-checked Fawry since
+  // landing here, otherwise a later successful retry still shows the old
+  // failure forever (see /api/payments/fawry/sync for the matching fix).
+  const [hasSyncedOnce, setHasSyncedOnce] = useState(false)
 
   // Fawry appends its result to the return URL. These params are UNSIGNED and a
   // customer can edit them, so they are used for one thing only: showing a
@@ -81,13 +88,20 @@ function CheckoutSuccessContent() {
   // redirected back, but the redirect can beat it. Poll our own record — never
   // the URL parameters — until it settles.
   const paymentStatus = orderDetails?.paymentStatus
-  const isFawryPending = orderDetails?.paymentMethod === "fawry" && paymentStatus === "pending"
+  const isFawryOrderLoaded = orderDetails?.paymentMethod === "fawry"
+  const isFawryPending = isFawryOrderLoaded && paymentStatus === "pending"
+  // A Fawry order needs a fresh check whenever it isn't already settled —
+  // "rejected"/"expired" included, since a retry may have happened since that
+  // status was written and the only way to know is to ask Fawry directly.
+  const needsFawrySettlement =
+    isFawryOrderLoaded && paymentStatus !== "approved" && paymentStatus !== "refunded"
 
-  // The customer is back in front of us on a still-unpaid Fawry order. Don't
-  // wait for a callback that may never come (3DS errored, tab closed, back
-  // button) — ask Fawry now and settle the order either way.
+  // The customer is back in front of us on a Fawry order that isn't confirmed
+  // approved/refunded yet. Don't wait for a callback that may never come (3DS
+  // errored, tab closed, back button, or a retry whose webhook is still in
+  // flight) — ask Fawry now and settle the order either way.
   useEffect(() => {
-    if (!orderId || !isFawryPending) return
+    if (!orderId || !needsFawrySettlement) return
     let cancelled = false
 
     fetch("/api/payments/fawry/sync", {
@@ -97,16 +111,18 @@ function CheckoutSuccessContent() {
     })
       .then(res => res.json())
       .then(data => {
-        if (cancelled || !data?.changed) return
+        if (cancelled) return
+        if (!data?.changed) return
         // Re-read the order so the screen reflects the settled state.
         return fetch(`/api/orders/public/${orderId}`, { cache: "no-store" })
           .then(r => r.json())
           .then(fresh => { if (!cancelled && fresh && !fresh.error) setOrderDetails(fresh) })
       })
       .catch(e => console.error("Fawry sync failed:", e))
+      .finally(() => { if (!cancelled) setHasSyncedOnce(true) })
 
     return () => { cancelled = true }
-  }, [orderId, isFawryPending])
+  }, [orderId, needsFawrySettlement])
 
   useEffect(() => {
     if (!orderId || !isFawryPending) return
@@ -161,16 +177,26 @@ function CheckoutSuccessContent() {
     item.branch === "sell-dresses" || item.type === "buy"
   )
 
-  const hasRental = orderDetails?.items?.some((item: any) =>
-    item.type === "rent" || (item.branch && item.branch !== "sell-dresses")
-  )
+  // A dress can be dual-mode (rent or buy) — item.type is the explicit signal
+  // for which one the customer picked and must win over the branch heuristic,
+  // or a dual-mode item bought outright gets misclassified as a rental here.
+  const isRentOrderItem = (item: any): boolean => {
+    if (item.type === "rent") return true
+    if (item.type === "buy") return false
+    return Boolean(item.branch) && item.branch !== "sell-dresses"
+  }
+
+  const hasRental = orderDetails?.items?.some(isRentOrderItem)
 
   const isArabic = settings.language === "ar"
 
   // Precedence matters. Our own record always wins; the URL can only make the
   // screen more cautious, never more optimistic.
-  //   approved            → confirmed
-  //   rejected / expired  → failed
+  //   approved                               → confirmed
+  //   rejected / expired, already re-synced  → failed
+  //   rejected / expired, NOT yet re-synced  → treat as "confirming" — this
+  //     may be a leftover from an earlier attempt that a retry has since
+  //     superseded; only conclusive once we've asked Fawry again this visit.
   //   pending + failure hint from Fawry's return URL → failed
   //   pending + polling gave up → unresolved (never a green tick)
   //   pending, still polling → "confirming"
@@ -180,18 +206,31 @@ function CheckoutSuccessContent() {
   const orderLoaded = Boolean(orderDetails)
   const isFawryOrder = orderDetails?.paymentMethod === "fawry"
   const isPaymentApproved = orderLoaded && orderDetails?.paymentStatus === "approved"
+  const staleRejectedOrExpired =
+    isFawryOrder && ["rejected", "expired"].includes(orderDetails?.paymentStatus) && !hasSyncedOnce
   const isPaymentFailed =
     !isPaymentApproved &&
-    // Fawry told the browser it failed — trust that immediately, even before
-    // the order loads. It can only ever make the screen more pessimistic.
+    // Fawry told the browser it failed on THIS return trip — trust that
+    // immediately, it reflects the attempt just made, never a stale one.
     (returnSaysFailed ||
-      (isFawryOrder && ["rejected", "expired"].includes(orderDetails?.paymentStatus)))
+      (isFawryOrder && ["rejected", "expired"].includes(orderDetails?.paymentStatus) && hasSyncedOnce))
   const isPaymentUnresolved =
     isFawryOrder && !isPaymentApproved && !isPaymentFailed && isFawryPending && pollExhausted
   const isPaymentPending =
-    !isPaymentApproved && !isPaymentFailed && orderLoaded && isFawryPending && !pollExhausted
+    !isPaymentApproved &&
+    !isPaymentFailed &&
+    orderLoaded &&
+    !returnSaysFailed &&
+    (isFawryPending || staleRejectedOrExpired) &&
+    !pollExhausted
   // Neutral state while the order is still being fetched — no verdict either way.
   const isLoadingOrder = !orderLoaded && !isPaymentFailed
+
+  // The specific decline reason, when Fawry's return URL carried one — this
+  // reflects the attempt the customer just made. Not every failure path has
+  // a code here (e.g. a stale DB-only rejection with no fresh return trip),
+  // in which case this is null and the generic message below is shown instead.
+  const fawryErrorMessage = isPaymentFailed ? getFawryErrorMessage(returnStatusCode) : null
 
   return (
     <div className="min-h-screen bg-white">
@@ -222,11 +261,17 @@ function CheckoutSuccessContent() {
                   <h1 className="text-3xl font-light tracking-wider mb-4">
                     {isArabic ? "لم تكتمل عملية الدفع" : "Payment not completed"}
                   </h1>
-                  <p className="text-gray-600 text-lg mb-4">
+                  <p className="text-gray-600 text-lg mb-2">
                     {isArabic
                       ? "تم حفظ طلبك ولكن لم يتم استلام الدفع. يمكنك المحاولة مرة أخرى."
                       : "Your order is saved, but we haven't received the payment. You can try again."}
                   </p>
+                  {fawryErrorMessage && (
+                    <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm mb-4 text-left" dir={isArabic ? "rtl" : "ltr"}>
+                      {isArabic ? fawryErrorMessage.ar : fawryErrorMessage.en}
+                    </p>
+                  )}
+                  {!fawryErrorMessage && <div className="mb-4" />}
                   <Button
                     onClick={retryPayment}
                     disabled={retryingPayment}
@@ -304,7 +349,7 @@ function CheckoutSuccessContent() {
                             <Package className="h-4 w-4" />
                             {t("rentalDetails" as TranslationKey)}
                           </h4>
-                          {orderDetails.items?.filter((item: any) => item.type === "rent" || (item.branch && item.branch !== "sell-dresses")).map((item: any, idx: number) => (
+                          {orderDetails.items?.filter(isRentOrderItem).map((item: any, idx: number) => (
                             <div key={idx} className="bg-gray-50 p-3 rounded-lg flex flex-col gap-1">
                               <div className="flex justify-between items-start">
                                 <p className="font-medium text-sm">{item.name}</p>

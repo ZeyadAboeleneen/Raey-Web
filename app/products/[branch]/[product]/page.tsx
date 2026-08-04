@@ -1,9 +1,48 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { getProductServer } from "@/lib/get-products-server"
 import ProductDetailPageClient from "./ProductDetailPageClient"
 
 interface Props {
   params: { branch: string; product: string }
+}
+
+// Product data changes rarely enough (price/stock) that a short ISR window
+// keeps pages fast while staying acceptably fresh; live availability/date
+// pricing is still fetched client-side and is never subject to this cache.
+export const revalidate = 60
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { branch, product: productId } = params
+  const product = await getProductServer(productId)
+
+  if (!product) {
+    return { title: "Product Not Found | Raey" }
+  }
+
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://raeygroup.com").replace(/\/$/, "")
+  const productUrl = `${siteUrl}/products/${branch}/${productId}`
+  const description =
+    (product.description && product.description.trim()) ||
+    `${product.name} — available to rent or buy at Raey.`
+  const image = product.images?.[0]
+    ? product.images[0].startsWith("http")
+      ? product.images[0]
+      : `${siteUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
+    : undefined
+
+  return {
+    title: `${product.name} | Raey`,
+    description,
+    alternates: { canonical: productUrl },
+    openGraph: {
+      title: product.name,
+      description,
+      url: productUrl,
+      images: image ? [{ url: image }] : undefined,
+      type: "website",
+    },
+  }
 }
 
 /**

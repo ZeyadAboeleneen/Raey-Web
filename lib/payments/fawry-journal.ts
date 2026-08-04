@@ -190,12 +190,19 @@ export async function postFawryPaymentJournal(input: {
   }
 }
 
-/** Booking.ID for an order's invoice code, needed as the journal's RecID. */
+/**
+ * Booking.ID for an order's invoice code, needed as the journal's RecID.
+ * Each dress in a multi-dress order has its own invoice_code (this prefix +
+ * "-" + dressId — see erp-sync.ts's invoiceCodeForItem), so match by prefix;
+ * an exact match would find nothing once an order has more than one dress.
+ * Picks the most recently created booking as the representative one to
+ * attach the (order-level) payment journal entry to.
+ */
 export async function findBookingIdByInvoice(invoiceCode: string): Promise<number | null> {
   const pool = await getMssqlPool()
   const result = await pool
     .request()
-    .input("invoice_code", sql.NVarChar, invoiceCode)
-    .query(`SELECT TOP 1 ID FROM Booking WHERE invoice_code = @invoice_code ORDER BY ID DESC`)
+    .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
+    .query(`SELECT TOP 1 ID FROM Booking WHERE invoice_code LIKE @invoice_code_prefix ORDER BY ID DESC`)
   return result.recordset.length ? (result.recordset[0].ID as number) : null
 }

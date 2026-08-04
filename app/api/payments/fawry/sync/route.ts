@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getPaymentStatus, isFawryConfigured, mapFawryStatus } from "@/lib/fawry"
 import { applyFawryEvent } from "@/lib/payments/apply-fawry-event"
+import { getLatestMerchantRefNum } from "@/lib/payments/fawry-ledger"
 import { rateLimit, generateCheckoutRateLimitKey } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
@@ -51,16 +52,37 @@ export async function POST(request: NextRequest) {
     })
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
 
-    // Nothing to do for orders that aren't Fawry, or are already settled.
-    if (order.paymentMethod !== "fawry" || order.paymentStatus !== "pending") {
+    // Only skip Fawry orders that are already in a terminal *success* state.
+    // "rejected"/"expired" are NOT terminal here — a retry attempt may have
+    // been created after that status was set, and the only way to know is to
+    // ask Fawry. (Previously this only ran for "pending", which meant a
+    // rejected-then-retried order never got re-checked and stayed rejected
+    // forever, even after a later attempt was actually approved.)
+    const settled = order.paymentStatus === "approved" || order.paymentStatus === "refunded"
+    if (order.paymentMethod !== "fawry" || settled) {
       return NextResponse.json({ success: true, paymentStatus: order.paymentStatus, changed: false })
     }
 
-    const status = await getPaymentStatus(orderId)
+    // Retries send Fawry a distinct merchantRefNum per attempt
+    // (buildAttemptMerchantRef) — the status query must ask about that exact
+    // reference, not the bare order id, or it queries the wrong/stale attempt.
+    const merchantRefNum = await getLatestMerchantRefNum(orderId)
+    console.log(
+      `[Fawry/sync] order=${orderId} currentStatus=${order.paymentStatus} merchantRefNum=${merchantRefNum} ` +
+      `— querying Fawry for live status`,
+    )
+
+    const status = await getPaymentStatus(merchantRefNum)
     if (!status.ok) {
       console.warn(`[Fawry/sync] Status query failed for ${orderId}: ${status.error}`)
-      return NextResponse.json({ success: false, paymentStatus: "pending", changed: false })
+      return NextResponse.json({ success: false, paymentStatus: order.paymentStatus, changed: false })
     }
+
+    console.log(
+      `[Fawry/sync] order=${orderId} fawryRefNumber=${status.fawryRefNumber} ` +
+      `paymentRefNumber=${status.paymentRefrenceNumber} paymentStatus=${status.paymentStatus} ` +
+      `paymentAmount=${status.paymentAmount} signatureValid=${status.signatureValid}`,
+    )
 
     const mapped = mapFawryStatus(status.paymentStatus)
 
@@ -72,7 +94,7 @@ export async function POST(request: NextRequest) {
     const applied = await applyFawryEvent({
       payload: {
         ...status.raw,
-        merchantRefNumber: orderId,
+        merchantRefNumber: merchantRefNum,
         orderStatus: status.paymentStatus,
         paymentAmount: status.paymentAmount,
         orderAmount: status.orderAmount,

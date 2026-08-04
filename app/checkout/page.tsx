@@ -185,7 +185,21 @@ export default function CheckoutPage() {
 
   const [deliveryMethod, setDeliveryMethod] = useState<"shipping" | "pickup">("shipping")
 
-  const hasRental = cartState.items.some((item) => item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch)
+  // A dress can be dual-mode (available to both rent and buy) — its branch
+  // stays whatever its normal rental branch is either way, so branch alone
+  // can't tell rent from buy. item.type is the actual, explicit signal set
+  // when the customer chose "buy" or "rent" for this item, so it must take
+  // priority; only fall back to the branch heuristic when type is missing
+  // entirely (legacy cart items). Mirrors isRentalItem() in
+  // lib/pricing/server-pricing.ts — that file is server-only and can't be
+  // imported here, so keep this in sync with it if that logic ever changes.
+  const isRentCartItem = (item: any): boolean => {
+    if (item.type === "rent") return true
+    if (item.type === "buy") return false
+    return !item.branch || item.branch !== "sell-dresses"
+  }
+
+  const hasRental = cartState.items.some(isRentCartItem)
 
   useEffect(() => {
     if (hasRental) {
@@ -219,13 +233,11 @@ export default function CheckoutPage() {
   const subtotal = cartState.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const rentSubtotal = cartState.items.reduce((sum, item) => {
-    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
-    return sum + (isRent ? item.price * item.quantity : 0);
+    return sum + (isRentCartItem(item) ? item.price * item.quantity : 0);
   }, 0);
 
   const buySubtotal = cartState.items.reduce((sum, item) => {
-    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
-    return sum + (!isRent ? item.price * item.quantity : 0);
+    return sum + (!isRentCartItem(item) ? item.price * item.quantity : 0);
   }, 0);
 
   const discountAmount = appliedDiscount?.discountAmount || 0
@@ -237,7 +249,7 @@ export default function CheckoutPage() {
   // Wedding dress rent:     fixed 5,000 EGP per item
   // Buy items:              100% (full price)
   const baseDeposit = cartState.items.reduce((sum, item) => {
-    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch;
+    const isRent = isRentCartItem(item);
     if (!isRent) {
       // Buy items → full price
       return sum + (item.price * item.quantity)
@@ -264,7 +276,7 @@ export default function CheckoutPage() {
   const isEmployee = authState.user?.isEmployee === true || authState.user?.role === "admin"
 
   const defaultDepositForItem = (item: any): number => {
-    const isRent = item.type === "rent" || (item.branch && item.branch !== "sell-dresses") || !item.branch
+    const isRent = isRentCartItem(item)
     if (!isRent) return Math.round(item.price * item.quantity)
     if (item.isExclusive) return Math.round(item.price * item.quantity * 0.5)
     if ((item.collection || "").toLowerCase() === "wedding") return 5000 * item.quantity

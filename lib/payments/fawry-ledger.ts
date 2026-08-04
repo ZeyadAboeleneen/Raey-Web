@@ -122,6 +122,33 @@ export async function recordInitiated(input: {
     `)
 }
 
+/**
+ * The merchantRefNum actually sent to Fawry for the most recent charge
+ * attempt on this order — read back from the 'initiated' row's stored
+ * request payload, which recordInitiated() keeps current on every retry.
+ * Falls back to the bare orderId (attempt 1's ref, or if no row exists yet).
+ */
+export async function getLatestMerchantRefNum(orderRef: string): Promise<string> {
+  const pool = await getMssqlPool()
+  const result = await pool
+    .request()
+    .input("OrderRef", sql.NVarChar(100), orderRef)
+    .query(`
+      SELECT TOP 1 RawPayload FROM dbo.tb_FawryPayments
+      WHERE OrderRef = @OrderRef AND Status = 'initiated'
+    `)
+
+  const raw = result.recordset[0]?.RawPayload
+  if (!raw) return orderRef
+
+  try {
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.merchantRefNum === "string" && parsed.merchantRefNum ? parsed.merchantRefNum : orderRef
+  } catch {
+    return orderRef
+  }
+}
+
 /** Attach the posted journal entry to the payment row, for traceability. */
 export async function attachJournal(paymentId: number, journalId: number): Promise<void> {
   const pool = await getMssqlPool()

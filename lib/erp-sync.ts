@@ -8,6 +8,33 @@ import { mapBranchSlugToBranchId } from "@/lib/branch-map"
 /** Main branch (Co-Branches ID 1) — used when an item's branch slug can't be mapped. */
 const ERP_FALLBACK_BRANCH_ID = 1
 
+/**
+ * Base invoice-code prefix for an order, shared by every dress booked within
+ * it. Each Booking row's actual invoice_code is this prefix plus `-<dressId>`
+ * (see invoiceCodeForItem) so a multi-dress order gets one distinct,
+ * individually addressable code per booking instead of every booking sharing
+ * one ambiguous code. Money-movement queries that need to find/update/delete
+ * every booking under an order match on this prefix with LIKE; queries that
+ * insert or address one specific dress's booking use the full per-item code.
+ */
+function invoiceCodePrefix(orderId: string): string {
+  return `WEB-${orderId.substring(orderId.length - 6)}`
+}
+
+/**
+ * The exact invoice_code stored on one dress's Booking row within an order.
+ * Uses the dress's ERP item code (e.g. "E1032", "R6800" — item.name in cart
+ * data, which mirrors this ERP's Item_name/Item_code convention) so the
+ * invoice code is human-readable rather than an opaque internal database id.
+ * Falls back to the numeric ModelTypeID only if the code is missing or
+ * contains no usable characters.
+ */
+function invoiceCodeForItem(orderId: string, dressCode: string | null | undefined, modelTypeId: number): string {
+  const cleanCode = (dressCode || "").replace(/[^A-Za-z0-9-]/g, "").trim()
+  const suffix = cleanCode || String(modelTypeId)
+  return `${invoiceCodePrefix(orderId)}-${suffix}`.substring(0, 50)
+}
+
 // GL accounts used by the ERP when it records a reservation deposit
 // ("عربون اذن حجز"): debit the cash drawer's GL account, credit the
 // deposit-liability account. Mirrors the entries the ERP itself creates
@@ -43,18 +70,7 @@ export async function syncOrderToErp(
       return { success: false, error: "Order not found" }
     }
 
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
     const pool = await getMssqlPool()
-
-    // 1. Check if already synced to avoid duplicates and double-booking logs
-    const existingCheck = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("SELECT COUNT(*) AS cnt FROM Booking WHERE invoice_code = @invoice_code")
-
-    if (existingCheck.recordset[0].cnt > 0) {
-      console.log(`[ERP/Sync] Order ${orderId} already synced to ERP. Skipping duplicate.`)
-      return { success: true, message: "Already synced" }
-    }
 
     // 2. Upload payment screenshot to local storage if it is still a raw base64 data URL
     let finalScreenshot = paymentScreenshot || order.paymentScreenshot
@@ -106,6 +122,19 @@ export async function syncOrderToErp(
 
         if (isNaN(rentStartDate.getTime()) || isNaN(rentEndDate.getTime())) continue
         if (rentEndDate <= rentStartDate) continue
+
+        const itemInvoiceCode = invoiceCodeForItem(orderId, item.name, modelTypeId)
+
+        // Per-dress idempotency check — a retried sync must not double-book a
+        // dress that already got its Booking row, while still letting any
+        // other item in the same order (that hasn't synced yet) go through.
+        const existingCheck = await pool.request()
+          .input("invoice_code", sql.NVarChar, itemInvoiceCode)
+          .query("SELECT COUNT(*) AS cnt FROM Booking WHERE invoice_code = @invoice_code")
+        if (existingCheck.recordset[0].cnt > 0) {
+          console.log(`[ERP/Sync] Item ${item.productId} of order ${orderId} already synced (${itemInvoiceCode}). Skipping.`)
+          continue
+        }
 
         const txn = new sql.Transaction(pool)
         await txn.begin(sql.ISOLATION_LEVEL.SERIALIZABLE)
@@ -177,7 +206,7 @@ export async function syncOrderToErp(
           const itemRemaining = Math.max(0, finalPrice - itemDeposit)
 
           const bookingInsert = await new sql.Request(txn)
-            .input('invoice_code', sql.NVarChar, invoiceCode)
+            .input('invoice_code', sql.NVarChar, itemInvoiceCode)
             .input('Cust_Name', sql.NVarChar, (shippingAddress?.name || '').substring(0, 50))
             .input('Cust_Tel', sql.NVarChar, (shippingAddress?.secondaryPhone || '').substring(0, 50))
             .input('Cust_Mobile', sql.NVarChar, (shippingAddress?.phone || '').substring(0, 50))
@@ -301,16 +330,7 @@ export async function syncEmployeeOrderToErp(
     const order = await prisma.order.findUnique({ where: { orderId } })
     if (!order) return { success: false, error: "Order not found" }
 
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
     const pool = await getMssqlPool()
-
-    // Skip if already synced (idempotent)
-    const existingCheck = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("SELECT COUNT(*) AS cnt FROM Booking WHERE invoice_code = @invoice_code")
-    if (existingCheck.recordset[0].cnt > 0) {
-      return { success: true, message: "Already synced" }
-    }
 
     const items = (order.items as any[]) || []
     const shippingAddress = (order.shippingAddress as any) || {}
@@ -379,6 +399,17 @@ export async function syncEmployeeOrderToErp(
 
       console.log(`[ERP/EmpSync] item=${item.productId} finalPrice=${finalPrice} deposit=${deposit} remaining=${remaining} userId=${userId} branchId=${branchId} cashId=${cashId}`)
 
+      const itemInvoiceCode = invoiceCodeForItem(orderId, item.name, modelTypeId)
+
+      // Per-dress idempotency check, same reasoning as the customer sync path.
+      const existingCheck = await pool.request()
+        .input("invoice_code", sql.NVarChar, itemInvoiceCode)
+        .query("SELECT COUNT(*) AS cnt FROM Booking WHERE invoice_code = @invoice_code")
+      if (existingCheck.recordset[0].cnt > 0) {
+        console.log(`[ERP/EmpSync] Item ${item.productId} of order ${orderId} already synced (${itemInvoiceCode}). Skipping.`)
+        continue
+      }
+
       const txn = new sql.Transaction(pool)
       await txn.begin(sql.ISOLATION_LEVEL.SERIALIZABLE)
       try {
@@ -403,7 +434,7 @@ export async function syncEmployeeOrderToErp(
 
         // 1. Insert the Booking row, capturing its new identity ID.
         const bookingInsert = await new sql.Request(txn)
-          .input("invoice_code", sql.NVarChar, invoiceCode)
+          .input("invoice_code", sql.NVarChar, itemInvoiceCode)
           .input("Cust_Name", sql.NVarChar, (shippingAddress?.name || "").substring(0, 50))
           .input("Cust_Tel", sql.NVarChar, (shippingAddress?.secondaryPhone || "").substring(0, 50))
           .input("Cust_Mobile", sql.NVarChar, (shippingAddress?.phone || "").substring(0, 50))
@@ -486,7 +517,7 @@ export async function syncEmployeeOrderToErp(
             .input("JTotalCredator", sql.Decimal(18, 2), deposit)
             .input("JSourceID", sql.Int, JSOURCE_RESERVATION)
             .input("CarryOvered", sql.Bit, 0)
-            .input("Notes", sql.NVarChar, `اذن حجز رقم ${invoiceCode}`)
+            .input("Notes", sql.NVarChar, `اذن حجز رقم ${itemInvoiceCode}`)
             .input("RecID", sql.Int, bookingId)
             .input("Deleted", sql.Bit, 0)
             .input("BranchID", sql.Int, branchId)
@@ -528,8 +559,8 @@ export async function syncEmployeeOrderToErp(
               .input("Deptor", sql.Decimal(18, 2), deposit)
               .input("AccountCash", sql.Int, cashAccount)
               .input("AccountDep", sql.Int, ACCOUNT_DEPOSIT_LIABILITY)
-              .input("DescCash", sql.NVarChar, `عربون اذن حجز رقم ${invoiceCode}`)
-              .input("DescDep", sql.NVarChar, `عربون اذن حجز رقم ${invoiceCode}`)
+              .input("DescCash", sql.NVarChar, `عربون اذن حجز رقم ${itemInvoiceCode}`)
+              .input("DescDep", sql.NVarChar, `عربون اذن حجز رقم ${itemInvoiceCode}`)
               .input("JCDate", sql.DateTime, now)
               .input("User_ID", sql.Int, userId)
               .query(`
@@ -605,13 +636,15 @@ export async function syncRemainingPaymentToErp(
       return { success: false, error: `CashID ${cashId} not mapped in CASH_GL_ACCOUNTS` }
     }
 
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
+    const invoiceCode = invoiceCodePrefix(orderId)
     const pool = await getMssqlPool()
 
-    // Look up the Booking row created at order time
+    // Look up a Booking row created at order time. Each dress in the order has
+    // its own invoice_code (invoiceCode + "-" + dressId), so match by prefix —
+    // an exact match would find nothing for a multi-dress order.
     const bookingRow = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code = @invoice_code")
+      .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
+      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code LIKE @invoice_code_prefix")
     const bookingId = bookingRow.recordset?.[0]?.ID as number | undefined
 
     // Check if remaining journal already posted (avoid duplicates)
@@ -690,13 +723,15 @@ export async function syncRemainingPaymentToErp(
           `)
 
         // Also update Booking.Remaining = 0 and Paid = total to mark as fully settled
+        // — LIKE-matched by prefix so every dress under this order is updated,
+        // not just whichever one an exact match on the shared prefix would hit.
         await new sql.Request(txn)
-          .input("invoice_code", sql.NVarChar, invoiceCode)
+          .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
           .input("remaining", sql.Decimal(18, 2), remaining)
           .query(`
             UPDATE Booking
             SET Remaining = 0, Paid = Paid + @remaining, LastUpdate = GETDATE()
-            WHERE invoice_code = @invoice_code
+            WHERE invoice_code LIKE @invoice_code_prefix
           `)
       }
 
@@ -747,7 +782,7 @@ export async function reverseDepositInErp(
       return { success: false, error: `CashID ${cashId} not mapped in CASH_GL_ACCOUNTS` }
     }
 
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
+    const invoiceCode = invoiceCodePrefix(orderId)
     const pool = await getMssqlPool()
 
     // Avoid double-reversal
@@ -759,8 +794,8 @@ export async function reverseDepositInErp(
     }
 
     const bookingRow = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code = @invoice_code")
+      .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
+      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code LIKE @invoice_code_prefix")
     const bookingId = bookingRow.recordset?.[0]?.ID as number | undefined
 
     const now = new Date()
@@ -872,7 +907,7 @@ export async function reAddDepositInErp(
       return { success: false, error: `CashID ${cashId} not mapped in CASH_GL_ACCOUNTS` }
     }
 
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
+    const invoiceCode = invoiceCodePrefix(orderId)
     const pool = await getMssqlPool()
 
     const dupCheck = await pool.request()
@@ -883,8 +918,8 @@ export async function reAddDepositInErp(
     }
 
     const bookingRow = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code = @invoice_code")
+      .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
+      .query("SELECT TOP 1 ID FROM Booking WHERE invoice_code LIKE @invoice_code_prefix")
     const bookingId = bookingRow.recordset?.[0]?.ID as number | undefined
 
     const now = new Date()
@@ -972,14 +1007,17 @@ export async function deleteOrderFromErp(
   orderId: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
-    const invoiceCode = `WEB-${orderId.substring(orderId.length - 6)}`.substring(0, 50)
+    const invoiceCode = invoiceCodePrefix(orderId)
     const pool = await getMssqlPool()
 
     console.log(`[ERP/Delete] Deleting invoice_code ${invoiceCode} from MSSQL ERP Booking table...`)
     
+    // LIKE-matched by prefix: a multi-dress order has one Booking row per
+    // dress, each with its own invoice_code (this prefix + "-" + dressId).
+    // An exact match here would silently leave every dress but one undeleted.
     const result = await pool.request()
-      .input("invoice_code", sql.NVarChar, invoiceCode)
-      .query("DELETE FROM Booking WHERE invoice_code = @invoice_code")
+      .input("invoice_code_prefix", sql.NVarChar, `${invoiceCode}%`)
+      .query("DELETE FROM Booking WHERE invoice_code LIKE @invoice_code_prefix")
 
     console.log(`✅ [ERP/Delete] MSSQL deletion complete for invoice_code ${invoiceCode}. Rows affected:`, result.rowsAffected)
     return { success: true, message: `Successfully deleted booking records for ${invoiceCode}` }

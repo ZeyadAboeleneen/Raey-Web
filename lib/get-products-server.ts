@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getMssqlPool, sql } from "./mssql";
 import {
   type ErpItemRow,
@@ -128,7 +129,11 @@ export function warmProductsServerCache(): void {
  * Fetches a single product by numeric ID directly from MSSQL for SSR.
  * Used by the product detail page to build JSON-LD without a client-side fetch.
  */
-export async function getProductServer(itemIdStr: string): Promise<any | null> {
+/**
+ * React `cache()` dedupes this call within a single request, so
+ * generateMetadata() and the page component share one MSSQL query.
+ */
+export const getProductServer = cache(async function getProductServer(itemIdStr: string): Promise<any | null> {
   const itemId = parseInt(itemIdStr, 10);
   if (isNaN(itemId)) return null;
 
@@ -207,7 +212,7 @@ export async function getProductServer(itemIdStr: string): Promise<any | null> {
     console.error("❌ [SSR] getProductServer failed:", err?.message || err);
     return null;
   }
-}
+});
 
 export async function getProductsServer(): Promise<any[]> {
   // 1. Cache is warm and not expired → return instantly

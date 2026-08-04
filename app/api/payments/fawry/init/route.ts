@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { buildChargeRequest, initHostedCheckout, isFawryConfigured, getFawryConfig } from "@/lib/fawry"
-import { recordInitiated } from "@/lib/payments/fawry-ledger"
+import { buildChargeRequest, initHostedCheckout, isFawryConfigured, getFawryConfig, buildAttemptMerchantRef } from "@/lib/fawry"
+import { recordInitiated, getPaymentsForOrder } from "@/lib/payments/fawry-ledger"
 import { rateLimit, generateCheckoutRateLimitKey } from "@/lib/rate-limit"
 import jwt from "jsonwebtoken"
 
@@ -35,7 +35,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 })
     }
 
-    const order = await prisma.order.findUnique({ where: { orderId } })
+    const order = await prisma.order.findUnique({
+      where: { orderId },
+      include: { user: { select: { email: true } } },
+    })
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
 
     // A logged-in customer may only pay for their own order. Guest orders are
@@ -57,6 +60,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This order is already paid." }, { status: 409 })
     }
 
+    // How many charge attempts this order has already had — purely for
+    // traceability in logs; every attempt still gets its own ledger row.
+    const priorAttempts = await getPaymentsForOrder(orderId)
+    const attemptNumber = priorAttempts.length + 1
+
     // Charge the deposit when the order has one, otherwise the full total.
     const chargeAmount = Number(order.depositAmount) > 0 ? Number(order.depositAmount) : Number(order.total)
     if (!isFinite(chargeAmount) || chargeAmount <= 0) {
@@ -72,15 +80,25 @@ export async function POST(request: NextRequest) {
 
     const shipping = (order.shippingAddress || {}) as any
 
+    // From attempt 2 onward, use a distinct merchantRefNum so Fawry's hosted
+    // page can't mistake this for a resumed session of the previous attempt
+    // (observed: retries reusing the same ref sometimes skipped the 3DS OTP
+    // challenge entirely, then declined with "Incomplete Authentication").
+    // baseOrderIdFromMerchantRef() reverses this everywhere the ref comes back.
+    const attemptMerchantRef = buildAttemptMerchantRef(order.orderId, attemptNumber)
+
     // Fawry is sent a single line for the order rather than the cart lines: the
     // charge total is what matters, and the item breakdown is already stored
     // with the order. This also keeps the signature stable.
     const chargeRequest = buildChargeRequest({
-      merchantRefNum: order.orderId,
+      merchantRefNum: attemptMerchantRef,
       customerProfileId: order.userId || undefined,
       customerName: shipping.name || undefined,
       customerMobile: normalizeEgyptianMobile(shipping.phone),
-      customerEmail: shipping.email || undefined,
+      // Checkout's email field is optional; a logged-in customer's account
+      // email is already verified and on file, so fall back to it rather
+      // than sending no email at all when the shipping form left it blank.
+      customerEmail: shipping.email || order.user?.email || undefined,
       items: [
         {
           itemId: order.orderId,
@@ -97,14 +115,42 @@ export async function POST(request: NextRequest) {
       paymentExpiry: Date.now() + 24 * 60 * 60 * 1000,
     })
 
+    console.log(
+      `[Fawry/init] attempt=${attemptNumber} order=${orderId} merchantRefNum=${chargeRequest.merchantRefNum} ` +
+      `amount=${chargeAmount} returnUrl=${chargeRequest.returnUrl}`,
+    )
+
     const result = await initHostedCheckout(chargeRequest)
 
     if (!result.ok || !result.redirectUrl) {
-      console.error(`[Fawry/init] Charge init failed for ${orderId}:`, result.error, result.raw)
+      console.error(
+        `[Fawry/init] attempt=${attemptNumber} order=${orderId} Charge init failed: ` +
+        `statusCode=${result.statusCode} error=${result.error} raw=${JSON.stringify(result.raw)}`,
+      )
       return NextResponse.json(
         { error: "We couldn't start the payment. Please try again." },
         { status: 502 },
       )
+    }
+
+    console.log(
+      `[Fawry/init] attempt=${attemptNumber} order=${orderId} session created, ` +
+      `redirectUrl=${result.redirectUrl}`,
+    )
+
+    // A retry means the previous attempt's terminal state (rejected/expired) no
+    // longer describes reality — a brand-new attempt is now in flight. Reset to
+    // "pending" so every piece of pending-gated logic (the success page's
+    // auto-sync, its polling loop, and /api/payments/fawry/sync) picks up this
+    // new attempt instead of continuing to reflect the previous one's outcome.
+    // Without this, a rejected order stays "rejected" forever even after a
+    // later attempt is approved, because nothing re-checks a non-pending order.
+    if (order.paymentStatus !== "pending") {
+      await prisma.order.update({
+        where: { orderId: order.orderId },
+        data: { paymentStatus: "pending", paymentFraudReason: null },
+      })
+      console.log(`[Fawry/init] attempt=${attemptNumber} order=${orderId} paymentStatus reset ${order.paymentStatus} → pending`)
     }
 
     // Record the attempt in the ERP ledger so a callback arriving before the
@@ -114,7 +160,7 @@ export async function POST(request: NextRequest) {
       await recordInitiated({
         orderRef: order.orderId,
         expectedAmount: chargeAmount,
-        requestPayload: { ...chargeRequest, signature: "[redacted]" },
+        requestPayload: { ...chargeRequest, signature: "[redacted]", _attemptNumber: attemptNumber },
       })
     } catch (ledgerError) {
       console.error(`[Fawry/init] Could not write initiated row for ${orderId}:`, ledgerError)

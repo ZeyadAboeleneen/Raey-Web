@@ -22,6 +22,13 @@ const config: sql.config = {
   options: {
     encrypt: true,
     trustServerCertificate: true,
+    // The driver defaults to useUTC:true, which silently converts every JS
+    // Date sent as a DATETIME parameter to UTC before writing it — shifting
+    // Booking.BookingDate (and every other JS-computed DATETIME column) 2-3
+    // hours off Cairo local time. This server runs in Africa/Cairo, and the
+    // ERP expects plain local wall-clock time (matching GETDATE()), so send/
+    // read DATETIME values as local time instead of converting through UTC.
+    useUTC: false,
   },
   pool: {
     // Shared site4now SQL hosting caps concurrent connections and will reject

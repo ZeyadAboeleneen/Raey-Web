@@ -29,6 +29,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
   }
 
+  console.log(
+    `[Fawry/callback] received requestId=${payload.requestId} merchantRefNumber=${payload.merchantRefNumber} ` +
+    `fawryRefNumber=${payload.fawryRefNumber} orderStatus=${payload.orderStatus} ` +
+    `paymentAmount=${payload.paymentAmount} paymentMethod=${payload.paymentMethod} ` +
+    `failureErrorCode=${payload.failureErrorCode} failureReason=${payload.failureReason}`,
+  )
+
   if (!isFawryConfigured()) {
     // Fail loud, and let Fawry retry once configuration is fixed.
     console.error("[Fawry/callback] Received a callback while Fawry is not configured")

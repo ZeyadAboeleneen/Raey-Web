@@ -58,6 +58,27 @@ export function isFawryConfigured(): boolean {
   return Boolean(process.env.FAWRY_MERCHANT_CODE && process.env.FAWRY_SECURE_KEY)
 }
 
+/**
+ * Attempt 2+ of a retry gets its own merchantRefNum — `${orderId}~${attempt}`
+ * — so Fawry's hosted page treats it as a genuinely new transaction instead
+ * of resuming state (session/3DS enrollment) tied to the first attempt's
+ * reference. Attempt 1 keeps the bare orderId, unchanged.
+ *
+ * `~` is safe as a delimiter: order ids are generated as `ORD-<digits>-<code>`
+ * (see /api/orders) and never contain it.
+ */
+export function buildAttemptMerchantRef(orderId: string, attemptNumber: number): string {
+  return attemptNumber > 1 ? `${orderId}~${attemptNumber}` : orderId
+}
+
+/** Inverse of buildAttemptMerchantRef — recovers the real order id from
+ *  whatever merchantRefNum Fawry echoes back, whether or not it carries an
+ *  attempt suffix. */
+export function baseOrderIdFromMerchantRef(merchantRefNum: string): string {
+  const idx = merchantRefNum.indexOf("~")
+  return idx === -1 ? merchantRefNum : merchantRefNum.slice(0, idx)
+}
+
 // ── Primitives ───────────────────────────────────────────────────────
 
 const sha256 = (input: string) => crypto.createHash("sha256").update(input, "utf8").digest("hex")

@@ -1,6 +1,6 @@
 import "server-only"
 import { prisma } from "@/lib/prisma"
-import { type FawryCallbackPayload, callbackEventHash, mapFawryStatus, money2 } from "@/lib/fawry"
+import { type FawryCallbackPayload, callbackEventHash, mapFawryStatus, money2, baseOrderIdFromMerchantRef } from "@/lib/fawry"
 import { recordEvent, attachJournal } from "@/lib/payments/fawry-ledger"
 import { postFawryPaymentJournal, findBookingIdByInvoice, getJournalConfig } from "@/lib/payments/fawry-journal"
 import { reserveOrderItemsStock } from "@/lib/order-stock"
@@ -64,8 +64,14 @@ const invoiceCodeFor = (orderId: string) => `WEB-${orderId.substring(orderId.len
 export async function applyFawryEvent(input: ApplyEventInput): Promise<ApplyEventResult> {
   const { payload, signatureValid, source } = input
 
-  const merchantRefNum = String(payload.merchantRefNumber ?? "").trim()
-  if (!merchantRefNum) return { outcome: "rejected", reason: "missing merchantRefNumber" }
+  const rawMerchantRefNum = String(payload.merchantRefNumber ?? "").trim()
+  if (!rawMerchantRefNum) return { outcome: "rejected", reason: "missing merchantRefNumber" }
+
+  // A retry (attempt 2+) sends Fawry `${orderId}~${attempt}` instead of the
+  // bare orderId (see buildAttemptMerchantRef) — recover the real order id
+  // before looking anything up. Attempt 1's ref has no suffix and passes
+  // through unchanged.
+  const merchantRefNum = baseOrderIdFromMerchantRef(rawMerchantRefNum)
 
   const order = await prisma.order.findUnique({ where: { orderId: merchantRefNum } })
   if (!order) return { outcome: "order_not_found", merchantRefNum }

@@ -18,7 +18,7 @@ import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "sonner"
 import { GlobalDateModal } from "@/components/global-date-modal"
-import { warmProductsServerCache } from "@/lib/get-products-server"
+import { getProductsServer } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
 import { MetaPixel, MetaPixelNoscript } from "@/components/meta-pixel"
 import { initOutboxWorker } from "@/lib/worker-init"
@@ -87,12 +87,10 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Warm cache asynchronously without blocking render
-  if (typeof window === 'undefined') {
-    warmProductsServerCache()
-  }
-
-  const initialSettings = await getSiteSettings()
+  const [initialSettings, initialProducts] = await Promise.all([
+    getSiteSettings(),
+    getProductsServer(),
+  ])
 
   return (
     <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
@@ -143,7 +141,7 @@ export default async function RootLayout({
           <HtmlLangWrapper>
             <AuthProvider>
               <ProductProvider>
-                <ProductsCacheProvider>
+                <ProductsCacheProvider initialProducts={initialProducts}>
                   <OrderProvider>
                     <FavoritesProvider>
                       <CartProvider>

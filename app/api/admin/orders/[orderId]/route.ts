@@ -277,9 +277,12 @@ export async function DELETE(
       let bookingIds: number[] = storedIds.filter((id) => Number.isFinite(id))
 
       if (bookingIds.length === 0) {
+        // LIKE-matched by prefix: newer orders have one invoice_code per dress
+        // (this prefix + "-" + dressId), not one shared per order. An exact
+        // match here is a strict subset of this and would miss those rows.
         const bookingRows = await pool.request()
-          .input('invoice_code', sql.NVarChar, invoiceCode)
-          .query(`SELECT ID FROM Booking WHERE invoice_code = @invoice_code`)
+          .input('invoice_code_prefix', sql.NVarChar, `${invoiceCode}%`)
+          .query(`SELECT ID FROM Booking WHERE invoice_code LIKE @invoice_code_prefix`)
         bookingIds = (bookingRows.recordset as { ID: number }[]).map((r) => r.ID)
       }
 
