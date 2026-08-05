@@ -22,13 +22,17 @@ const config: sql.config = {
   options: {
     encrypt: true,
     trustServerCertificate: true,
-    // The driver defaults to useUTC:true, which silently converts every JS
-    // Date sent as a DATETIME parameter to UTC before writing it — shifting
-    // Booking.BookingDate (and every other JS-computed DATETIME column) 2-3
-    // hours off Cairo local time. This server runs in Africa/Cairo, and the
-    // ERP expects plain local wall-clock time (matching GETDATE()), so send/
-    // read DATETIME values as local time instead of converting through UTC.
-    useUTC: false,
+    // REVERTED (see below): useUTC:false looked correct for NEW writes (this
+    // server runs in Africa/Cairo, and the ERP expects local wall-clock time),
+    // but every row already in the database was written under the default
+    // useUTC:true behavior — dates stored UTC-shifted from Cairo local. With
+    // useUTC:false, reading that pre-existing data reinterprets it as local
+    // directly, shifting every historical date by hours and corrupting
+    // availability/double-booking checks across the entire booking history.
+    // Data safety for existing bookings matters more than BookingDate's
+    // display accuracy for new ones, so this stays at the driver default
+    // (useUTC:true) until there's a real plan for the read/write split
+    // between legacy and new rows.
   },
   pool: {
     // Shared site4now SQL hosting caps concurrent connections and will reject
