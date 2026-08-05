@@ -73,6 +73,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [customPrice, setCustomPrice] = useState<number | null>(null)
   const { state: authState } = useAuth()
   const userRole = authState.user?.role || ""
+  // Normal customers order via WhatsApp; admin/staff keep the cart checkout.
+  const isStaffUser = authState.user?.isEmployee === true || userRole === "admin"
   const canEditProducts = usePermission("canEditProducts")
   const [showCustomSizeConfirmation, setShowCustomSizeConfirmation] = useState(false)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
@@ -712,9 +714,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                         )}
                       </div>
 
-                      {/* Add to cart for everyone — see ProductDetailPageClient. */}
+                      {/* Normal customers order via WhatsApp; admin/staff use the cart checkout. */}
                       <Button
-                        onClick={handleAddToCart}
+                        onClick={isStaffUser ? handleAddToCart : handleWhatsAppOrder}
                         className="rounded-full px-6 bg-black hover:bg-gray-800 text-white"
                         disabled={
                           product.isOutOfStock ||
@@ -722,8 +724,17 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           (isCustomSizeMode && !isMeasurementsValid)
                         }
                       >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        {t("addToCart" as TranslationKey)}
+                        {isStaffUser ? (
+                          <>
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            {t("addToCart" as TranslationKey)}
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            {settings.language === "ar" ? "اطلب عبر واتساب" : "Order via WhatsApp"}
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -753,7 +764,9 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Edit</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddToCart}>Confirm & Add</AlertDialogAction>
+            <AlertDialogAction onClick={isStaffUser ? handleAddToCart : handleWhatsAppOrder}>
+              {isStaffUser ? "Confirm & Add" : (settings.language === "ar" ? "تأكيد والطلب عبر واتساب" : "Confirm & Order via WhatsApp")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

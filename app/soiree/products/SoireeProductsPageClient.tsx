@@ -8,7 +8,8 @@ import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, ShoppingCart, X, Heart, Sparkles, RefreshCw, Package, Instagram, Facebook, AlertCircle, ArrowRight } from "lucide-react"
+import { Star, ShoppingCart, MessageCircle, X, Heart, Sparkles, RefreshCw, Package, Instagram, Facebook, AlertCircle, ArrowRight } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
@@ -43,6 +44,8 @@ const QuickAddModal = dynamic(
 // WhatsApp ordering removed — using cart-based checkout
 
 export default function SoireeProductsPage() {
+  const { state: authState } = useAuth()
+  const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { products: cachedProducts, loading, refresh } = useProductsCache()
   const { mode } = useDateContext()
   const isBuyMode = mode === "buy"
@@ -568,8 +571,10 @@ export default function SoireeProductsPage() {
                           >
                             {layout === "desktop" && product.isGiftPackage ? (
                               <Package className={cartIconClassName} />
-                            ) : (
+                            ) : isStaffUser ? (
                               <ShoppingCart className={`${cartIconClassName} text-rose-500`} />
+                            ) : (
+                              <MessageCircle className={`${cartIconClassName} text-rose-500`} />
                             )}
                           </Button>
                         </div>

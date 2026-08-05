@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus, } from "lucide-react"
+import { Star, ShoppingCart, MessageCircle, X, Heart, AlertCircle, Search, ChevronDown, Package, ArrowRight, Sparkles, ChevronLeft, ChevronRight, Plus, } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 import { useCart } from "@/lib/cart-context"
 import { useFavorites } from "@/lib/favorites-context"
@@ -58,6 +59,8 @@ const COLLECTIONS_FILTER = [
 ]
 
 export default function SoireePage() {
+  const { state: authState } = useAuth()
+  const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { products: cachedProducts, loading: cacheLoading, getBestsellers } = useProductsCache()
   const { mode } = useDateContext()
   const isBuyMode = mode === "buy"
@@ -489,7 +492,7 @@ export default function SoireePage() {
                       </div>
                     )}
                     <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!product.isOutOfStock && available) openSizeSelector(product) }} className={`flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${(!available || product.isOutOfStock) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-rose-100 text-rose-700 hover:bg-rose-200"} pointer-events-auto`} disabled={product.isOutOfStock || !available}>
-                      <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                      {isStaffUser ? <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /> : <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />}
                     </Button>
                   </div>
                 </div>

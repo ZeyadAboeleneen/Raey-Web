@@ -47,6 +47,7 @@ export function getFawryConfig() {
      */
     initPath: process.env.FAWRY_INIT_PATH || "/ECommerceWeb/api/payments/init",
     statusPath: process.env.FAWRY_STATUS_PATH || "/ECommerceWeb/Fawry/payments/status/v2",
+    refundPath: process.env.FAWRY_REFUND_PATH || "/ECommerceWeb/Fawry/payments/refund",
     /** Public origin used to build returnUrl / webhook URLs. */
     appUrl: (process.env.NEXT_PUBLIC_BASE_URL || process.env.APP_URL || "").replace(/\/+$/, ""),
     currency: "EGP",
@@ -392,6 +393,87 @@ export async function getPaymentStatus(merchantRefNumber: string, timeoutMs = 15
   } catch (error: any) {
     if (error?.name === "AbortError") return { ok: false, error: "Fawry status request timed out" }
     return { ok: false, error: error?.message || "Fawry status request failed" }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// ── Refund ──────────────────────────────────────────────────────────
+
+export interface FawryRefundResult {
+  ok: boolean
+  statusCode?: number
+  statusDescription?: string
+  error?: string
+  raw?: any
+}
+
+/**
+ * Refunds a previously paid Fawry transaction — this is the API call that
+ * actually returns money to the customer's card. Distinct from any internal
+ * ERP accounting reversal, which only affects our own bookkeeping and never
+ * touches the customer's money.
+ *
+ * `referenceNumber` is Fawry's own reference for the paid transaction (the
+ * `fawryRefNumber` recorded on the 'paid' ledger row), not our merchantRefNum.
+ */
+export async function refundPayment(input: {
+  referenceNumber: string
+  refundAmount: number
+  reason?: string
+  timeoutMs?: number
+}): Promise<FawryRefundResult> {
+  const config = getFawryConfig()
+  const amount = money2(input.refundAmount)
+  const reason = input.reason || ""
+
+  const signature = sha256(
+    config.merchantCode + input.referenceNumber + amount + reason + config.secureKey,
+  )
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? 15000)
+
+  try {
+    const response = await fetch(`${config.baseUrl}${config.refundPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      signal: controller.signal,
+      cache: "no-store",
+      body: JSON.stringify({
+        merchantCode: config.merchantCode,
+        referenceNumber: input.referenceNumber,
+        refundAmount: Number(amount),
+        ...(reason ? { reason } : {}),
+        signature,
+      }),
+    })
+
+    const text = await response.text()
+    let json: any = null
+    try {
+      json = text ? JSON.parse(text) : null
+    } catch {
+      /* non-JSON error body, handled below */
+    }
+
+    if (!response.ok) {
+      return { ok: false, statusCode: response.status, error: (json?.statusDescription || text).slice(0, 500), raw: json }
+    }
+
+    // Fawry signals refund failure via statusCode inside a 200 response too.
+    const statusCode = json?.statusCode
+    const ok = statusCode === undefined || statusCode === 200
+    return {
+      ok,
+      statusCode,
+      statusDescription: json?.statusDescription,
+      error: ok ? undefined : json?.statusDescription,
+      raw: json,
+    }
+  } catch (error: any) {
+    if (error?.name === "AbortError") return { ok: false, error: "Fawry refund request timed out" }
+    return { ok: false, error: error?.message || "Fawry refund request failed" }
   } finally {
     clearTimeout(timer)
   }

@@ -85,8 +85,6 @@ export function DateProvider({ children }: { children: ReactNode }) {
     return d > 45
   }, [occasionDate])
 
-  if (!hydrated) return null
-
   return (
     <DateContext.Provider
       value={{

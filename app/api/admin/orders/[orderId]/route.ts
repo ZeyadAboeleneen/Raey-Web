@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getErpUserById } from "@/lib/erp-users"
 import { returnOrderItemsToStock } from "@/lib/order-stock"
 import { syncRemainingPaymentToErp, reverseDepositInErp, reAddDepositInErp } from "@/lib/erp-sync"
+import { refundFawryOrderPayment } from "@/lib/payments/fawry-refund"
 
 export const dynamic = "force-dynamic"
 
@@ -95,6 +96,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       // If refunding the deposit, remove it from the employee's cash drawer (خزنة)
       if (refundDeposit === true) {
+        // Actual money back to the customer's card (Fawry orders only) —
+        // separate from the ERP entry below, which only affects our own
+        // cash-drawer bookkeeping and never touches the customer's money.
+        const fawryRefund = await refundFawryOrderPayment(currentOrder.orderId, "Order cancelled")
+        if (!fawryRefund.success) {
+          console.error(`[Orders] Fawry refund failed for ${currentOrder.orderId}:`, fawryRefund.error)
+        } else if (fawryRefund.attempted) {
+          console.log(`[Orders] Fawry refund OK for ${currentOrder.orderId}: ${fawryRefund.message}`)
+        }
+
         const refundResult = await reverseDepositInErp(currentOrder.orderId)
         if (!refundResult.success) {
           console.error(`[Orders] Deposit refund failed for ${currentOrder.orderId}:`, refundResult.error)
@@ -155,6 +166,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       // If refunding the deposit, remove it from the employee's cash drawer (خزنة)
       if (refundDeposit === true) {
+        // Actual money back to the customer's card (Fawry orders only) —
+        // separate from the ERP entry below, which only affects our own
+        // cash-drawer bookkeeping and never touches the customer's money.
+        const fawryRefund = await refundFawryOrderPayment(currentOrder.orderId, "Order cancelled")
+        if (!fawryRefund.success) {
+          console.error(`[Orders] Fawry refund failed for ${currentOrder.orderId}:`, fawryRefund.error)
+        } else if (fawryRefund.attempted) {
+          console.log(`[Orders] Fawry refund OK for ${currentOrder.orderId}: ${fawryRefund.message}`)
+        }
+
         const refundResult = await reverseDepositInErp(currentOrder.orderId)
         if (!refundResult.success) {
           console.error(`[Orders] Deposit refund failed for ${currentOrder.orderId}:`, refundResult.error)
@@ -250,6 +271,13 @@ export async function DELETE(
     // 1b. If refunding the deposit, remove it from the employee's cash drawer (خزنة)
     //     before the Booking row (and its journal RecID link) is deleted.
     if (refundDeposit) {
+      const fawryRefund = await refundFawryOrderPayment(order.orderId, "Order deleted")
+      if (!fawryRefund.success) {
+        console.error(`[Orders] Fawry refund failed for ${order.orderId}:`, fawryRefund.error)
+      } else if (fawryRefund.attempted) {
+        console.log(`[Orders] Fawry refund OK for ${order.orderId}: ${fawryRefund.message}`)
+      }
+
       const refundResult = await reverseDepositInErp(order.orderId)
       if (!refundResult.success) {
         console.error(`[Orders] Deposit refund failed for ${order.orderId}:`, refundResult.error)

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowLeft, Star, Heart, ShoppingCart, Truck, Shield, RotateCcw, ChevronDown, X, Package, Instagram, Facebook, ChevronLeft, ChevronRight, AlertCircle, Maximize2 } from "lucide-react"
+import { ArrowLeft, Star, Heart, ShoppingCart, MessageCircle, Truck, Shield, RotateCcw, ChevronDown, X, Package, Instagram, Facebook, ChevronLeft, ChevronRight, AlertCircle, Maximize2 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
@@ -144,6 +144,8 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
   const { formatPrice, showPrices, canViewPrices } = useCurrencyFormatter()
   const { state: authState } = useAuth()
   const userRole = authState.user?.role || ""
+  // Normal customers order via WhatsApp; admin/staff keep the cart checkout.
+  const isStaffUser = authState.user?.isEmployee === true || userRole === "admin"
   const { settings } = useLocale()
   const t = useTranslation(settings.language)
   const {
@@ -1410,9 +1412,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                     />
                   </div>
                   <div className="mt-4 flex justify-center">
-                    {/* Everyone orders through the website. Customers were
-                        previously pushed to WhatsApp because there was no way
-                        to pay online; Fawry checkout replaces that. */}
+                    {/* Normal customers order via WhatsApp; admin/staff use the cart checkout. */}
                     <Button
                       className="px-6 py-3 rounded-full flex items-center bg-black hover:bg-gray-800 text-white"
                       disabled={
@@ -1420,12 +1420,14 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                         (isRentBranch && !rentEventDate && !isPast45Days) ||
                         (isCustomSizeMode && !isMeasurementsValid)
                       }
-                      onClick={handleAddToCart}
+                      onClick={isStaffUser ? handleAddToCart : handleWhatsAppOrder}
                     >
-                      <ShoppingCart className="mr-2 h-5 w-5" />
+                      {isStaffUser ? <ShoppingCart className="mr-2 h-5 w-5" /> : <MessageCircle className="mr-2 h-5 w-5" />}
                       {product.isOutOfStock
                         ? t("outOfStockLabel" as TranslationKey)
-                        : t("addToCart" as TranslationKey)}
+                        : isStaffUser
+                          ? t("addToCart" as TranslationKey)
+                          : (settings.language === "ar" ? "اطلب عبر واتساب" : "Order via WhatsApp")}
                     </Button>
                   </div>
                 </div>

@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Star, ShoppingCart, X, Heart, AlertCircle, Search, ArrowLeft, } from "lucide-react"
+import { Star, ShoppingCart, MessageCircle, X, Heart, AlertCircle, Search, ArrowLeft, } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import dynamic from "next/dynamic"
@@ -72,6 +73,8 @@ const CATEGORY_PAGE_SIZE = 10
 // WhatsApp ordering removed — using cart-based checkout
 
 export default function WeddingBranchPage() {
+  const { state: authState } = useAuth()
+  const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { branch } = useParams() as { branch: string }
   const { mode } = useDateContext()
   const isBuyMode = mode === "buy"
@@ -619,7 +622,7 @@ export default function WeddingBranchPage() {
                                                     : "Buy Now"
                                               }
                                             >
-                                              <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />
+                                              {isStaffUser ? <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /> : <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />}
                                             </Button>
                                           </div>
                                         </>

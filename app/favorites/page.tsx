@@ -7,7 +7,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, ShoppingCart, Trash2, ArrowLeft, } from "lucide-react"
+import { Heart, ShoppingCart, MessageCircle, Trash2, ArrowLeft, } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { useFavorites, type FavoriteItem } from "@/lib/favorites-context"
@@ -23,6 +24,8 @@ import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 // WhatsApp ordering removed — using cart-based checkout
 
 export default function FavoritesPage() {
+  const { state: authState } = useAuth()
+  const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
   const { dispatch: cartDispatch } = useCart()
   const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, mode, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
@@ -228,7 +231,7 @@ export default function FavoritesPage() {
                                         )}
                                       </div>
                                     )}
-                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!item.isOutOfStock) openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock} aria-label="Order via WhatsApp"><ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /></Button>
+                                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!item.isOutOfStock) openSizeSelector(item) }} className="flex items-center justify-center rounded-full px-2.5 py-2 sm:px-3 sm:py-2 bg-rose-100 text-rose-700 hover:bg-rose-200" disabled={item.isOutOfStock} aria-label="Order via WhatsApp">{isStaffUser ? <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" /> : <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-500" />}</Button>
                                   </div>
                                 </>
                               )

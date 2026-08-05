@@ -149,6 +149,24 @@ export async function getLatestMerchantRefNum(orderRef: string): Promise<string>
   }
 }
 
+/**
+ * Fawry's own reference number for this order's successful payment — needed
+ * to call the Refund API, which refunds by Fawry's reference, not ours.
+ * Picks the most recent 'paid' row if more than one exists.
+ */
+export async function getPaidFawryRefNumber(orderRef: string): Promise<string | null> {
+  const pool = await getMssqlPool()
+  const result = await pool
+    .request()
+    .input("OrderRef", sql.NVarChar(100), orderRef)
+    .query(`
+      SELECT TOP 1 FawryRefNumber FROM dbo.tb_FawryPayments
+      WHERE OrderRef = @OrderRef AND Status = 'paid' AND FawryRefNumber IS NOT NULL
+      ORDER BY ID DESC
+    `)
+  return result.recordset[0]?.FawryRefNumber ?? null
+}
+
 /** Attach the posted journal entry to the payment row, for traceability. */
 export async function attachJournal(paymentId: number, journalId: number): Promise<void> {
   const pool = await getMssqlPool()

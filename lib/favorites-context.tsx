@@ -135,8 +135,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     }
   }, [state.items, hydrated])
 
-  if (!hydrated) return null
-
   const addToFavorites = async (item: FavoriteItem) => {
     // Create a clean item without undefined properties
     const favoriteItem = {

@@ -26,6 +26,7 @@ export function Navigation() {
   const hasScrolledToCurrency = useRef(false)
   const { isScrolled } = useScroll()
   const { state: authState, logout } = useAuth()
+  const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { state: favoritesState } = useFavorites()
   const { state: cartState } = useCart()
   const pathname = usePathname()
@@ -347,21 +348,23 @@ export function Navigation() {
               )}
             </Link>
 
-            {/* Shopping Cart */}
-            <Link
-              href="/checkout"
-              className={`relative p-2 transition-colors ${getIconColors(isActiveLink("/checkout"))}`}
-            >
-              <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
-              {cartState.items.length > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs border-0">
-                  {cartState.items.length}
-                </Badge>
-              )}
-              {isActiveLink("/checkout") && (
-                <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/5' : 'bg-white/20'}`} />
-              )}
-            </Link>
+            {/* Shopping Cart — admin/staff only; normal customers order via WhatsApp */}
+            {isStaffUser && (
+              <Link
+                href="/checkout"
+                className={`relative p-2 transition-colors ${getIconColors(isActiveLink("/checkout"))}`}
+              >
+                <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
+                {cartState.items.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs border-0">
+                    {cartState.items.length}
+                  </Badge>
+                )}
+                {isActiveLink("/checkout") && (
+                  <div className={`absolute inset-0 rounded-xl ${!isTransparentPage || isScrolled ? 'bg-black/5' : 'bg-white/20'}`} />
+                )}
+              </Link>
+            )}
           </div>
         </div>
 
@@ -440,14 +443,16 @@ export function Navigation() {
                           </span>
                         )}
                       </Link>
-                      <Link href="/checkout" onClick={() => setIsOpen(false)} className="relative p-1">
-                        <ShoppingCart className="h-5 w-5 text-black" />
-                        {cartState.items.length > 0 && (
-                          <span className="absolute -top-2 -right-2 h-4 w-4 bg-black text-white text-xs rounded-full flex items-center justify-center">
-                            {cartState.items.length}
-                          </span>
-                        )}
-                      </Link>
+                      {isStaffUser && (
+                        <Link href="/checkout" onClick={() => setIsOpen(false)} className="relative p-1">
+                          <ShoppingCart className="h-5 w-5 text-black" />
+                          {cartState.items.length > 0 && (
+                            <span className="absolute -top-2 -right-2 h-4 w-4 bg-black text-white text-xs rounded-full flex items-center justify-center">
+                              {cartState.items.length}
+                            </span>
+                          )}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
