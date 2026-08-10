@@ -28,7 +28,7 @@ export default function FavoritesPage() {
   const isStaffUser = authState.user?.isEmployee === true || authState.user?.role === "admin"
   const { state: favoritesState, removeFromFavorites, clearFavorites } = useFavorites()
   const { dispatch: cartDispatch } = useCart()
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, mode, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
+  const { sortedProducts, isAvailable, dynamicPrices, dynamicOriginalPrices, loadingPrices, fetchPricesForIds, occasionDate, mode, isOccasionPast45Days } = useDateFilteredProducts(favoritesState.items as any)
   const isBuyMode = mode === "buy"
 
   // Fetch prices for all favorites when a date is selected
@@ -176,16 +176,28 @@ export default function FavoritesPage() {
 
                               // Dynamic price logic
                               let exactDynamicPrice: number | null = null
+                              let exactDynamicOriginalPrice: number | null = null
                               if (occasionDate && isRentBranch && !isGift) {
                                 if (dynamicPrices[item.id]) {
                                   exactDynamicPrice = dynamicPrices[item.id]
                                 }
+                                if (dynamicOriginalPrices[item.id]) {
+                                  exactDynamicOriginalPrice = dynamicOriginalPrices[item.id]
+                                }
                               }
 
                               const price = isGift ? (item.packagePrice || 0) : isBuyMode ? ((item as any).sellPrice ?? getSmallestPrice(item.sizes || [])) : (exactDynamicPrice || (isRentBranch && item.rentalPriceA && item.rentalPriceA > 0 ? item.rentalPriceA : getSmallestPrice(item.sizes || [])))
-                              const originalPrice = isGift ? (item.packageOriginalPrice || 0) : getSmallestOriginalPrice(item.sizes || [])
-                              const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+                              const originalPrice = isGift
+                                ? (item.packageOriginalPrice || 0)
+                                : isRentBranch
+                                  ? (exactDynamicOriginalPrice || (item as any).rentalPriceAOriginal || 0)
+                                  : getSmallestOriginalPrice(item.sizes || [])
+                              const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
                               const clientRentalPrice = exactDynamicPrice || (isRentBranch && item.rentalPriceC && item.rentalPriceC > 0 ? item.rentalPriceC : null)
+                              const clientRentalOriginalPrice = exactDynamicPrice
+                                ? exactDynamicOriginalPrice
+                                : (isRentBranch && (item as any).rentalPriceCOriginal ? (item as any).rentalPriceCOriginal : null)
+                              const clientRentalHasDiscount = clientRentalPrice != null && clientRentalOriginalPrice != null && clientRentalPrice < clientRentalOriginalPrice
 
                               return (
                                 <>
@@ -204,11 +216,16 @@ export default function FavoritesPage() {
                                         <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                           {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                                         </span>
-                                        <span className="text-xs sm:text-sm font-semibold">
-                                          {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
-                                            <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
-                                          ) : formatPrice(clientRentalPrice)}
-                                        </span>
+                                        {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices) && isRentBranch && !isGift) ? (
+                                          <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                        ) : clientRentalHasDiscount ? (
+                                          <>
+                                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(clientRentalOriginalPrice!)}</span>
+                                            <span className="text-xs sm:text-sm font-semibold text-red-600">{formatPrice(clientRentalPrice)}</span>
+                                          </>
+                                        ) : (
+                                          <span className="text-xs sm:text-sm font-semibold">{formatPrice(clientRentalPrice)}</span>
+                                        )}
                                       </div>
                                     ) : (
                                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
@@ -220,7 +237,7 @@ export default function FavoritesPage() {
                                         {hasDiscount ? (
                                           <>
                                             <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>
-                                            <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                                            <span className="text-xs sm:text-sm font-semibold text-red-600">{formatPrice(price)}</span>
                                           </>
                                         ) : (
                                           <span className="text-xs sm:text-sm font-semibold">

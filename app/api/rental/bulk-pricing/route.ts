@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
+import { getActiveProductDiscounts, findDiscountForProduct, applyProductDiscount } from "@/lib/product-discounts"
+import { getProductsServer } from "@/lib/get-products-server"
 
 export const maxDuration = 60
 export const dynamic = "force-dynamic"
@@ -8,10 +10,39 @@ export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { productIds, occasionDate } = body
+    const { productIds, items: rawItems, occasionDate } = body
 
-    if (!productIds || !Array.isArray(productIds)) {
-      return NextResponse.json({ error: "productIds must be an array" }, { status: 400 })
+    // Accept either the legacy `productIds: string[]` or `items: {id, branch}[]`
+    // (branch is needed to match branch-wide rent discount rules).
+    const items: { id: string; branch: string | null }[] = Array.isArray(rawItems)
+      ? rawItems.map((it: any) => ({ id: String(it.id), branch: it.branch ?? null }))
+      : Array.isArray(productIds)
+        ? productIds.map((id: any) => ({ id: String(id), branch: null }))
+        : []
+
+    if (!items.length) {
+      return NextResponse.json({ error: "productIds or items must be a non-empty array" }, { status: 400 })
+    }
+
+    // Branch decides which branch-scoped rent discounts apply, so it must never be
+    // left to the caller: a client that omits it (or sends "") would silently price
+    // the item at full rate and wipe out a legitimate discount. Resolve anything
+    // missing from the server's own product cache instead of trusting the request.
+    const branchById = new Map<string, string | null>(
+      items.map((it) => [it.id, it.branch && it.branch.trim() ? it.branch : null]),
+    )
+    if ([...branchById.values()].some((b) => b === null)) {
+      try {
+        const catalog = await getProductsServer()
+        for (const p of catalog) {
+          const id = String(p.id)
+          if (branchById.has(id) && branchById.get(id) === null) {
+            branchById.set(id, p.branch ?? null)
+          }
+        }
+      } catch (err) {
+        console.error("[Bulk Pricing] branch resolution fallback failed:", err)
+      }
     }
 
     if (!occasionDate) {
@@ -38,7 +69,7 @@ export async function POST(request: NextRequest) {
     req.input("RentStart", sql.VarChar, rentStart.toLocaleDateString("en-CA"))
     
     // We use a table variable or a long IN clause. For simplicity and performance with ~100-200 IDs, IN is fine.
-    const ids = productIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+    const ids = items.map(it => parseInt(it.id, 10)).filter(id => !isNaN(id))
     if (ids.length === 0) return NextResponse.json({ success: true, prices: {} })
 
     // 2. Optimized SQL to calculate dynamic parameters for all items
@@ -101,7 +132,9 @@ export async function POST(request: NextRequest) {
 
     // 3. Apply the shared pricing logic in JS (lightweight)
     const prices: Record<string, number> = {}
+    const originalPrices: Record<string, number> = {}
     const { calculateRentalPrice: calcPrice } = await import("@/lib/rental-pricing-calc")
+    const activeDiscounts = await getActiveProductDiscounts()
 
     for (const row of rows) {
       const res = calcPrice(
@@ -114,10 +147,17 @@ export async function POST(request: NextRequest) {
           isLatest: (row.laterCount ?? 0) === 0,
         }
       )
-      prices[String(row.ID)] = res.total
+      const id = String(row.ID)
+      const discount = findDiscountForProduct(id, branchById.get(id) ?? null, activeDiscounts, "rent")
+      if (discount) {
+        prices[id] = applyProductDiscount(res.total, discount)
+        originalPrices[id] = res.total
+      } else {
+        prices[id] = res.total
+      }
     }
 
-    return NextResponse.json({ success: true, prices })
+    return NextResponse.json({ success: true, prices, originalPrices })
   } catch (error: any) {
     console.error("❌ [Bulk Pricing] Error:", error?.message || error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

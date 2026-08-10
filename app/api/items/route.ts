@@ -9,39 +9,23 @@ import {
 import { isAdminRequest } from "@/lib/erp-items";
 import { decodeEmployeeJWT } from "@/lib/auth-helpers";
 import { filterPublicProducts } from "@/lib/product-visibility";
+import { getActiveProductDiscounts } from "@/lib/product-discounts";
 
-// ── In-memory cache ─────────────────────────────────────────────────
-interface CacheEntry {
-  body: string;
-  expiresAt: number;
-}
-
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const globalCache = globalThis as typeof globalThis & {
-  _erpItemsCache?: Map<string, CacheEntry>;
-};
-const cache =
-  globalCache._erpItemsCache ?? new Map<string, CacheEntry>();
-if (!globalCache._erpItemsCache) globalCache._erpItemsCache = cache;
-
-function getCached(key: string): string | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.body;
-}
-
-function setCache(key: string, body: string) {
-  cache.set(key, { body, expiresAt: Date.now() + CACHE_TTL_MS });
-}
+// ── In-memory cache (shared module — see lib/items-cache.ts) ─────────
+import { getCachedItems, setCachedItems } from "@/lib/items-cache";
+const getCached = getCachedItems;
+const setCache = setCachedItems;
 
 // ── Helpers ─────────────────────────────────────────────────────────
 const jsonHeaders = {
   "Content-Type": "application/json",
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  // Live pricing data — never let a browser/CDN serve a stale body. The previous
+  // `public, s-maxage=30, stale-while-revalidate=30` had no `max-age` and no
+  // validator, so the browser's heuristic freshness was 0 and SWR told it to serve
+  // the stale copy instantly on every reload. That silently overwrote correct,
+  // freshly server-rendered discount prices with a pre-discount cached body.
+  "Cache-Control": "no-store, must-revalidate",
+
 };
 
 const errorResponse = (status: number, message: string) =>
@@ -198,10 +182,13 @@ export async function GET(request: NextRequest) {
       : finalProducts;
 
     // Transform to the shape the frontend expects
-    let output =
-      format === "erp"
-        ? pagedProducts
-        : pagedProducts.map(erpProductToCachedShape);
+    let output: any[];
+    if (format === "erp") {
+      output = pagedProducts;
+    } else {
+      const activeProductDiscounts = await getActiveProductDiscounts();
+      output = pagedProducts.map((item) => erpProductToCachedShape(item, activeProductDiscounts));
+    }
 
     // ── Strip prices based on permissions ──────────────────────────────
     const canViewPrices = await isAdminRequest(request, "canViewPricesOnWebsite");

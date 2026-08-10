@@ -258,7 +258,7 @@ export default function SoireeProductsPage() {
     }
   }, [isCustomSizeMode, selectedProduct, selectedSize])
 
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(products)
+  const { sortedProducts, isAvailable, dynamicPrices, dynamicOriginalPrices, loadingPrices, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(products)
 
   // Eagerly fetch ALL soiree prices if a date is selected
   useEffect(() => {
@@ -389,10 +389,14 @@ export default function SoireeProductsPage() {
 
       // Dynamic price logic
       let exactDynamicPrice: number | null = null
+      let exactDynamicOriginalPrice: number | null = null
       const isRentBranch = !isBuyMode && product.branch !== "sell-dresses"
       if (occasionDate && isRentBranch && !product.isGiftPackage) {
         if (dynamicPrices[product.id]) {
           exactDynamicPrice = dynamicPrices[product.id]
+        }
+        if (dynamicOriginalPrices[product.id]) {
+          exactDynamicOriginalPrice = dynamicOriginalPrices[product.id]
         }
       }
 
@@ -402,11 +406,13 @@ export default function SoireeProductsPage() {
           ? product.rentalPriceA
           : getSmallestPrice(product.sizes)))
 
-      const original = getSmallestOriginalPrice(product.sizes)
-      return { price, original, exactDynamicPrice }
-    }, [product, dynamicPrices, occasionDate, isBuyMode])
+      const original = isRentBranch
+        ? (exactDynamicOriginalPrice || (product as any).rentalPriceAOriginal || 0)
+        : getSmallestOriginalPrice(product.sizes)
+      return { price, original, exactDynamicPrice, exactDynamicOriginalPrice }
+    }, [product, dynamicPrices, dynamicOriginalPrices, occasionDate, isBuyMode])
 
-    const hasDiscount = product.branch === "sell-dresses" && priceData.original > 0 && priceData.price < priceData.original
+    const hasDiscount = priceData.original > 0 && priceData.price < priceData.original
     const available = isAvailable(product)
 
     const handleFavoriteClick = useCallback(
@@ -507,6 +513,10 @@ export default function SoireeProductsPage() {
                     const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
                     const clientRentalPrice = isBuyMode ? null : (priceData.exactDynamicPrice || (product.branch !== "sell-dresses" && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null))
                     const isRent = !isBuyMode && product.branch !== "sell-dresses"
+                    const clientRentalOriginalPrice = isRent
+                      ? (priceData.exactDynamicPrice ? priceData.exactDynamicOriginalPrice ?? null : ((product as any).rentalPriceCOriginal ?? null))
+                      : null
+                    const clientRentalHasDiscount = clientRentalPrice != null && clientRentalOriginalPrice != null && clientRentalPrice < clientRentalOriginalPrice
 
                     return (
                       <>
@@ -528,11 +538,22 @@ export default function SoireeProductsPage() {
                               <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                 {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                               </span>
-                              <span className="text-xs sm:text-sm font-semibold">
-                                {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
-                                  <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
-                                ) : formatPrice(clientRentalPrice)}
-                              </span>
+                              {(occasionDate && !isOccasionPast45Days && (!priceData.exactDynamicPrice || loadingPrices) && isRent && !product.isGiftPackage) ? (
+                                <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                              ) : clientRentalHasDiscount ? (
+                                <>
+                                  <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                    {formatPrice(clientRentalOriginalPrice!)}
+                                  </span>
+                                  <span className="text-xs sm:text-sm font-semibold text-red-600">
+                                    {formatPrice(clientRentalPrice)}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs sm:text-sm font-semibold">
+                                  {formatPrice(clientRentalPrice)}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className={`${priceTextWrapperClassName} flex flex-col items-start`}>
@@ -546,7 +567,7 @@ export default function SoireeProductsPage() {
                                   <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
                                     {formatPrice(priceData.original)}
                                   </span>
-                                  <span className="text-xs sm:text-sm font-semibold">
+                                  <span className="text-xs sm:text-sm font-semibold text-red-600">
                                     {formatPrice(priceData.price)}
                                   </span>
                                 </>

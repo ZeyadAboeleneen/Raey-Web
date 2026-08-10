@@ -323,7 +323,7 @@ export default function WeddingPage() {
     return result
   }, [allProducts, selectedCollection, debouncedQuery, searchApiResults])
 
-  const { sortedProducts, isAvailable, dynamicPrices, getDynamicPrice, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
+  const { sortedProducts, isAvailable, dynamicPrices, getDynamicPrice, getDynamicOriginalPrice, loadingPrices, fetchPricesForPage, fetchPricesForIds, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(candidateProducts)
 
   const finalFilteredProducts = useMemo(() => {
     let result = sortedProducts
@@ -434,8 +434,10 @@ export default function WeddingPage() {
 
     // Dynamic price logic
     let exactDynamicPrice: number | null = null
+    let exactDynamicOriginalPrice: number | null = null
     if (occasionDate && isRentBranch && !isGift) {
       exactDynamicPrice = dynamicPrices[product.id] ?? getDynamicPrice(product)
+      exactDynamicOriginalPrice = getDynamicOriginalPrice(product)
     }
 
     const price = isGift
@@ -443,12 +445,20 @@ export default function WeddingPage() {
       : isBuyMode
         ? ((product as any).sellPrice ?? getSmallestPrice(product.sizes))
         : (exactDynamicPrice || ((isRentBranch && (product as any).rentalPriceA && (product as any).rentalPriceA > 0) ? (product as any).rentalPriceA : getSmallestPrice(product.sizes)))
-    const originalPrice = isGift ? product.packageOriginalPrice || 0 : getSmallestOriginalPrice(product.sizes)
-    const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+    const originalPrice = isGift
+      ? product.packageOriginalPrice || 0
+      : isRentBranch
+        ? (exactDynamicOriginalPrice || (product as any).rentalPriceAOriginal || 0)
+        : getSmallestOriginalPrice(product.sizes)
+    const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
 
     // Buy mode shows the sell price to everyone (customers are buying, not renting).
     const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
     const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
+    const clientRentalOriginalPrice = exactDynamicPrice
+      ? exactDynamicOriginalPrice
+      : (isRentBranch && (product as any).rentalPriceCOriginal ? (product as any).rentalPriceCOriginal : null)
+    const clientRentalHasDiscount = clientRentalPrice != null && clientRentalOriginalPrice != null && clientRentalPrice < clientRentalOriginalPrice
 
     const available = isAvailable(product)
 
@@ -485,11 +495,16 @@ export default function WeddingPage() {
                         <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                           {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                         </span>
-                        <span className="text-xs sm:text-sm font-semibold">
-                          {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
-                            <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
-                          ) : formatPrice(clientRentalPrice)}
-                        </span>
+                        {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
+                          <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                        ) : clientRentalHasDiscount ? (
+                          <>
+                            <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(clientRentalOriginalPrice!)}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-red-600">{formatPrice(clientRentalPrice)}</span>
+                          </>
+                        ) : (
+                          <span className="text-xs sm:text-sm font-semibold">{formatPrice(clientRentalPrice)}</span>
+                        )}
                       </div>
                     ) : (
                       <div className="text-[11px] sm:text-xs flex flex-col items-start">
@@ -501,7 +516,7 @@ export default function WeddingPage() {
                         {hasDiscount ? (
                           <>
                             <span className="line-through text-gray-300 text-[10px] sm:text-xs block">{formatPrice(originalPrice)}</span>
-                            <span className="text-xs sm:text-sm font-semibold">{formatPrice(price)}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-red-600">{formatPrice(price)}</span>
                           </>
                         ) : (
                           <span className="text-xs sm:text-sm font-semibold">

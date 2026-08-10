@@ -5,6 +5,7 @@
 
 import { resolveBranchSlugFromErpRow } from "@/lib/branch-map";
 import { mapOpStoreIdToBranchSlug } from "@/lib/erp-stores";
+import { type ActiveProductDiscount, findDiscountForProduct, applyProductDiscount } from "@/lib/product-discounts";
 
 // ── Line id (ERP Items.Category_id) → collection label ───────────────
 const LINE_ID_TO_COLLECTION: Record<number, string> = {
@@ -175,12 +176,28 @@ const round100 = (val: number) => Math.round(val / 100) * 100;
 
 /**
  * Maps an ERP product to the JSON shape the storefront consumes.
+ *
+ * `activeDiscounts` — currently-active ProductDiscount rows (buy items
+ * only, see lib/product-discounts.ts). Callers fetch this once per batch
+ * and pass it through rather than querying per product. Purely a display
+ * concern here — the actual charge is recomputed independently and
+ * authoritatively in lib/pricing/server-pricing.ts.
  */
-export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
+export function erpProductToCachedShape(p: ErpProduct, activeDiscounts: ActiveProductDiscount[] = []): Record<string, any> {
   // Category A rental price = cost × 0.8, rounded to nearest 100, floor 3000
   const rentalPriceA = p.cost > 0 ? Math.max(round100(p.cost * 0.8), 3000) : null;
   // Category C rental price = cost × 0.4, rounded to nearest 100, floor 3000 (shown to clients)
   const rentalPriceC = p.cost > 0 ? Math.max(round100(p.cost * 0.4), 3000) : null;
+
+  const buyDiscount = p.isSellable ? findDiscountForProduct(p.id, p.branch, activeDiscounts, "buy") : null;
+  const discountedSellPrice = buyDiscount ? applyProductDiscount(p.price, buyDiscount) : p.price;
+
+  // Rent discount applies to the "starting from" display prices (rentalPriceA/C).
+  // The exact per-date price (once an occasion date is picked) is discounted
+  // separately, server-side, in /api/rental/pricing and /api/rental/bulk-pricing.
+  const rentDiscount = findDiscountForProduct(p.id, p.branch, activeDiscounts, "rent");
+  const discountedRentalPriceA = rentDiscount && rentalPriceA ? applyProductDiscount(rentalPriceA, rentDiscount) : rentalPriceA;
+  const discountedRentalPriceC = rentDiscount && rentalPriceC ? applyProductDiscount(rentalPriceC, rentDiscount) : rentalPriceC;
 
   return {
     _id: String(p.id),
@@ -193,10 +210,17 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
     price: p.price,
     // Sell price (Item_sellpricNow) shown to customers in Buy mode. Only meaningful
     // for never-rented dresses (isSellable); kept un-stripped so customers can see it.
-    sellPrice: p.isSellable ? p.price : null,
+    // Reflects an active automatic ProductDiscount, if one matches this item.
+    sellPrice: p.isSellable ? discountedSellPrice : null,
     isSellable: p.isSellable,
-    rentalPriceA,
-    rentalPriceC,
+    rentalPriceA: discountedRentalPriceA,
+    rentalPriceC: discountedRentalPriceC,
+    // Pre-discount "starting from" prices, for strikethrough display; null when no rent discount applies.
+    rentalPriceAOriginal: rentDiscount ? rentalPriceA : null,
+    rentalPriceCOriginal: rentDiscount ? rentalPriceC : null,
+    // Passed to the client so the instant speculative price estimate (before the
+    // server round-trip resolves) can apply the same discount without waiting.
+    rentDiscount: rentDiscount ? { type: rentDiscount.discountType, value: rentDiscount.discountValue } : null,
     image: p.image,
     beforeSalePrice: null,
     afterSalePrice: null,
@@ -205,7 +229,7 @@ export function erpProductToCachedShape(p: ErpProduct): Record<string, any> {
         size: "Standard",
         volume: "-",
         originalPrice: p.price,
-        discountedPrice: p.price,
+        discountedPrice: discountedSellPrice,
         stockCount: 10,
       },
     ],

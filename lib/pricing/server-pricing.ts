@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getMssqlPool, sql } from "@/lib/mssql"
 import { calculateRentalPrice } from "@/lib/rental-pricing"
 import { evaluateDiscount } from "@/lib/discounts"
+import { getActiveProductDiscounts, findDiscountForProduct, applyProductDiscount } from "@/lib/product-discounts"
 
 /**
  * Server-authoritative cart pricing.
@@ -59,6 +60,11 @@ export interface PricedItem extends PriceCartItemInput {
   /** Where the price came from, for audit. */
   priceSource: "rental-erp" | "sell-erp" | "gift-package" | "product-cache" | "staff-override"
   priceFormula?: string
+  /** Set when an active ProductDiscount reduced this line's unitPrice — the
+   *  pre-discount price, kept for receipts/audit. unitPrice is already the
+   *  discounted figure everywhere else. */
+  originalUnitPrice?: number
+  appliedProductDiscountId?: string
 }
 
 export interface PricedCart {
@@ -160,9 +166,10 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
     else if (!isRentalItem(item)) sellItems.push(item)
   }
 
-  const [sellPrices, packagePrices] = await Promise.all([
+  const [sellPrices, packagePrices, activeProductDiscounts] = await Promise.all([
     fetchErpSellPrices(sellItems.map((i) => String(i.productId ?? i.id ?? ""))),
     fetchGiftPackagePrices(packageItems.map((i) => String(i.productId ?? i.id ?? ""))),
+    getActiveProductDiscounts(),
   ])
 
   const priced: PricedItem[] = []
@@ -177,6 +184,8 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
     let unitPrice: number
     let priceSource: PricedItem["priceSource"]
     let priceFormula: string | undefined
+    let originalUnitPrice: number | undefined
+    let appliedProductDiscountId: string | undefined
 
     if (item.isGiftPackage) {
       const p = packagePrices[productId]
@@ -206,14 +215,36 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
         rentEnd,
         isExclusive: Boolean(item.isExclusive),
       })
-      unitPrice = result.total
       priceSource = "rental-erp"
       priceFormula = `${result.category}: ${result.formula}`
+
+      // Automatic, no-code discount (see lib/product-discounts.ts) — applies
+      // when the rule's appliesTo covers "rent". Takes effect purely
+      // server-side; the client never supplies or influences this price.
+      const rentDiscount = findDiscountForProduct(productId, item.branch, activeProductDiscounts, "rent")
+      if (rentDiscount) {
+        unitPrice = applyProductDiscount(result.total, rentDiscount)
+        originalUnitPrice = result.total
+        appliedProductDiscountId = rentDiscount.id
+      } else {
+        unitPrice = result.total
+      }
     } else {
       const p = sellPrices[productId]
       if (!p || p <= 0) throw new PricingError(`Item is unavailable for purchase: ${item.name || productId}`, itemId)
-      unitPrice = p
       priceSource = "sell-erp"
+
+      // Automatic, no-code discount (see lib/product-discounts.ts) — applies
+      // when the rule's appliesTo covers "buy". Takes effect purely
+      // server-side; the client never supplies or influences this price.
+      const discount = findDiscountForProduct(productId, item.branch, activeProductDiscounts, "buy")
+      if (discount) {
+        unitPrice = applyProductDiscount(p, discount)
+        originalUnitPrice = p
+        appliedProductDiscountId = discount.id
+      } else {
+        unitPrice = p
+      }
     }
 
     let lineTotal = round2(unitPrice * quantity)
@@ -238,6 +269,9 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
         unitPrice = round2(lineTotal / quantity)
         priceSource = "staff-override"
         priceFormula = `staff override (server price was ${round2(unitPrice * quantity)})`
+        // A manual staff price supersedes the automatic discount entirely.
+        originalUnitPrice = undefined
+        appliedProductDiscountId = undefined
       }
       if (typeof override.deposit === "number" && isFinite(override.deposit) && override.deposit >= 0) {
         baseDeposit = Math.round(override.deposit)
@@ -257,6 +291,8 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
       baseDeposit,
       priceSource,
       priceFormula,
+      originalUnitPrice,
+      appliedProductDiscountId,
     })
   }
 
@@ -269,10 +305,17 @@ export async function priceCart(opts: PriceCartOptions): Promise<PricedCart> {
   let discountError: PricedCart["discountError"] | undefined
 
   if (discountCode) {
+    // No stacking: a line already reduced by an automatic ProductDiscount is
+    // excluded from both the code's order-amount threshold and the set of
+    // items it can discount — a code can still discount the rest of a mixed
+    // cart, but never compounds on top of a price that's already on sale.
+    const codeEligibleItems = priced.filter((i) => !i.appliedProductDiscountId)
+    const codeEligibleSubtotal = round2(codeEligibleItems.reduce((sum, i) => sum + i.lineTotal, 0))
+
     const result = await evaluateDiscount({
       code: discountCode,
-      orderAmount: subtotal,
-      items: priced.map((i) => ({ price: i.unitPrice, quantity: i.quantity, name: i.name, id: i.id })),
+      orderAmount: codeEligibleSubtotal,
+      items: codeEligibleItems.map((i) => ({ price: i.unitPrice, quantity: i.quantity, name: i.name, id: i.id })),
       userId,
       email,
     })

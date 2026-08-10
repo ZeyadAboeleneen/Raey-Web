@@ -158,6 +158,39 @@ model DiscountCode {
   @@map("discount_codes")
 }
 
+/**
+ * Automatic, no-code price reduction shown directly on product cards
+ * (crossed-out original price + red discounted price) — distinct from
+ * DiscountCode, which requires the customer to type a code at checkout.
+ * Buy (sell-dress) items only; rental pricing is untouched by this table.
+ *
+ * Scope: `productIds` (specific dresses) takes precedence when non-empty.
+ * When empty, the rule applies to every eligible buy item matching `branch`
+ * (or every eligible buy item at all, if `branch` is also null).
+ */
+model ProductDiscount {
+  id            String    @id @default(uuid())
+  /** Internal label only, e.g. "Summer Sale" — never shown to customers. */
+  name          String
+  discountType  String    @map("discount_type") // "fixed" | "percentage"
+  discountValue Float     @map("discount_value")
+  /** "buy" | "rent" | "both" — which sale mode this rule discounts. */
+  appliesTo     String    @default("buy") @map("applies_to")
+  /** Branch slugs filter used when productIds is empty. Empty/null = all branches. */
+  branches      Json?     @map("branches")
+  /** ERP Items.ID values, as strings. Empty/null = every item matching `branch`. */
+  productIds    Json?     @map("product_ids")
+  /** Explicit off-switch — lets staff end a rule early without deleting it,
+   *  independent of validFrom/validUntil. */
+  isActive      Boolean   @default(true) @map("is_active")
+  validFrom     DateTime? @map("valid_from")
+  validUntil    DateTime? @map("valid_until")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("product_discounts")
+}
+
 model Offer {
   id           String    @id @default(uuid())
   title        String?

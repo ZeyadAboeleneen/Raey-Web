@@ -13,11 +13,14 @@ import { logAudit, getRequestMetadata } from "@/lib/audit";
 import jwt from "jsonwebtoken";
 import { resolveStoreId } from "@/lib/erp-stores";
 import { isPubliclyVisible } from "@/lib/product-visibility";
+import { getActiveProductDiscounts } from "@/lib/product-discounts";
 import { prisma } from "@/lib/prisma"; // <-- added missing import
 
 const jsonHeaders = {
   "Content-Type": "application/json",
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  // Live pricing data — see the note in app/api/items/route.ts. Serving a stale
+  // body here reverts freshly-rendered discount prices on the product detail page.
+  "Cache-Control": "no-store, must-revalidate",
 };
 
 const errorResponse = (status: number, message: string) =>
@@ -126,7 +129,9 @@ export async function GET(
       return errorResponse(404, "Item not found");
     }
 
-    let output: any = format === "erp" ? product : erpProductToCachedShape(product);
+    let output: any = format === "erp"
+      ? product
+      : erpProductToCachedShape(product, await getActiveProductDiscounts());
 
     console.log(
       `✅ [ERP] Fetched item ${itemId} in ${Date.now() - startTime}ms`

@@ -7,6 +7,7 @@ import {
   VALID_ERP_LINE_IDS,
 } from "./erp-mappings";
 import { filterPublicProducts } from "./product-visibility";
+import { getActiveProductDiscounts } from "./product-discounts";
 
 /**
  * Server-side product fetcher with an in-memory cache.
@@ -18,7 +19,10 @@ interface CacheEntry {
   expiresAt: number;
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Kept short so admin changes (discounts, prices, availability) reach server-rendered
+// HTML quickly — this used to be 5 minutes, which let stale pre-discount pages serve
+// for up to 5 minutes after an admin created/edited a discount.
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
 const g = globalThis as typeof globalThis & {
   _ssrProductsCache?: CacheEntry;
@@ -93,7 +97,8 @@ async function fetchProductsFromDB(): Promise<any[]> {
     `);
 
     const erpProducts = transformErpRows(result.recordset as ErpItemRow[]);
-    const allTransformed = erpProducts.map(erpProductToCachedShape);
+    const activeProductDiscounts = await getActiveProductDiscounts();
+    const allTransformed = erpProducts.map((item) => erpProductToCachedShape(item, activeProductDiscounts));
 
     // Only publicly-visible products (those with valid images) enter the SSR cache.
     // Admin surfaces never use this cache — they hit the API directly.
@@ -111,6 +116,13 @@ async function fetchProductsFromDB(): Promise<any[]> {
   } finally {
     g._ssrProductsPromise = undefined;
   }
+}
+
+/** Invalidates the SSR product cache immediately — call after any write that
+ *  changes displayed pricing (e.g. a ProductDiscount create/update/delete) so
+ *  the next request gets fresh data instead of waiting out the TTL. */
+export function invalidateProductsServerCache(): void {
+  g._ssrProductsCache = undefined;
 }
 
 export function warmProductsServerCache(): void {
@@ -207,7 +219,8 @@ export const getProductServer = cache(async function getProductServer(itemIdStr:
     const erpProducts = transformErpRows(result.recordset as ErpItemRow[]);
     if (erpProducts.length === 0) return null;
 
-    return erpProductToCachedShape(erpProducts[0]);
+    const activeProductDiscounts = await getActiveProductDiscounts();
+    return erpProductToCachedShape(erpProducts[0], activeProductDiscounts);
   } catch (err: any) {
     console.error("❌ [SSR] getProductServer failed:", err?.message || err);
     return null;

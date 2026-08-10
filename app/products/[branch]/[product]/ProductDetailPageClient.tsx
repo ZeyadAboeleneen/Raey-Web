@@ -72,6 +72,9 @@ interface ProductDetail {
   hasBeenRented?: boolean
   rentalPriceA?: number
   rentalPriceC?: number
+  rentalPriceAOriginal?: number | null
+  rentalPriceCOriginal?: number | null
+  rentDiscount?: { type: "fixed" | "percentage"; value: number } | null
   cost?: number
 }
 
@@ -135,7 +138,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
   const [isExclusive, setIsExclusive] = useState(false)
   const [extraDayBefore, setExtraDayBefore] = useState(false)
   const [extraDayAfter, setExtraDayAfter] = useState(false)
-  const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
+  const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string; originalTotal?: number } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
   const [customPrice, setCustomPrice] = useState<number | null>(null)
   const [hasBeenRentedDb, setHasBeenRentedDb] = useState<boolean | null>(null)
@@ -438,9 +441,15 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
     if (costBase > 0) {
       const res = calculateRentalPrice(costBase, d, 0, isExclusive)
+      const rentDiscount = (product as any).rentDiscount as { type: "fixed" | "percentage"; value: number } | null | undefined
+      const discountedBase = rentDiscount
+        ? rentDiscount.type === "percentage"
+          ? Math.round(res.total * (1 - Math.min(100, Math.max(0, rentDiscount.value)) / 100) * 100) / 100
+          : Math.max(0, Math.round((res.total - rentDiscount.value) * 100) / 100)
+        : res.total
       const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
-      const specTotal = res.total + extraDaysFee
-      setRentalPrice({ total: specTotal, category: "Speculative" })
+      const specTotal = discountedBase + extraDaysFee
+      setRentalPrice({ total: specTotal, category: "Speculative", originalTotal: rentDiscount ? res.total + extraDaysFee : undefined })
       if (canViewPrices) setCustomPrice(specTotal)
     }
     // -------------------------------------
@@ -457,6 +466,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
             rentStart: startDay.toISOString(),
             rentEnd: new Date(new Date(rentStart).setDate(rentStart.getDate() + 2)).toISOString(),
             isExclusive,
+            branch: product.branch,
           }),
           signal: controller.signal,
         })
@@ -464,7 +474,11 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
           const data = await res.json()
           const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
           const finalTotal = data.total + extraDaysFee
-          setRentalPrice({ total: finalTotal, category: data.category })
+          setRentalPrice({
+            total: finalTotal,
+            category: data.category,
+            originalTotal: data.originalTotal ? data.originalTotal + extraDaysFee : undefined,
+          })
           if (canViewPrices) setCustomPrice(finalTotal)
         }
       } catch (err: any) {
@@ -633,6 +647,11 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
 
       const finalPrice = (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : price)
       const cartQuantity = isRentBranch ? 1 : quantity
+      // customPrice auto-syncs to the fetched total for any canViewPrices user — it's only a
+      // genuine staff override (which supersedes the automatic discount) when it was edited
+      // away from that fetched total.
+      const isRentManualOverride = isRentBranch && canViewPrices && customPrice !== null && rentalPrice != null && customPrice !== rentalPrice.total
+      const rentOriginalPrice = isRentManualOverride ? undefined : rentalPrice?.originalTotal
 
       dispatch({
         type: "ADD_ITEM",
@@ -641,7 +660,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
           productId: product.id,
           name: product.name,
           price: finalPrice,
-          originalPrice: isRentBranch ? undefined : firstSize?.originalPrice,
+          originalPrice: isRentBranch ? rentOriginalPrice : firstSize?.originalPrice,
           size: "custom",
           volume: measurementUnit,
           image: cartImage,
@@ -694,6 +713,11 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
 
       const finalPrice = (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : getSelectedPrice())
       const cartQuantity = isRentBranch ? 1 : quantity
+      // customPrice auto-syncs to the fetched total for any canViewPrices user — it's only a
+      // genuine staff override (which supersedes the automatic discount) when it was edited
+      // away from that fetched total.
+      const isRentManualOverride = isRentBranch && canViewPrices && customPrice !== null && rentalPrice != null && customPrice !== rentalPrice.total
+      const rentOriginalPrice = isRentManualOverride ? undefined : rentalPrice?.originalTotal
 
       dispatch({
         type: "ADD_ITEM",
@@ -702,7 +726,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
           productId: product.id,
           name: product.name,
           price: finalPrice,
-          originalPrice: isRentBranch ? undefined : selectedSizeObj.originalPrice,
+          originalPrice: isRentBranch ? rentOriginalPrice : selectedSizeObj.originalPrice,
           size: "one-size",
           volume: undefined,
           image: cartImage,
@@ -1079,10 +1103,19 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                     if (!showProductPrice && !clientRentalPrice) return null
                     if (!showProductPrice && clientRentalPrice) {
                       const displayPrice = rentalPrice ? rentalPrice.total : clientRentalPrice
+                      const displayOriginalPrice = rentalPrice ? rentalPrice.originalTotal : product.rentalPriceCOriginal
+                      const hasClientDiscount = !!displayOriginalPrice && displayOriginalPrice > displayPrice
                       return (
                         <div className="text-2xl sm:text-3xl font-light text-left">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xl sm:text-2xl">{formatPrice(displayPrice)}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {hasClientDiscount ? (
+                              <>
+                                <span className="line-through text-gray-400 text-base sm:text-lg">{formatPrice(displayOriginalPrice!)}</span>
+                                <span className="text-xl sm:text-2xl text-red-600 font-bold">{formatPrice(displayPrice)}</span>
+                              </>
+                            ) : (
+                              <span className="text-xl sm:text-2xl">{formatPrice(displayPrice)}</span>
+                            )}
                             {!rentalPrice && (
                               <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-full mt-1">
                                 Starting from
@@ -1130,7 +1163,9 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                             : (isRentBranch && product.rentalPriceA && product.rentalPriceA > 0)
                               ? product.rentalPriceA
                               : (selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0)
-                          const originalPrice = isRentBranch ? 0 : (selectedSizeObj?.originalPrice || 0)
+                          const originalPrice = isRentBranch
+                            ? (rentalPrice?.originalTotal || (!rentalPrice && product.rentalPriceAOriginal) || 0)
+                            : (selectedSizeObj?.originalPrice || 0)
                           if (originalPrice > 0 && selectedPrice < originalPrice) {
                             return (
                               <div className="flex items-center space-x-3">

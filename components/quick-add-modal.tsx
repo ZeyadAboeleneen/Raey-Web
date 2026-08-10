@@ -69,7 +69,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
   const [isExclusive, setIsExclusive] = useState(false)
   const [extraDayBefore, setExtraDayBefore] = useState(false)
   const [extraDayAfter, setExtraDayAfter] = useState(false)
-  const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string } | null>(null)
+  const [rentalPrice, setRentalPrice] = useState<{ total: number; category: string; originalTotal?: number } | null>(null)
   const [rentalPriceLoading, setRentalPriceLoading] = useState(false)
   const [customPrice, setCustomPrice] = useState<number | null>(null)
   const { state: authState } = useAuth()
@@ -164,6 +164,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
             rentStart: start.toISOString(),
             rentEnd: end.toISOString(),
             isExclusive,
+            branch: product.branch,
           }),
           signal: controller.signal,
         })
@@ -171,7 +172,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           const data = await res.json()
           const extraDaysFee = ((extraDayBefore ? 1 : 0) + (extraDayAfter ? 1 : 0)) * 200
           const finalTotal = data.total + extraDaysFee
-          setRentalPrice({ total: finalTotal, category: data.category })
+          setRentalPrice({
+            total: finalTotal,
+            category: data.category,
+            originalTotal: data.originalTotal ? data.originalTotal + extraDaysFee : undefined,
+          })
           if (canViewPrices) setCustomPrice(finalTotal)
         } else {
           setRentalPrice(null)
@@ -320,6 +325,11 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
       }
 
       const rentFinalPrice = (canViewPrices && customPrice !== null) ? customPrice : (rentalPrice?.total || 0)
+      // customPrice auto-syncs to the fetched total for any canViewPrices user — it's only a
+      // genuine staff override (which supersedes the automatic discount) when it was edited
+      // away from that fetched total.
+      const isManualOverride = canViewPrices && customPrice !== null && rentalPrice != null && customPrice !== rentalPrice.total
+      const rentOriginalPrice = isManualOverride ? undefined : rentalPrice?.originalTotal
 
       cartDispatch({
         type: "ADD_ITEM",
@@ -328,6 +338,7 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           productId: product.id,
           name: product.name,
           price: rentFinalPrice,
+          originalPrice: rentOriginalPrice,
           size: isCustomSizeMode ? "custom" : selectedSize?.size || "one-size",
           volume: isCustomSizeMode ? measurementUnit : undefined,
           image: (product.images && product.images[0]) || (product as any).image || "/placeholder.svg",
@@ -706,7 +717,14 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                             ) : rentalPrice ? (
                               <>
                                 <span className="text-xs text-gray-500 uppercase tracking-wider">{t("rentalTotal" as TranslationKey)}</span>
-                                <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
+                                {rentalPrice.originalTotal && rentalPrice.originalTotal > rentalPrice.total ? (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                                    <span className="line-through text-gray-400 text-base">{formatPrice(rentalPrice.originalTotal)}</span>
+                                    <span className="text-xl font-bold text-red-600">{formatPrice(rentalPrice.total)}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xl font-bold text-black">{formatPrice(rentalPrice.total)}</span>
+                                )}
                               </>
                             ) : null
                           ) : isPast45Days ? null : (
@@ -718,6 +736,15 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
                           (() => {
                             const referenceSize = selectedSize || product.sizes[0]
                             const price = referenceSize?.discountedPrice || referenceSize?.originalPrice || 0
+                            const original = referenceSize?.originalPrice || 0
+                            if (original > 0 && price < original) {
+                              return (
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                                  <span className="line-through text-gray-400 text-base">{formatPrice(original * quantity)}</span>
+                                  <span className="text-xl font-bold text-red-600">{formatPrice(price * quantity)}</span>
+                                </div>
+                              )
+                            }
                             return <span className="text-xl font-bold">{formatPrice(price * quantity)}</span>
                           })()
                         )}

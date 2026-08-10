@@ -43,6 +43,13 @@ export interface CachedProduct {
   rentalPriceA?: number | null
   /** Category C rental price (cost × 0.4, rounded to 100, floor 3000) — shown to clients */
   rentalPriceC?: number | null
+  /** Pre-discount rentalPriceA, set only when a rent ProductDiscount reduced it. */
+  rentalPriceAOriginal?: number | null
+  /** Pre-discount rentalPriceC, set only when a rent ProductDiscount reduced it. */
+  rentalPriceCOriginal?: number | null
+  /** Active rent ProductDiscount for this product, if any — used to discount the
+   *  client-side speculative per-date price estimate before the server responds. */
+  rentDiscount?: { type: "fixed" | "percentage"; value: number } | null
   /** Raw cost from ERP — used for dynamic pricing calculations */
   cost?: number
   /** Sell price (Item_sellpricNow) shown in Buy mode; null when not sellable. */
@@ -74,8 +81,14 @@ const ProductsCacheContext = createContext<ProductsCacheContextType | null>(null
 
 const STORAGE_KEY = "raey_products_cache_v4"
 const STORAGE_TS_KEY = "raey_products_cache_ts_v4"
-/** How long the sessionStorage cache is considered fresh (5 minutes) */
-const STORAGE_MAX_AGE_MS = 5 * 60 * 1000
+/** How long the sessionStorage cache is considered fresh for the very first paint —
+ *  kept short so price/discount changes show up almost immediately. A background
+ *  refetch also runs on mount, tab focus, and periodically (see below), so this
+ *  mostly only affects how long a *fresh* mount can skip the loading spinner. */
+const STORAGE_MAX_AGE_MS = 15 * 1000
+/** Background silent refresh interval — keeps prices (including active
+ *  discounts) current in tabs the user leaves open without a manual reload. */
+const BACKGROUND_REFRESH_INTERVAL_MS = 30 * 1000
 
 function normalizeCachedProduct(raw: Record<string, unknown>): CachedProduct {
   return raw as unknown as CachedProduct
@@ -113,16 +126,22 @@ interface ProductsCacheProviderProps {
 }
 
 export function ProductsCacheProvider({ children, initialProducts }: ProductsCacheProviderProps) {
+  // sessionStorage doesn't exist during SSR, so reading it here (synchronously, in the
+  // initializer) would make the client's first render diverge from the server's HTML —
+  // a guaranteed hydration mismatch on any reload where the tab already has a cache.
+  // Both server and client must start from the exact same value: initialProducts, or
+  // empty. The sessionStorage cache is instead read in the mount effect below, which
+  // only runs after hydration has already succeeded.
   const [products, setProducts] = useState<CachedProduct[]>(() => {
     if (initialProducts && initialProducts.length > 0) {
       return initialProducts.map((p) => normalizeCachedProduct(p as unknown as Record<string, unknown>))
     }
-    return readFromStorage() ?? []
+    return []
   })
 
   const [loading, setLoading] = useState(() => {
     if (initialProducts && initialProducts.length > 0) return false
-    return readFromStorage() === null
+    return true
   })
 
   const fetched = useRef(false)
@@ -140,22 +159,34 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
   const fetchAll = useCallback(async (quiet: boolean = false) => {
     try {
       if (!quiet) setLoading(true)
-      const response = await fetch(`/api/items`)
+      // limit=500 — the bare /api/items endpoint defaults to a 40-item page, which would
+      // otherwise silently truncate the full catalog (SSR-provided or previously fetched)
+      // down to 40 products on every quiet background refresh.
+      // `no-store` bypasses the browser HTTP cache in both directions. Without it the
+      // browser could resolve this fetch instantly from a stale cached body (see the
+      // Cache-Control note in app/api/items/route.ts), silently reverting correct
+      // server-rendered discount prices a moment after the page loaded.
+      const response = await fetch(`/api/items?limit=500`, { cache: "no-store" })
       if (response.ok) {
         const data = (await response.json()) as Record<string, unknown>[]
         const normalized = data.map(normalizeCachedProduct)
-        setProducts(normalized)
-        writeToStorage(normalized)
+        // Merge rather than replace: the API caps at 500 items but the catalog is
+        // larger, so replacing would drop everything past that cap.
+        setProducts((prev) => {
+          const merged = mergeById(prev, normalized)
+          writeToStorage(merged)
+          return merged
+        })
       }
     } catch (error) {
       console.error("Error preloading products:", error)
     } finally {
       if (!quiet) setLoading(false)
     }
-  }, [])
+  }, [mergeById])
 
   const fetchStage = useCallback(async (url: string) => {
-    const response = await fetch(url)
+    const response = await fetch(url, { cache: "no-store" })
     if (!response.ok) return [] as CachedProduct[]
     const data = (await response.json()) as Record<string, unknown>[]
     return data.map(normalizeCachedProduct)
@@ -168,6 +199,16 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
 
       if (hasData) {
         fetchAll(true)
+        return
+      }
+
+      // Safe to read sessionStorage now — hydration has already completed, so this
+      // can't cause a server/client mismatch the way reading it in the initializer would.
+      const cached = readFromStorage()
+      if (cached && cached.length > 0) {
+        setProducts(cached)
+        setLoading(false)
+        fetchAll(true) // still refresh in the background in case it's gone slightly stale
         return
       }
 
@@ -199,6 +240,22 @@ export function ProductsCacheProvider({ children, initialProducts }: ProductsCac
       })()
     }
   }, [fetchAll, fetchStage, mergeById, products.length])
+
+  // Keep already-open tabs current: silently refetch when the tab regains focus
+  // (e.g. an admin just saved a discount in another tab) and on a short interval.
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState === "visible") fetchAll(true)
+    }
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", onFocus)
+    const interval = setInterval(() => fetchAll(true), BACKGROUND_REFRESH_INTERVAL_MS)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onFocus)
+      clearInterval(interval)
+    }
+  }, [fetchAll])
 
   useEffect(() => {
     if (initialProducts && initialProducts.length > 0) {

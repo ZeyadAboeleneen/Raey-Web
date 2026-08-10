@@ -70,7 +70,7 @@ export default function SoireeBranchPage() {
   const [page, setPage] = usePageParam()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
-  const { sortedProducts, isAvailable, dynamicPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(allProducts as any)
+  const { sortedProducts, isAvailable, dynamicPrices, dynamicOriginalPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(allProducts as any)
 
 
 
@@ -441,9 +441,13 @@ export default function SoireeBranchPage() {
                     const isGift = product.isGiftPackage
                     // Dynamic price logic
                     let exactDynamicPrice: number | null = null
+                    let exactDynamicOriginalPrice: number | null = null
                     if (occasionDate && isRentBranch && !isGift) {
                       if (dynamicPrices[product.id]) {
                         exactDynamicPrice = dynamicPrices[product.id]
+                      }
+                      if (dynamicOriginalPrices[product.id]) {
+                        exactDynamicOriginalPrice = dynamicOriginalPrices[product.id]
                       }
                     }
 
@@ -456,11 +460,17 @@ export default function SoireeBranchPage() {
                           : getSmallestPrice(product.sizes)))
 
                     const clientRentalPrice = exactDynamicPrice || (isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null)
+                    const clientRentalOriginalPrice = exactDynamicPrice
+                      ? exactDynamicOriginalPrice
+                      : (isRentBranch && (product as any).rentalPriceCOriginal ? (product as any).rentalPriceCOriginal : null)
+                    const clientRentalHasDiscount = clientRentalPrice != null && clientRentalOriginalPrice != null && clientRentalPrice < clientRentalOriginalPrice
                     const available = isAvailable(product as any)
                     const originalPrice = isGift
                       ? product.packageOriginalPrice || 0
-                      : getSmallestOriginalPrice(product.sizes)
-                    const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+                      : isRentBranch
+                        ? (exactDynamicOriginalPrice || (product as any).rentalPriceAOriginal || 0)
+                        : getSmallestOriginalPrice(product.sizes)
+                    const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
 
                     return (
                       <motion.div
@@ -572,11 +582,22 @@ export default function SoireeBranchPage() {
                                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                                   {(occasionDate && !isOccasionPast45Days) ? "" : "Starting from"}
                                                 </span>
-                                                <span className="text-xs sm:text-sm font-semibold">
-                                                  {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
-                                                    <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
-                                                  ) : formatPrice(clientRentalPrice)}
-                                                </span>
+                                                {(occasionDate && !isOccasionPast45Days && (!exactDynamicPrice || loadingPrices)) ? (
+                                                  <span className="animate-pulse text-gray-300 text-[10px]">Calculating...</span>
+                                                ) : clientRentalHasDiscount ? (
+                                                  <>
+                                                    <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                                      {formatPrice(clientRentalOriginalPrice!)}
+                                                    </span>
+                                                    <span className="text-xs sm:text-sm font-semibold text-red-600">
+                                                      {formatPrice(clientRentalPrice)}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-xs sm:text-sm font-semibold">
+                                                    {formatPrice(clientRentalPrice)}
+                                                  </span>
+                                                )}
                                               </div>
                                             ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
@@ -590,7 +611,7 @@ export default function SoireeBranchPage() {
                                                     <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
                                                       {formatPrice(originalPrice)}
                                                     </span>
-                                                    <span className="text-xs sm:text-sm font-semibold">
+                                                    <span className="text-xs sm:text-sm font-semibold text-red-600">
                                                       {formatPrice(price)}
                                                     </span>
                                                   </>

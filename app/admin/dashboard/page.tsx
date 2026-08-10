@@ -961,6 +961,15 @@ export default function AdminDashboard() {
                   </Link>
                 )}
 
+                {canManageDiscountCodes && (
+                  <Link href="/admin/product-discounts" prefetch={true}>
+                    <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">
+                      <Percent className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Product Discounts
+                    </Button>
+                  </Link>
+                )}
+
                 {isAdmin && (
                   <Link href="/admin/whatsapp-marketing" prefetch={true}>
                     <Button variant="outline" className="bg-transparent text-xs sm:text-sm" size="sm">

@@ -454,8 +454,10 @@ export default function WeddingBranchPage() {
                           : getSmallestPrice(product.sizes)
                     const originalPrice = isGift
                       ? product.packageOriginalPrice || 0
-                      : getSmallestOriginalPrice(product.sizes)
-                    const hasDiscount = !isRentBranch && originalPrice > 0 && price > 0 && price < originalPrice
+                      : isRentBranch
+                        ? ((product as any).rentalPriceAOriginal || 0)
+                        : getSmallestOriginalPrice(product.sizes)
+                    const hasDiscount = originalPrice > 0 && price > 0 && price < originalPrice
 
                     return (
                       <motion.div
@@ -548,6 +550,8 @@ export default function WeddingBranchPage() {
                                     {(() => {
                                       const showProductPrice = showPrices || product.branch === "sell-dresses" || isBuyMode
                                       const clientRentalPrice = isRentBranch && (product as any).rentalPriceC && (product as any).rentalPriceC > 0 ? (product as any).rentalPriceC : null
+                                      const clientRentalOriginalPrice = isRentBranch && (product as any).rentalPriceCOriginal ? (product as any).rentalPriceCOriginal : null
+                                      const clientRentalHasDiscount = clientRentalPrice != null && clientRentalOriginalPrice != null && clientRentalPrice < clientRentalOriginalPrice
                                       return (
                                         <>
                                           {(showProductPrice || clientRentalPrice) ? (
@@ -568,9 +572,20 @@ export default function WeddingBranchPage() {
                                                 <span className="text-[9px] text-rose-300 font-medium mb-0.5">
                                                   Starting from
                                                 </span>
-                                                <span className="text-xs sm:text-sm font-semibold">
-                                                  {formatPrice(clientRentalPrice)}
-                                                </span>
+                                                {clientRentalHasDiscount ? (
+                                                  <>
+                                                    <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
+                                                      {formatPrice(clientRentalOriginalPrice!)}
+                                                    </span>
+                                                    <span className="text-xs sm:text-sm font-semibold text-red-600">
+                                                      {formatPrice(clientRentalPrice)}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-xs sm:text-sm font-semibold">
+                                                    {formatPrice(clientRentalPrice)}
+                                                  </span>
+                                                )}
                                               </div>
                                             ) : (
                                               <div className="text-[11px] sm:text-xs flex flex-col items-start">
@@ -584,7 +599,7 @@ export default function WeddingBranchPage() {
                                                     <span className="line-through text-gray-300 text-[10px] sm:text-xs block">
                                                       {formatPrice(originalPrice)}
                                                     </span>
-                                                    <span className="text-xs sm:text-sm font-semibold">
+                                                    <span className="text-xs sm:text-sm font-semibold text-red-600">
                                                       {formatPrice(price)}
                                                     </span>
                                                   </>

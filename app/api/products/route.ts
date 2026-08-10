@@ -24,7 +24,7 @@ async function proxy(request: NextRequest, targetPath: string, method = request.
       "Content-Type": response.headers.get("content-type") || "application/json",
       "Cache-Control":
         response.headers.get("cache-control") ||
-        "public, s-maxage=60, stale-while-revalidate=300",
+        "no-store, must-revalidate",
       "X-Total-Count": response.headers.get("X-Total-Count") || "",
       "X-Page": response.headers.get("X-Page") || "",
       "X-Limit": response.headers.get("X-Limit") || "",
