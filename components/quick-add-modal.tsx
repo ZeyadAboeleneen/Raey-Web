@@ -20,6 +20,7 @@ import type { CachedProduct as Product, ProductSize } from "@/lib/products-cache
 import { useRouter } from "next/navigation"
 import { useDateContext } from "@/lib/date-context"
 import { useAuth, usePermission } from "@/lib/auth-context"
+import { fbTrackAddToCart, buildMetaContentId } from "@/lib/meta-pixel"
 
 const CustomSizeForm = dynamic(
   () => import("@/components/custom-size-form").then((m) => m.CustomSizeForm),
@@ -318,13 +319,15 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
         return
       }
 
+      const rentFinalPrice = (canViewPrices && customPrice !== null) ? customPrice : (rentalPrice?.total || 0)
+
       cartDispatch({
         type: "ADD_ITEM",
         payload: {
           id: `${product.id}-${isCustomSizeMode ? "custom" : selectedSize?.size}-rent-${rentStartStr}-${rentEndStr}`,
           productId: product.id,
           name: product.name,
-          price: (canViewPrices && customPrice !== null) ? customPrice : (rentalPrice?.total || 0),
+          price: rentFinalPrice,
           size: isCustomSizeMode ? "custom" : selectedSize?.size || "one-size",
           volume: isCustomSizeMode ? measurementUnit : undefined,
           image: (product.images && product.images[0]) || (product as any).image || "/placeholder.svg",
@@ -340,16 +343,20 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
         }
       })
+      // Fired only after the dispatch above actually ran.
+      fbTrackAddToCart(product.name, rentFinalPrice, "EGP", buildMetaContentId(product.branch, product.id))
     } else {
       // Buy logic
       const baseSize = selectedSize || product.sizes[0]
+      const buyFinalPrice = (product as any).sellPrice ?? baseSize?.discountedPrice ?? baseSize?.originalPrice ?? 0
+
       cartDispatch({
         type: "ADD_ITEM",
         payload: {
           id: `${product.id}-${isCustomSizeMode ? "custom" : baseSize?.size}`,
           productId: product.id,
           name: product.name,
-          price: (product as any).sellPrice ?? baseSize?.discountedPrice ?? baseSize?.originalPrice ?? 0,
+          price: buyFinalPrice,
           originalPrice: baseSize?.originalPrice,
           size: isCustomSizeMode ? "custom" : baseSize?.size,
           volume: isCustomSizeMode ? measurementUnit : baseSize?.volume,
@@ -361,6 +368,8 @@ export function QuickAddModal({ product, isOpen, onClose, sizeChart }: QuickAddM
           customMeasurements: isCustomSizeMode ? { unit: measurementUnit, values: measurements } : undefined,
         }
       })
+      // Fired only after the dispatch above actually ran.
+      fbTrackAddToCart(product.name, buyFinalPrice * quantity, "EGP", buildMetaContentId(product.branch, product.id))
     }
 
     onClose()

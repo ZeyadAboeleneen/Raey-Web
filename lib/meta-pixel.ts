@@ -5,6 +5,20 @@
 
 export const META_PIXEL_ID = '1051747087351896'
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://raeygroup.com').replace(/\/$/, '')
+
+/**
+ * Meta's Commerce Manager catalog was populated by auto-scraping this site's
+ * Product JSON-LD, which uses `${productUrl}#product` as its `@id` (see
+ * app/products/[branch]/[product]/page.tsx). Every existing catalog entry's
+ * "Content ID" is that exact URL — confirmed directly in Commerce Manager,
+ * e.g. "https://raeygroup.com/products/mona-saleh/4052#product" — not the
+ * bare numeric item id and not the SKU. Pixel events must send this same
+ * value so they match the catalog Meta already has.
+ */
+export const buildMetaContentId = (branch: string, productId: string | number): string =>
+  `${SITE_URL}/products/${branch}/${productId}#product`
+
 // ---------------------------------------------------------------------------
 // Typed helpers for Meta Pixel standard & custom events.
 // Call these from any client component after the pixel script has loaded.
@@ -14,7 +28,7 @@ export const META_PIXEL_ID = '1051747087351896'
 /** Generic wrapper – fires any standard or custom event. */
 export const fbEvent = (
   eventName: string,
-  params?: Record<string, string | number | boolean>,
+  params?: Record<string, string | number | boolean | string[]>,
 ) => {
   if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
     window.fbq('track', eventName, params ?? {})
@@ -23,7 +37,12 @@ export const fbEvent = (
 
 // ---- Standard ecommerce events ------------------------------------------
 
-/** Fires the Purchase event after a completed transaction. */
+/**
+ * Fires the Purchase event after a completed transaction.
+ * `contentIds` must be the same `${productUrl}#product` values used
+ * everywhere else (see buildMetaContentId) — sent as a real array, per
+ * Meta's spec, not a joined string.
+ */
 export const fbTrackPurchase = (
   value: number,
   currency = 'EGP',
@@ -33,12 +52,12 @@ export const fbTrackPurchase = (
   fbEvent('Purchase', {
     value,
     currency,
-    ...(contentIds ? { content_ids: contentIds.join(',') } : {}),
+    ...(contentIds && contentIds.length ? { content_ids: contentIds } : {}),
     content_type: contentType,
   })
 }
 
-/** Fires the AddToCart event when a product is added to the cart. */
+/** Fires the AddToCart event when a product is actually added to the cart. */
 export const fbTrackAddToCart = (
   productName: string,
   value: number,
@@ -49,7 +68,7 @@ export const fbTrackAddToCart = (
     content_name: productName,
     value,
     currency,
-    ...(contentId ? { content_ids: contentId, content_type: 'product' } : {}),
+    ...(contentId ? { content_ids: [contentId], content_type: 'product' } : {}),
   })
 }
 
@@ -64,7 +83,7 @@ export const fbTrackViewContent = (
     content_name: productName,
     value,
     currency,
-    ...(contentId ? { content_ids: contentId, content_type: 'product' } : {}),
+    ...(contentId ? { content_ids: [contentId], content_type: 'product' } : {}),
   })
 }
 

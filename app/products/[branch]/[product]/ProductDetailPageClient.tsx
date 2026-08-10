@@ -30,6 +30,7 @@ import type { SizeChartRow } from "@/components/custom-size-form"
 import { useProductsCache } from "@/lib/products-cache"
 import { useDateContext, type ShoppingMode } from "@/lib/date-context"
 import { calculateRentalPrice } from "@/lib/rental-pricing-calc"
+import { fbTrackViewContent, fbTrackAddToCart, buildMetaContentId } from "@/lib/meta-pixel"
 
 const GiftPackageSelector = dynamic(
   () => import("@/components/gift-package-selector").then((m) => m.GiftPackageSelector),
@@ -341,6 +342,26 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
     return selectedSizeObj?.discountedPrice || selectedSizeObj?.originalPrice || 0
   }
 
+  // Meta Pixel ViewContent — fired once per product actually viewed. Guarded
+  // with a ref (not just the effect's dependency array) so React StrictMode's
+  // dev-mode double-invoke, or any unrelated re-render once `product` is
+  // already set, can never fire it twice for the same product id.
+  const viewContentFiredForRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!product) return
+    if (viewContentFiredForRef.current === product.id) return
+    viewContentFiredForRef.current = product.id
+
+    const price = getSmallestPrice(product.sizes)
+    fbTrackViewContent(
+      product.name,
+      price,
+      "EGP",
+      buildMetaContentId(product.branch, product.id),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id])
+
   // Fetch all bookings for this product to disable dates on calendar
   const fetchBookings = async () => {
     if (!product) return
@@ -610,19 +631,22 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
         ? `${product.id}-custom-rent-${rentStartStr}-${rentEndStr}`
         : `${product.id}-custom`
 
+      const finalPrice = (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : price)
+      const cartQuantity = isRentBranch ? 1 : quantity
+
       dispatch({
         type: "ADD_ITEM",
         payload: {
           id: cartId,
           productId: product.id,
           name: product.name,
-          price: (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : price),
+          price: finalPrice,
           originalPrice: isRentBranch ? undefined : firstSize?.originalPrice,
           size: "custom",
           volume: measurementUnit,
           image: cartImage,
           branch: product.branch,
-          quantity: isRentBranch ? 1 : quantity,
+          quantity: cartQuantity,
           stockCount: undefined,
           type: itemType,
           collection: product.collection || "",
@@ -637,6 +661,14 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
           },
         },
       })
+      // Fired only after the dispatch above actually ran — never on a failed
+      // validation path (those all `return` before reaching this point).
+      fbTrackAddToCart(
+        product.name,
+        finalPrice * cartQuantity,
+        "EGP",
+        buildMetaContentId(product.branch, product.id),
+      )
 
       // Reset custom size mode
       setIsCustomSizeMode(false)
@@ -660,19 +692,22 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
         ? `${product.id}-rent-${rentStartStr}-${rentEndStr}`
         : `${product.id}`
 
+      const finalPrice = (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : getSelectedPrice())
+      const cartQuantity = isRentBranch ? 1 : quantity
+
       dispatch({
         type: "ADD_ITEM",
         payload: {
           id: cartId,
           productId: product.id,
           name: product.name,
-          price: (isRentBranch && canViewPrices && customPrice !== null) ? customPrice : ((isRentBranch && rentalPrice) ? rentalPrice.total : getSelectedPrice()),
+          price: finalPrice,
           originalPrice: isRentBranch ? undefined : selectedSizeObj.originalPrice,
           size: "one-size",
           volume: undefined,
           image: cartImage,
           branch: product.branch,
-          quantity: isRentBranch ? 1 : quantity,
+          quantity: cartQuantity,
           stockCount: selectedSizeObj.stockCount,
           type: itemType,
           collection: product.collection || "",
@@ -683,6 +718,14 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
           extraDayAfter: isRentBranch ? extraDayAfter : undefined,
         },
       })
+      // Fired only after the dispatch above actually ran — never on a failed
+      // validation path (those all `return` before reaching this point).
+      fbTrackAddToCart(
+        product.name,
+        finalPrice * cartQuantity,
+        "EGP",
+        buildMetaContentId(product.branch, product.id),
+      )
     }
 
     toast({

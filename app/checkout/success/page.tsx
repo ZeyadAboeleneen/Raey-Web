@@ -12,6 +12,7 @@ import { useLocale } from "@/lib/locale-context"
 import { useTranslation, TranslationKey } from "@/lib/translations"
 import { useCart } from "@/lib/cart-context"
 import { getFawryErrorMessage } from "@/lib/fawry-error-codes"
+import { fbTrackPurchase, buildMetaContentId } from "@/lib/meta-pixel"
 
 function CheckoutSuccessContent() {
   const router = useRouter()
@@ -225,6 +226,28 @@ function CheckoutSuccessContent() {
     !pollExhausted
   // Neutral state while the order is still being fetched — no verdict either way.
   const isLoadingOrder = !orderLoaded && !isPaymentFailed
+
+  // Meta Pixel Purchase — fires exactly once per genuinely approved order,
+  // never on a page visit alone. `isPaymentApproved` only becomes true once
+  // orderDetails.paymentStatus === "approved", which is our own confirmed
+  // record (never the unsigned return-URL params). Deduped with localStorage
+  // (survives a refresh or revisiting this URL later) so retrying payment,
+  // reloading the success page, or a second Fawry callback delivery can never
+  // cause a second Purchase event for the same order.
+  useEffect(() => {
+    if (!isPaymentApproved || !orderId || !orderDetails) return
+    const dedupeKey = `fb_purchase_fired_${orderId}`
+    if (typeof window === "undefined" || localStorage.getItem(dedupeKey)) return
+    localStorage.setItem(dedupeKey, "1")
+
+    const items = (orderDetails.items as any[]) || []
+    const contentIds = items
+      .filter((item) => item.productId && item.branch)
+      .map((item) => buildMetaContentId(item.branch, item.productId))
+
+    fbTrackPurchase(Number(orderDetails.total) || 0, "EGP", contentIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaymentApproved, orderId])
 
   // The specific decline reason, when Fawry's return URL carried one — this
   // reflects the attempt the customer just made. Not every failure path has
