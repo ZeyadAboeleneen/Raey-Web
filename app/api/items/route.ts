@@ -60,9 +60,20 @@ export async function GET(request: NextRequest) {
       console.log("⚡ [ERP] Served items from cache");
       const cachedHeaders = {
         ...jsonHeaders,
-        ...(hasPagination ? { "X-Page": String(page), "X-Limit": String(limit) } : {}),
+        ...(hasPagination
+          ? {
+              "X-Page": String(page),
+              "X-Limit": String(limit),
+              ...(cached.totalCount != null
+                ? {
+                    "X-Total-Count": String(cached.totalCount),
+                    "X-Total-Pages": String(Math.max(Math.ceil(cached.totalCount / limit), 1)),
+                  }
+                : {}),
+            }
+          : {}),
       };
-      return new NextResponse(cached, { status: 200, headers: cachedHeaders });
+      return new NextResponse(cached.body, { status: 200, headers: cachedHeaders });
     }
 
     const pool = await getMssqlPool();
@@ -206,7 +217,7 @@ export async function GET(request: NextRequest) {
     }
 
     const body = JSON.stringify(output);
-    setCache(cacheKey, body);
+    setCache(cacheKey, body, hasPagination ? totalCount : null);
 
     console.log(
       `✅ [ERP] Fetched ${pagedProducts.length}/${totalCount} items in ${Date.now() - startTime}ms`

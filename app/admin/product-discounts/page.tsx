@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Navigation } from "@/components/navigation"
 import { useAuth, usePermission } from "@/lib/auth-context"
-import { useProductsCache, type CachedProduct } from "@/lib/products-cache"
+import { type CachedProduct } from "@/lib/products-cache"
 import { toast } from "sonner"
 
 const COLLECTIONS = [
@@ -64,7 +64,12 @@ function toDateInputValue(iso: string | null) {
 export default function ProductDiscountsPage() {
   const { state: authState } = useAuth()
   const canManage = usePermission("canManageDiscountCodes")
-  const { products } = useProductsCache()
+
+  // The shared site-wide product cache caps at 500 items (a deliberate storefront
+  // perf tradeoff) — too small for a catalog of ~900+ products, so this page loads
+  // its own complete, paginated copy rather than silently working off a partial list.
+  const [products, setProducts] = useState<CachedProduct[]>([])
+  const [productsLoading, setProductsLoading] = useState(true)
 
   const [discounts, setDiscounts] = useState<ProductDiscount[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,8 +102,31 @@ export default function ProductDiscountsPage() {
     }
   }
 
+  const fetchAllProducts = async () => {
+    setProductsLoading(true)
+    try {
+      const all: CachedProduct[] = []
+      let page = 1
+      let totalPages = 1
+      do {
+        const res = await fetch(`/api/items?page=${page}&limit=500`, { cache: "no-store" })
+        if (!res.ok) break
+        const batch = (await res.json()) as CachedProduct[]
+        all.push(...batch)
+        totalPages = parseInt(res.headers.get("X-Total-Pages") || "1", 10) || 1
+        page += 1
+      } while (page <= totalPages)
+      setProducts(all)
+    } catch {
+      toast.error("Failed to load products")
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchDiscounts()
+    fetchAllProducts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -429,7 +457,9 @@ export default function ProductDiscountsPage() {
                 </div>
                 <Input placeholder="Search by dress name…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
                 <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
-                  {productListToShow.length === 0 ? (
+                  {productsLoading ? (
+                    <p className="text-gray-400 text-sm text-center py-6">Loading products…</p>
+                  ) : productListToShow.length === 0 ? (
                     <p className="text-gray-400 text-sm text-center py-6">No products match.</p>
                   ) : (
                     productListToShow.map((p) => (

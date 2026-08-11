@@ -7,6 +7,11 @@
 
 interface CacheEntry {
   body: string;
+  /** Total matching rows before pagination — needed to rebuild X-Total-Count/
+   *  X-Total-Pages on a cache hit. Without this a cache hit for page 1 reports
+   *  no total-pages count, so a caller paginating through the full catalog
+   *  (e.g. the discount admin page) silently stops after page 1. */
+  totalCount: number | null;
   expiresAt: number;
 }
 
@@ -21,18 +26,18 @@ const globalCache = globalThis as typeof globalThis & {
 const cache = globalCache._erpItemsCache ?? new Map<string, CacheEntry>();
 if (!globalCache._erpItemsCache) globalCache._erpItemsCache = cache;
 
-export function getCachedItems(key: string): string | null {
+export function getCachedItems(key: string): { body: string; totalCount: number | null } | null {
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
     cache.delete(key);
     return null;
   }
-  return entry.body;
+  return { body: entry.body, totalCount: entry.totalCount };
 }
 
-export function setCachedItems(key: string, body: string) {
-  cache.set(key, { body, expiresAt: Date.now() + ITEMS_CACHE_TTL_MS });
+export function setCachedItems(key: string, body: string, totalCount: number | null = null) {
+  cache.set(key, { body, totalCount, expiresAt: Date.now() + ITEMS_CACHE_TTL_MS });
 }
 
 /** Invalidates every cached /api/items response immediately — call after any
