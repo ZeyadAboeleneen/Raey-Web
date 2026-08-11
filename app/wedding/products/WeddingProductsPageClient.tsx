@@ -23,6 +23,7 @@ import { useTranslation } from "@/lib/translations"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { sortDiscountedFirst } from "@/lib/discount-sort"
 import { useDateContext } from "@/lib/date-context"
 
 const GiftPackageSelector = dynamic(
@@ -285,13 +286,13 @@ export default function WeddingProductsPage() {
 
   const categorizedProducts = useMemo(
     () => ({
-      winter: products.filter((p) => p.branch === "mona-saleh" && p.isActive),
-      summer: products.filter((p) => p.branch === "el-raey-1" && p.isActive),
-      fall: products.filter((p) => p.branch === "el-raey-2" && p.isActive),
-      yard: products.filter((p) => p.branch === "el-raey-the-yard" && p.isActive),
-      sellDresses: products.filter((p) => p.branch === "hay-el-gamaa-2" && p.isActive),
+      winter: sortDiscountedFirst(products.filter((p) => p.branch === "mona-saleh" && p.isActive), isBuyMode),
+      summer: sortDiscountedFirst(products.filter((p) => p.branch === "el-raey-1" && p.isActive), isBuyMode),
+      fall: sortDiscountedFirst(products.filter((p) => p.branch === "el-raey-2" && p.isActive), isBuyMode),
+      yard: sortDiscountedFirst(products.filter((p) => p.branch === "el-raey-the-yard" && p.isActive), isBuyMode),
+      sellDresses: sortDiscountedFirst(products.filter((p) => p.branch === "hay-el-gamaa-2" && p.isActive), isBuyMode),
     }),
-    [products]
+    [products, isBuyMode]
   )
 
   const openSizeSelector = (product: Product) => {

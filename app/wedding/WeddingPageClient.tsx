@@ -43,6 +43,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
 import { useDateContext } from "@/lib/date-context"
 import { usePageParam } from "@/lib/use-page-param"
+import { sortDiscountedFirst } from "@/lib/discount-sort"
 
 
 
@@ -90,8 +91,11 @@ export default function WeddingPage() {
       return isBuyMode ? p.isSellable === true : true
     })
   }, [getBestsellers, isBuyMode])
-  const bestSellersRent = bestSellers
-  const newProducts = useMemo(() => allProducts.filter((p) => p.isNew), [allProducts])
+  const bestSellersRent = useMemo(() => sortDiscountedFirst(bestSellers, isBuyMode), [bestSellers, isBuyMode])
+  const newProducts = useMemo(
+    () => sortDiscountedFirst(allProducts.filter((p) => p.isNew), isBuyMode),
+    [allProducts, isBuyMode],
+  )
 
   const [visibleNewCount, setVisibleNewCount] = useState(10)
   const [visibleBestCount, setVisibleBestCount] = useState(10)
@@ -338,8 +342,8 @@ export default function WeddingPage() {
         })
       })
     }
-    return result
-  }, [sortedProducts, selectedPriceRanges, dynamicPrices, occasionDate, showPrices])
+    return sortDiscountedFirst(result, isBuyMode)
+  }, [sortedProducts, selectedPriceRanges, dynamicPrices, occasionDate, showPrices, isBuyMode])
 
   const totalPages = Math.max(Math.ceil(finalFilteredProducts.length / PAGE_SIZE), 1)
   const paginatedProducts = finalFilteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)

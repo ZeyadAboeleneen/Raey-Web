@@ -221,6 +221,10 @@ export function erpProductToCachedShape(p: ErpProduct, activeDiscounts: ActivePr
     // Passed to the client so the instant speculative price estimate (before the
     // server round-trip resolves) can apply the same discount without waiting.
     rentDiscount: rentDiscount ? { type: rentDiscount.discountType, value: rentDiscount.discountValue } : null,
+    // Cheap booleans for sorting/badging discounted products to the front of a
+    // listing without every page re-deriving it from the price fields.
+    hasBuyDiscount: !!buyDiscount,
+    hasRentDiscount: !!rentDiscount,
     image: p.image,
     beforeSalePrice: null,
     afterSalePrice: null,

@@ -50,6 +50,9 @@ export interface CachedProduct {
   /** Active rent ProductDiscount for this product, if any — used to discount the
    *  client-side speculative per-date price estimate before the server responds. */
   rentDiscount?: { type: "fixed" | "percentage"; value: number } | null
+  /** Whether an active ProductDiscount currently reduces this item's buy/rent price. */
+  hasBuyDiscount?: boolean
+  hasRentDiscount?: boolean
   /** Raw cost from ERP — used for dynamic pricing calculations */
   cost?: number
   /** Sell price (Item_sellpricNow) shown in Buy mode; null when not sellable. */

@@ -24,6 +24,7 @@ import { useProductsCache, type CachedProduct as Product, type ProductSize } fro
 import { QuickAddModal } from "@/components/quick-add-modal"
 import type { SizeChartRow } from "@/components/custom-size-form"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { sortDiscountedFirst } from "@/lib/discount-sort"
 import { useDateContext } from "@/lib/date-context"
 import { usePageParam } from "@/lib/use-page-param"
 
@@ -272,8 +273,11 @@ export default function BranchProductsPage() {
   const { sortedProducts, isAvailable, dynamicPrices, dynamicOriginalPrices, loadingPrices, fetchPricesForIds, fetchPricesForPage, occasionDate, isOccasionPast45Days } = useDateFilteredProducts(filteredProducts)
 
   const paginatedProducts = useMemo(() => {
-    return sortedProducts.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
-  }, [sortedProducts, page])
+    // Only discount-sort the unfiltered browse view — a search query's relevance
+    // ordering should win once the user is actively searching.
+    const ordered = debouncedQuery.trim() ? sortedProducts : sortDiscountedFirst(sortedProducts, isBuyMode)
+    return ordered.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
+  }, [sortedProducts, page, debouncedQuery, isBuyMode])
 
   // Eagerly fetch ALL branch products for zero-delay UX
   useEffect(() => {

@@ -32,6 +32,7 @@ import { useLocale } from "@/lib/locale-context"
 import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache } from "@/lib/products-cache"
+import { sortDiscountedFirst } from "@/lib/discount-sort"
 
 interface ProductSize {
   size: string
@@ -59,6 +60,8 @@ interface Product {
   packagePrice?: number
   packageOriginalPrice?: number
   giftPackageSizes?: any[]
+  hasBuyDiscount?: boolean
+  hasRentDiscount?: boolean
 }
 
 const collectionDetails: { [key: string]: { titleKey: any; descKey: any } } = {
@@ -285,7 +288,7 @@ export default function WeddingBranchPage() {
         .replace(/[\u0300-\u036f]/g, '')
 
     const q = normalize(debouncedQuery.trim())
-    if (!q) return products
+    if (!q) return sortDiscountedFirst(products, isBuyMode)
 
     const terms = q.split(/\s+/).filter(Boolean)
 
@@ -329,7 +332,7 @@ export default function WeddingBranchPage() {
     const kept = scored.filter(x => x.s > 0)
     kept.sort((a, b) => b.s - a.s)
     return kept.map(x => x.p)
-  }, [products, debouncedQuery])
+  }, [products, debouncedQuery, isBuyMode])
 
   const details = collectionDetails[branch as keyof typeof collectionDetails];
 

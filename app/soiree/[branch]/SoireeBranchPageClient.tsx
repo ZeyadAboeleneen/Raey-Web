@@ -31,6 +31,7 @@ import { CustomSizeForm, SizeChartRow } from "@/components/custom-size-form"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useProductsCache, type CachedProduct as Product, type ProductSize } from "@/lib/products-cache"
 import { useDateFilteredProducts } from "@/hooks/use-date-filtered-products"
+import { sortDiscountedFirst } from "@/lib/discount-sort"
 import { useDateContext } from "@/lib/date-context"
 import { usePageParam } from "@/lib/use-page-param"
 
@@ -271,7 +272,7 @@ export default function SoireeBranchPage() {
         .replace(/[\u0300-\u036f]/g, '')
 
     const q = normalize(debouncedQuery.trim())
-    if (!q) return sortedProducts
+    if (!q) return sortDiscountedFirst(sortedProducts, isBuyMode)
 
     const terms = q.split(/\s+/).filter(Boolean)
 
@@ -315,7 +316,7 @@ export default function SoireeBranchPage() {
     const kept = scored.filter(x => x.s > 0)
     kept.sort((a, b) => b.s - a.s)
     return kept.map(x => x.p)
-  }, [sortedProducts, debouncedQuery])
+  }, [sortedProducts, debouncedQuery, isBuyMode])
 
   const paginatedProducts = useMemo(() => {
     return filteredProducts.slice((page - 1) * CATEGORY_PAGE_SIZE, page * CATEGORY_PAGE_SIZE)
