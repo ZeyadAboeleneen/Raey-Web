@@ -174,6 +174,10 @@ model ProductDiscount {
   name          String
   discountType  String    @map("discount_type") // "fixed" | "percentage"
   discountValue Float     @map("discount_value")
+  /** Percentage discounts only — caps the EGP amount taken off a single unit's
+   *  price (e.g. 50% off, capped at 2000 EGP). Null = uncapped. Ignored for
+   *  "fixed" discounts, where discountValue is already an EGP amount. */
+  maxDiscountAmount Float? @map("max_discount_amount")
   /** "buy" | "rent" | "both" — which sale mode this rule discounts. */
   appliesTo     String    @default("buy") @map("applies_to")
   /** Branch slugs filter used when productIds is empty. Empty/null = all branches. */

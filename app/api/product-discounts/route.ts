@@ -41,6 +41,7 @@ const transform = (row: any) => ({
   name: row.name,
   discountType: row.discountType,
   discountValue: row.discountValue,
+  maxDiscountAmount: row.maxDiscountAmount ?? null,
   appliesTo: row.appliesTo === "rent" || row.appliesTo === "both" ? row.appliesTo : "buy",
   branches: Array.isArray(row.branches) ? row.branches : [],
   productIds: Array.isArray(row.productIds) ? row.productIds : [],
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const body = await request.json()
-    const { name, discount_type, discount_value, applies_to, branches, product_ids, is_active, valid_from, valid_until } = body
+    const { name, discount_type, discount_value, max_discount_amount, applies_to, branches, product_ids, is_active, valid_from, valid_until } = body
 
     if (!name || !discount_type || discount_value == null) {
       return NextResponse.json({ error: "Name, discount type and value are required" }, { status: 400 })
@@ -83,12 +84,18 @@ export async function POST(request: NextRequest) {
     if (applies_to !== undefined && applies_to !== "buy" && applies_to !== "rent" && applies_to !== "both") {
       return NextResponse.json({ error: "applies_to must be 'buy', 'rent', or 'both'" }, { status: 400 })
     }
+    if (max_discount_amount != null && (isNaN(Number(max_discount_amount)) || Number(max_discount_amount) < 0)) {
+      return NextResponse.json({ error: "max_discount_amount must be a non-negative number" }, { status: 400 })
+    }
 
     const created = await prisma.productDiscount.create({
       data: {
         name,
         discountType: discount_type,
         discountValue: Number(discount_value) || 0,
+        // Cap only makes sense for percentage discounts — ignore it for fixed ones
+        // rather than silently persisting a meaningless value.
+        maxDiscountAmount: discount_type === "percentage" && max_discount_amount != null ? Number(max_discount_amount) : null,
         appliesTo: applies_to || "buy",
         branches: Array.isArray(branches) ? branches.map(String) : [],
         productIds: Array.isArray(product_ids) ? product_ids.map(String) : [],
@@ -117,7 +124,18 @@ export async function PUT(request: NextRequest) {
     if (!id) return NextResponse.json({ error: "Discount ID is required" }, { status: 400 })
 
     const body = await request.json()
-    const { name, discount_type, discount_value, applies_to, branches, product_ids, is_active, valid_from, valid_until } = body
+    const { name, discount_type, discount_value, max_discount_amount, applies_to, branches, product_ids, is_active, valid_from, valid_until } = body
+
+    if (max_discount_amount != null && (isNaN(Number(max_discount_amount)) || Number(max_discount_amount) < 0)) {
+      return NextResponse.json({ error: "max_discount_amount must be a non-negative number" }, { status: 400 })
+    }
+
+    // The effective type after this update — needed to decide whether an
+    // incoming max_discount_amount should actually be persisted.
+    const existingForType = discount_type === undefined
+      ? await prisma.productDiscount.findUnique({ where: { id }, select: { discountType: true } })
+      : null
+    const effectiveType = discount_type ?? existingForType?.discountType
 
     const updated = await prisma.productDiscount.update({
       where: { id },
@@ -125,6 +143,9 @@ export async function PUT(request: NextRequest) {
         ...(name !== undefined ? { name } : {}),
         ...(discount_type !== undefined ? { discountType: discount_type } : {}),
         ...(discount_value !== undefined ? { discountValue: Number(discount_value) || 0 } : {}),
+        ...(max_discount_amount !== undefined
+          ? { maxDiscountAmount: effectiveType === "percentage" && max_discount_amount != null ? Number(max_discount_amount) : null }
+          : {}),
         ...(applies_to !== undefined ? { appliesTo: applies_to } : {}),
         ...(branches !== undefined ? { branches: Array.isArray(branches) ? branches.map(String) : [] } : {}),
         ...(product_ids !== undefined ? { productIds: Array.isArray(product_ids) ? product_ids.map(String) : [] } : {}),

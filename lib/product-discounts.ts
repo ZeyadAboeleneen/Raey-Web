@@ -8,6 +8,9 @@ export interface ActiveProductDiscount {
   name: string
   discountType: "fixed" | "percentage"
   discountValue: number
+  /** Percentage discounts only — caps the EGP amount taken off a single unit's
+   *  price. Null = uncapped. Ignored for "fixed" discounts. */
+  maxDiscountAmount: number | null
   /** Branch slugs this rule applies to. Empty = every branch. */
   branches: string[]
   productIds: string[]
@@ -40,6 +43,7 @@ export async function getActiveProductDiscounts(): Promise<ActiveProductDiscount
     name: r.name,
     discountType: r.discountType === "percentage" ? "percentage" : "fixed",
     discountValue: Number(r.discountValue) || 0,
+    maxDiscountAmount: r.maxDiscountAmount != null ? Number(r.maxDiscountAmount) : null,
     branches: Array.isArray(r.branches) ? (r.branches as unknown[]).map(String) : [],
     productIds: Array.isArray(r.productIds) ? (r.productIds as unknown[]).map(String) : [],
     appliesTo: r.appliesTo === "rent" || r.appliesTo === "both" ? r.appliesTo : "buy",
@@ -73,12 +77,18 @@ export function findDiscountForProduct(
   return byBranch ?? null
 }
 
-/** Applies a discount to a price. Never goes below 0, always 2dp. */
+/** Applies a discount to a single unit's price. Never goes below 0, always 2dp. */
 export function applyProductDiscount(originalPrice: number, discount: ActiveProductDiscount): number {
   if (!originalPrice || originalPrice <= 0) return originalPrice
   if (discount.discountType === "percentage") {
     const pct = Math.min(100, Math.max(0, discount.discountValue))
-    return round2(originalPrice * (1 - pct / 100))
+    let amountOff = originalPrice * (pct / 100)
+    // e.g. 50% off, capped at 2000 EGP off — the percentage never takes more
+    // than the cap off a single unit, regardless of how expensive it is.
+    if (discount.maxDiscountAmount != null && discount.maxDiscountAmount >= 0) {
+      amountOff = Math.min(amountOff, discount.maxDiscountAmount)
+    }
+    return round2(Math.max(0, originalPrice - amountOff))
   }
   return round2(Math.max(0, originalPrice - discount.discountValue))
 }
