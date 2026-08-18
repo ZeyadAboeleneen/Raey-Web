@@ -18,9 +18,11 @@ import { HtmlLangWrapper } from "@/components/html-lang-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "sonner"
 import { GlobalDateModal } from "@/components/global-date-modal"
+import StylistLauncher from "@/components/stylist/StylistLauncher"
 import { getProductsServer } from "@/lib/get-products-server"
 import { GoogleAnalytics } from "@next/third-parties/google"
 import { MetaPixel, MetaPixelNoscript } from "@/components/meta-pixel"
+import MetaPixelButtonTracker from "@/components/meta-pixel-button-tracker"
 import { initOutboxWorker } from "@/lib/worker-init"
 
 // Start background outbox worker (skip during build)
@@ -137,6 +139,7 @@ export default async function RootLayout({
         <GoogleAnalytics gaId="G-F487HSDE42" />
         <MetaPixel />
         <MetaPixelNoscript />
+        <MetaPixelButtonTracker />
         <LocaleProvider>
           <HtmlLangWrapper>
             <AuthProvider>
@@ -150,6 +153,7 @@ export default async function RootLayout({
                             <SiteSettingsProvider initialSettings={initialSettings}>
                               <GlobalDateModal />
                               {children}
+                              <StylistLauncher />
                               <CartSuccessNotification />
                               <Toaster />
                               <SonnerToaster position="top-center" richColors closeButton />

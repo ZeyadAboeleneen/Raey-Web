@@ -42,6 +42,10 @@ const CustomSizeForm = dynamic(
   { ssr: false }
 )
 
+// RAEY AI Try-On. Renders itself away for non-eligible collections, and the
+// experience bundle only loads when a shopper opens it.
+const TryItOnButton = dynamic(() => import("@/components/try-on/TryItOnButton"), { ssr: false })
+
 interface ProductDetail {
   _id: string
   id: string
@@ -1489,7 +1493,7 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                       formatPrice={formatPrice}
                     />
                   </div>
-                  <div className="mt-4 flex justify-center">
+                  <div className="mt-4 flex flex-col items-center gap-3">
                     {/* Normal customers order via WhatsApp; admin/staff use the cart checkout. */}
                     <Button
                       className="px-6 py-3 rounded-full flex items-center bg-black hover:bg-gray-800 text-white"
@@ -1507,6 +1511,17 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
                           ? t("addToCart" as TranslationKey)
                           : (settings.language === "ar" ? "اطلب عبر واتساب" : "Order via WhatsApp")}
                     </Button>
+
+                    <TryItOnButton
+                      dress={{
+                        id: String(product.id),
+                        name: product.name,
+                        collection: product.collection || "",
+                        branch: product.branch || branch,
+                        image: mainImage,
+                      }}
+                      className="rounded-full"
+                    />
                   </div>
                 </div>
               )}
