@@ -24,17 +24,9 @@ const GOLD = "#B9975B"
 /** Sections where a floating CTA would be noise or in the way. */
 const HIDDEN_PREFIXES = ["/stylist", "/admin", "/checkout", "/cart", "/auth", "/debug", "/slideshow"]
 
-/**
- * Temporary UI hide — flip back to `true` to bring the launcher back. The
- * underlying feature (/stylist page, API route, session state) is untouched;
- * this only stops the floating button from rendering.
- */
-const SHOW_STYLIST_LAUNCHER = false
-
 export default function StylistLauncher() {
   const pathname = usePathname()
 
-  if (!SHOW_STYLIST_LAUNCHER) return null
   if (!pathname) return null
   if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null
 

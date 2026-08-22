@@ -70,6 +70,15 @@ export interface ErpProduct {
   isNew: boolean;
   /** Never been booked (0 total bookings) → can be sold as new, not only rented. */
   isSellable: boolean;
+  /**
+   * Total number of Booking rows ever recorded for this dress, any status or
+   * date — the same count `lib/rental-pricing.ts` uses to decide the POST4
+   * pricing threshold (n >= 4). Carried through to the client so the instant
+   * speculative price estimate can guess POST4 correctly instead of always
+   * assuming a never-rented dress; the real price is still always confirmed
+   * server-side afterward.
+   */
+  totalBookings: number;
   unavailableDates: UnavailableDateRange[];
 }
 
@@ -144,6 +153,7 @@ export function transformErpRows(rows: ErpItemRow[]): ErpProduct[] {
         isBestseller: Boolean(row.IsBestseller),
         isNew: Boolean(row.IsNew),
         isSellable: (row.TotalBookings ?? 0) === 0,
+        totalBookings: row.TotalBookings ?? 0,
         unavailableDates: [],
       });
     }
@@ -213,6 +223,9 @@ export function erpProductToCachedShape(p: ErpProduct, activeDiscounts: ActivePr
     // Reflects an active automatic ProductDiscount, if one matches this item.
     sellPrice: p.isSellable ? discountedSellPrice : null,
     isSellable: p.isSellable,
+    // Lets the client's instant speculative rental price guess POST4 pricing
+    // correctly (see lib/rental-pricing.ts) instead of always assuming n=0.
+    totalBookings: p.totalBookings,
     rentalPriceA: discountedRentalPriceA,
     rentalPriceC: discountedRentalPriceC,
     // Pre-discount "starting from" prices, for strikethrough display; null when no rent discount applies.

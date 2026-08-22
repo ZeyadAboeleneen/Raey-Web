@@ -56,19 +56,23 @@ export async function calculateRentalPrice(
 
   if (!cost || cost <= 0) throw new Error(`Invalid Item_buypric for item ${modelTypeId}: ${cost}`)
 
-  // 2. Count previous RECEIVED rentals as of this booking's pickup (rent-start) date (n).
-  //    A rental only counts once it has been returned on/before the day this new rental starts,
-  //    so a booking placed before an earlier rental is returned still sees the lower count.
+  // 2. Count how many times this dress has EVER been booked (n) — this decides
+  //    ONLY whether we're in POST4 territory (n >= 4). A Booking row counts the
+  //    moment it exists, regardless of return status or date — deliberately not
+  //    scoped to "returned by this rent-start date" the way it used to be, so a
+  //    dress doesn't sit in a lower bracket just because its earlier bookings
+  //    haven't come back yet.
+  //    The POST4 formula below still separately looks at RETURNED bookings for
+  //    lastReceivedPrice/isLatest — that's intentional and unrelated to this
+  //    count; it decides how much to charge once we're already in POST4, not
+  //    whether we're in it.
   const countReq = await makeRequest()
   const rentalCountResult = await countReq
     .input("ModelTypeID", sql.Int, modelTypeId)
-    .input("RentStart", sql.VarChar, rentStartStr)
     .query(`
       SELECT COUNT(*) AS n
       FROM Booking
       WHERE ModelTypeID = @ModelTypeID
-        AND ReturnDate IS NOT NULL
-        AND CAST(ReturnDate AS DATE) <= CAST(@RentStart AS DATE)
     `)
   const n: number = rentalCountResult.recordset[0].n
 

@@ -15,7 +15,7 @@ export interface Post4Input {
 export function calculateRentalPrice(
     cost: number,
     d: number,           // days between booking date and rent start (min 1)
-    n: number,           // number of rentals RECEIVED by the rent-start date
+    n: number,           // number of times this dress has EVER been booked (any status/date — decides the POST4 threshold only, not the formula)
     isExclusive: boolean,
     post4: Post4Input = {},
 ): RentalPricingResult {

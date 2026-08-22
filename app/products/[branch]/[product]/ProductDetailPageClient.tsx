@@ -80,6 +80,8 @@ interface ProductDetail {
   rentalPriceCOriginal?: number | null
   rentDiscount?: { type: "fixed" | "percentage"; value: number } | null
   cost?: number
+  /** Total bookings ever (any status/date) — lets the instant price estimate guess POST4 correctly. */
+  totalBookings?: number
 }
 
 interface Review {
@@ -441,10 +443,17 @@ export default function ProductDetailPageClient({ initialProduct }: Props) {
       return
     }
 
-    // Assume n=0 for speculative pricing
+    // Real total-ever-booked count (see lib/erp-mappings.ts), so a dress with 4+
+    // bookings correctly speculates POST4-style pricing instead of guessing the
+    // date-based A/B/C curve it no longer qualifies for. This still can't know
+    // the real lastReceivedPrice/isLatest inputs POST4 anchors to — that needs a
+    // DB query, which is exactly what the server round-trip below resolves a
+    // moment later — so it falls back to the same cost-based default the server
+    // itself uses when a POST4 dress has no returned rental history yet.
+    const n = product.totalBookings ?? 0
     const costBase = product.cost || (product.rentalPriceA ? product.rentalPriceA / 0.8 : 0)
     if (costBase > 0) {
-      const res = calculateRentalPrice(costBase, d, 0, isExclusive)
+      const res = calculateRentalPrice(costBase, d, n, isExclusive)
       const rentDiscount = (product as any).rentDiscount as { type: "fixed" | "percentage"; value: number } | null | undefined
       const discountedBase = rentDiscount
         ? rentDiscount.type === "percentage"

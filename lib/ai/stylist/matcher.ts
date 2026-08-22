@@ -280,5 +280,31 @@ export async function findMatches(
     return a.product.id.localeCompare(b.product.id) // stable
   })
 
+  // An un-catalogued gown is a coin flip against whatever the shopper actually
+  // asked for — its attributes are simply unknown, not neutral. Padding the
+  // result out to `limit` with them once the grounded matches run out used to
+  // mean a specific ask ("long sleeves", "no sequins") could get answered with
+  // dresses that silently contradict it. When the shopper has stated any real
+  // preference, only fall back to ungrounded gowns if there are literally no
+  // grounded matches at all — better to honestly show fewer than to fill the
+  // row with guesses. An open-ended ask (nothing about the garment itself, e.g.
+  // just an occasion/venue) has nothing concrete to contradict, so padding is
+  // fine there.
+  const hasConcreteAsk =
+    target.style.length > 0 ||
+    target.silhouette.length > 0 ||
+    target.neckline.length > 0 ||
+    target.sleeves.length > 0 ||
+    target.embellishment.length > 0 ||
+    target.color.length > 0 ||
+    target.volume !== null ||
+    target.train !== null
+
+  const groundedMatches = ranked.filter((m) => m.grounded)
+
+  if (hasConcreteAsk && groundedMatches.length > 0) {
+    return groundedMatches.slice(0, limit)
+  }
+
   return ranked.slice(0, limit)
 }

@@ -48,6 +48,8 @@ const COPY = {
     send: "Send",
     startOver: "Start over",
     thinking: "RAEY is thinking",
+    genericError:
+      "The RAEY Stylist isn't available right now. 🤍 Please try again in a moment.",
     foundTitle: "I think we found your RAEY looks 🤍",
     conversionTitle: "Found something you love? 🤍",
     conversionBody: "Talk to RAEY about your favourite, or book a private experience.",
@@ -72,6 +74,7 @@ const COPY = {
     send: "إرسال",
     startOver: "من الأول",
     thinking: "RAEY بتفكر",
+    genericError: "عذرًا، الـRAEY Stylist مش متاحة دلوقتي 🤍 ممكن تحاولي تاني بعد شوية.",
     foundTitle: "أعتقد لقينا الـRAEY look بتاعك 🤍",
     conversionTitle: "لقيتي حاجة عجبتك؟ 🤍",
     conversionBody: "كلمي RAEY عن اللي عجبك، أو احجزي تجربة خاصة.",
@@ -209,7 +212,11 @@ export default function StylistExperience() {
         const data = await response.json().catch(() => null)
 
         if (!response.ok || !data?.message) {
-          setError(data?.error || COPY.en.thinking)
+          // data.error only exists on a real failure response; a 200 with an
+          // empty `message` (a rare model hiccup) has none, so fall back to a
+          // real apology — never the "thinking" label, which would render as
+          // a stuck loading state indistinguishable from no response at all.
+          setError(data?.error || copy.genericError)
           setSession(withUser)
           return
         }
@@ -249,11 +256,7 @@ export default function StylistExperience() {
         }
       } catch (err: any) {
         if (err?.name === "AbortError") return
-        setError(
-          rtl
-            ? COPY.ar.thinking
-            : "The RAEY Stylist isn't available right now. 🤍 Please try again in a moment."
-        )
+        setError(copy.genericError)
         setSession(withUser)
       } finally {
         setBusy(false)

@@ -128,21 +128,31 @@ function primaryImage(product: TaggableProduct): string | null {
   return single && single !== "/placeholder.svg" ? single : null
 }
 
+/** Strips anything that could resemble a leaked API key from an upstream error string. */
+function scrubErrorMessage(raw: string): string {
+  return raw.replace(/([?&]key=)[^&\s"]+/gi, "$1***").slice(0, 200)
+}
+
 /**
- * Catalogues one product. Returns the stored row, or null when the image is
- * unreachable or is not a gown.
+ * Catalogues one product, reporting WHY it failed rather than just null — the
+ * failure modes (no image on record, image unreachable, upstream quota,
+ * missing credentials, not recognisable as a dress) look identical from the
+ * outside otherwise, which made a silent `tagged: 0` on a remote deploy
+ * undiagnosable without server log access.
  */
-export async function tagProduct(product: TaggableProduct): Promise<DressAttributes | null> {
+async function tagProductInternal(
+  product: TaggableProduct
+): Promise<{ entry: DressAttributes | null; reason?: string }> {
   const productId = String(product.id)
   const imageUrl = primaryImage(product)
-  if (!imageUrl) return null
+  if (!imageUrl) return { entry: null, reason: "no-image-on-record" }
 
   const map = await load()
   const existing = map.get(productId)
-  if (!needsTagging(existing, imageUrl)) return existing!
+  if (!needsTagging(existing, imageUrl)) return { entry: existing! }
 
   const bytes = await loadProductImageBytes(imageUrl)
-  if (!bytes) return null
+  if (!bytes) return { entry: null, reason: `image-unreachable (${imageUrl})` }
 
   const mimeType = imageUrl.endsWith(".png")
     ? "image/png"
@@ -150,8 +160,13 @@ export async function tagProduct(product: TaggableProduct): Promise<DressAttribu
       ? "image/jpeg"
       : "image/webp"
 
-  const attrs = await tagDressImage(bytes, mimeType)
-  if (!attrs) return null
+  let attrs: Awaited<ReturnType<typeof tagDressImage>>
+  try {
+    attrs = await tagDressImage(bytes, mimeType)
+  } catch (err: any) {
+    return { entry: null, reason: scrubErrorMessage(String(err?.message || err)) }
+  }
+  if (!attrs) return { entry: null, reason: "model-did-not-recognise-a-dress" }
 
   const entry: DressAttributes = {
     ...attrs,
@@ -163,17 +178,30 @@ export async function tagProduct(product: TaggableProduct): Promise<DressAttribu
 
   map.set(productId, entry)
   await persist()
-  return entry
+  return { entry }
+}
+
+/**
+ * Catalogues one product. Returns the stored row, or null when the image is
+ * unreachable or is not a gown. Use `warmIndex` with `diagnostics` if you need
+ * to know *why* it returned null.
+ */
+export async function tagProduct(product: TaggableProduct): Promise<DressAttributes | null> {
+  return (await tagProductInternal(product)).entry
 }
 
 /**
  * Tags up to `budget` un-catalogued products from `candidates`, sequentially so
  * a burst of vision calls cannot stampede the upstream quota. Failures are
- * swallowed: an unwarmed index degrades ranking, it must never fail a request.
+ * swallowed for the caller's return value (an unwarmed index degrades ranking,
+ * it must never fail a request) but are appended to `diagnostics` when
+ * provided, so a batch backfill run can report exactly why it made no
+ * progress instead of a bare zero.
  */
 export async function warmIndex(
   candidates: TaggableProduct[],
-  budget: number = STYLIST_LAZY_TAG_BUDGET
+  budget: number = STYLIST_LAZY_TAG_BUDGET,
+  diagnostics?: { productId: string; reason: string }[]
 ): Promise<number> {
   if (budget <= 0) return 0
   const map = await load()
@@ -186,10 +214,19 @@ export async function warmIndex(
     if (!needsTagging(map.get(String(product.id)), imageUrl)) continue
 
     try {
-      const entry = await tagProduct(product)
-      if (entry) tagged++
-    } catch {
-      // Quota, timeout, unreachable image — skip and continue.
+      const { entry, reason } = await tagProductInternal(product)
+      if (entry) {
+        tagged++
+      } else if (diagnostics) {
+        diagnostics.push({ productId: String(product.id), reason: reason || "unknown" })
+      }
+    } catch (err: any) {
+      if (diagnostics) {
+        diagnostics.push({
+          productId: String(product.id),
+          reason: scrubErrorMessage(String(err?.message || err)),
+        })
+      }
     }
   }
   return tagged

@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now()
   const products = await taggableProducts()
 
-  const tagged = await warmIndex(products, batch)
+  const diagnostics: { productId: string; reason: string }[] = []
+  const tagged = await warmIndex(products, batch, diagnostics)
 
   const existing = await getAttributesFor(products.map((p) => p.id))
 
@@ -76,5 +77,10 @@ export async function POST(request: NextRequest) {
     indexed: existing.size,
     remaining: products.length - existing.size,
     durationMs: Date.now() - startedAt,
+    // Present only when something failed — tells you WHY tagged came back
+    // low/zero (upstream quota, unreachable image, missing credentials, etc.)
+    // without needing server log access. Capped so a bad batch can't return
+    // a huge payload.
+    ...(diagnostics.length > 0 ? { errors: diagnostics.slice(0, 10) } : {}),
   })
 }

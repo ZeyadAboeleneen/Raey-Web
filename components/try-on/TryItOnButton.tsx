@@ -23,13 +23,6 @@ import type { TryOnDress } from "./TryOnModal"
 
 const TryOnModal = dynamic(() => import("./TryOnModal"), { ssr: false })
 
-/**
- * Temporary UI hide — flip back to `true` to bring the CTA back. The
- * underlying feature (API route, modal, session storage) is untouched; this
- * only stops the button from rendering.
- */
-const SHOW_TRY_IT_ON_BUTTON = false
-
 interface Props {
   dress: TryOnDress
   className?: string
@@ -38,7 +31,6 @@ interface Props {
 export default function TryItOnButton({ dress, className = "" }: Props) {
   const [open, setOpen] = useState(false)
 
-  if (!SHOW_TRY_IT_ON_BUTTON) return null
   if (!isTryOnEligible(dress.collection)) return null
   if (!dress.id || !dress.image) return null
 

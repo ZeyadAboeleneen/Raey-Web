@@ -81,18 +81,21 @@ export async function POST(request: NextRequest) {
     bookDay.setHours(0,0,0,0)
     const d = Math.max(1, Math.round((startDay.getTime() - bookDay.getTime()) / msPerDay))
 
-    // Fetch cost plus, per item, keyed to the rent-start date (@RentStart):
-    //  - n          = rentals RECEIVED by the rent-start date (drives POST4 threshold)
-    //  - laterCount = existing bookings that start AFTER the rent-start date (frontier check)
+    // Fetch cost plus, per item:
+    //  - n          = how many times this dress has EVER been booked, any status
+    //                 or date (drives the POST4 threshold — n >= 4). Not scoped
+    //                 to @RentStart or to returned bookings: a Booking row counts
+    //                 the moment it exists.
+    //  - laterCount = existing bookings that start AFTER this rent-start date
+    //                 (frontier check for the POST4 formula's isLatest/−500 rule
+    //                 — unrelated to n, still date- and return-scoped as before).
     // so POST4 dresses (5th rental onward) are priced correctly in listings.
     const query = `
       SELECT
         i.ID,
         i.Item_buypric AS cost,
         (SELECT COUNT(*) FROM Booking bk
-           WHERE bk.ModelTypeID = i.ID
-             AND bk.ReturnDate IS NOT NULL
-             AND CAST(bk.ReturnDate AS DATE) <= CAST(@RentStart AS DATE)) AS n,
+           WHERE bk.ModelTypeID = i.ID) AS n,
         (SELECT COUNT(*) FROM Booking bk
            WHERE bk.ModelTypeID = i.ID
              AND bk.ReceivedDate IS NOT NULL
