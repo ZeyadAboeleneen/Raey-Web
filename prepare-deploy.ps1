@@ -16,6 +16,20 @@ if (Test-Path ".next\standalone\public") {
 }
 Copy-Item -Path "public" -Destination ".next\standalone\public" -Recurse -Force
 
+# public\uploads is the LOCAL DEV fallback only — production always reads product
+# images from UPLOAD_DIR instead (set below), never from this folder. Whatever is
+# sitting in public\uploads locally (test images, etc.) must never ship to
+# production: it would just bloat the upload and has no effect once there, but
+# there's no reason to carry it along. Strip it after the copy, then restore an
+# empty folder with .gitkeep so the deployed tree still matches what git tracks.
+Write-Host "=== Excluding public\uploads (local-dev-only) from deploy ===" -ForegroundColor Cyan
+$deployUploads = ".next\standalone\public\uploads"
+if (Test-Path $deployUploads) {
+    Remove-Item -Path $deployUploads -Recurse -Force
+}
+New-Item -ItemType Directory -Path $deployUploads -Force | Out-Null
+New-Item -ItemType File -Path "$deployUploads\.gitkeep" -Force | Out-Null
+
 Write-Host "=== Copying Prisma schema ===" -ForegroundColor Cyan
 New-Item -ItemType Directory -Path ".next\standalone\prisma" -Force | Out-Null
 Copy-Item -Path "prisma\schema.prisma" -Destination ".next\standalone\prisma\schema.prisma" -Force

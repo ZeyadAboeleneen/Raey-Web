@@ -392,6 +392,24 @@ export interface StylistTurnInput {
   similarToProductId?: string | null
 }
 
+/**
+ * A short, honest, on-brand line for when a factual ask (colour, silhouette,
+ * neckline, sleeves, embellishment, volume, or train) matched nothing the
+ * system has actually catalogued — findMatches() returns zero rather than
+ * guess in that case, and this says so instead of leaving "here are your
+ * options" hanging over an empty result. Matched by language prefix, the same
+ * pattern the API route's own fallback copy uses.
+ */
+function noConfirmedMatchNote(language: string): string {
+  if (/^arabizi/i.test(language)) {
+    return "Sorra2a, mafeesh 3andy dilwa2ty confirmed dress bel mwasfat de fel catalogue. 3ayza awareeky a2rab haga leha, wala nbadel fel wasf shwaya? 🤍"
+  }
+  if (/^ar/i.test(language) || /^mixed/i.test(language)) {
+    return "للأسف مفيش عندي حاليًا فستان مؤكد بالمواصفات دي في الكتالوج. حابة أوريكي أقرب حاجة ليها، ولا نغيّر في الوصف شوية؟ 🤍"
+  }
+  return "I don't have a confirmed match for that in the catalogue right now. Want me to show you the closest alternatives, or adjust what you're looking for? 🤍"
+}
+
 /** Runs one full turn. Throws `StylistError`; the route maps it to safe copy. */
 export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTurnResult> {
   let understanding: Understanding
@@ -446,8 +464,20 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
     ).slice(-60)
   }
 
+  // The reply above was written before matching ran, so it can promise dresses
+  // that then fail to materialise — findMatches() now correctly returns zero
+  // rather than padding a factual ask (colour, silhouette, ...) with unverified
+  // guesses, but that means "here are your options" can land with no cards
+  // under it unless this is said out loud. No second Gemini call for this —
+  // a short, honest, on-brand line appended in her language beats staying
+  // silent about it.
+  const message =
+    wantsProducts && recommendations.length === 0
+      ? `${understanding.message}\n\n${noConfirmedMatchNote(understanding.language)}`
+      : understanding.message
+
   return {
-    message: understanding.message,
+    message,
     language: understanding.language,
     followUpQuestion: understanding.followUpQuestion,
     quickReplies: understanding.quickReplies,

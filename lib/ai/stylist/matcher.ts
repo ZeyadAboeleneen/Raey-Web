@@ -123,6 +123,39 @@ function violatesAvoidance(attrs: DressAttributes | undefined, p: StylistPrefere
   )
 }
 
+/**
+ * A gown is excluded when the shopper asked for a specific value in some
+ * FACTUAL category and this gown is confirmed to be something else there.
+ *
+ * Positive requests need the same hard-filter treatment `violatesAvoidance`
+ * gives negative ones: scoring alone only ever ADDS a bonus for a match, so
+ * when nothing in the tagged pool actually has the asked-for colour, every
+ * candidate — including ones confirmed gold or silver — scores identically
+ * and one gets shown anyway. Asking for "black" must never surface a gown
+ * this system has already looked at and confirmed is not black.
+ *
+ * Deliberately excludes `style`: it's a handful of subjective adjectives a
+ * human picked from many valid ones, not a mutually-exclusive fact the way a
+ * colour or silhouette is — treating "not tagged romantic" as "confirmed not
+ * romantic" would over-filter on a fuzzy dimension. Style stays a soft bonus.
+ */
+function contradictsRequest(attrs: DressAttributes | undefined, p: StylistPreferences): boolean {
+  if (!attrs) return false // nothing catalogued — cannot prove a contradiction either
+
+  const conflicts = (requested: string[], actual: string[]) =>
+    requested.length > 0 && actual.length > 0 && overlap(actual, requested).length === 0
+
+  return (
+    conflicts(p.color, attrs.color) ||
+    conflicts(p.silhouette, attrs.silhouette) ||
+    conflicts(p.neckline, attrs.neckline) ||
+    conflicts(p.sleeves, attrs.sleeves) ||
+    conflicts(p.embellishment, attrs.embellishment) ||
+    (p.volume !== null && attrs.volume !== null && attrs.volume !== p.volume) ||
+    (p.train !== null && attrs.train !== null && attrs.train !== p.train)
+  )
+}
+
 function scoreProduct(
   product: CatalogProduct,
   attrs: DressAttributes | undefined,
@@ -269,6 +302,7 @@ export async function findMatches(
 
     const attrs = attributeMap.get(product.id)
     if (violatesAvoidance(attrs, target)) continue
+    if (contradictsRequest(attrs, target)) continue
 
     const { score, facts } = scoreProduct(product, attrs, target)
     ranked.push({ product, score, facts, grounded: !!attrs })
@@ -302,7 +336,15 @@ export async function findMatches(
 
   const groundedMatches = ranked.filter((m) => m.grounded)
 
-  if (hasConcreteAsk && groundedMatches.length > 0) {
+  // A concrete ask ALWAYS resolves to grounded matches only — including down
+  // to zero. The previous rule only enforced this when at least one grounded
+  // match existed; once none did, it fell through to padding with ungrounded
+  // gowns anyway, which is exactly how an off-white dress could get shown for
+  // "black": nothing was confirmed to match, so anything ranked got shown.
+  // Zero honest results is the correct answer when the tagged catalogue
+  // genuinely has nothing confirmed for what was asked — the caller surfaces
+  // that honestly rather than this function ever guessing on a factual ask.
+  if (hasConcreteAsk) {
     return groundedMatches.slice(0, limit)
   }
 
