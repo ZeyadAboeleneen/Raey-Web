@@ -18,6 +18,22 @@
 export async function register() {
   // Only run in the Node.js runtime, not in the Edge runtime
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Prefer IPv4 when a hostname resolves to both A and AAAA records.
+    //
+    // Some environments (this dev sandbox confirmed among them — `dns.resolve4`
+    // for generativelanguage.googleapis.com returns instantly, `dns.resolve6`
+    // times out entirely, no real IPv6 route) have no working IPv6 path.
+    // Node 18+'s default result order can still hand undici/fetch an AAAA
+    // record to try, which then hangs/fails with ENOTFOUND — intermittently
+    // succeeding or failing depending on which code path queried DNS and in
+    // what order, which is exactly what made the Gemini-backed AI Stylist and
+    // Try-On routes fail here despite the Gemini API key and network both
+    // being fine. This is Node's own documented fix for that class of issue
+    // and is safe everywhere IPv6 works too — it only breaks the tie when
+    // both are available, never disables IPv6 outright.
+    const dns = await import("dns")
+    dns.setDefaultResultOrder("ipv4first")
+
     const { ensureStorageReady } = await import("@/lib/storage-health")
     await ensureStorageReady()
   }

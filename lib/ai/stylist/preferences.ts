@@ -177,27 +177,33 @@ export function mergePreferences(
   const replace = new Set(delta.replace ?? [])
   const listOf = <K extends keyof StylistPreferences>(key: K, incoming: any[]): any[] =>
     replace.has(key) ? incoming : union(current[key] as any[], incoming)
+  // A `replace`-flagged scalar resets to whatever the delta says (null if the
+  // model didn't restate it) rather than falling back to the old value — that
+  // fallback is exactly what made a stale "minimal" or "hotel" linger forever
+  // once she'd moved past it.
+  const scalarOf = <K extends keyof StylistPreferences>(key: K, incoming: any): any =>
+    replace.has(key) ? incoming ?? null : incoming ?? current[key]
 
   const next: StylistPreferences = {
     ...current,
     language: delta.language ?? current.language,
-    occasion: delta.occasion ?? current.occasion,
-    collection: delta.collection ?? current.collection,
+    occasion: scalarOf("occasion", delta.occasion),
+    collection: scalarOf("collection", delta.collection),
     style: listOf("style", delta.style ?? []),
     silhouette: listOf("silhouette", delta.silhouette ?? []),
     neckline: listOf("neckline", delta.neckline ?? []),
     sleeves: listOf("sleeves", delta.sleeves ?? []),
     embellishment: listOf("embellishment", delta.embellishment ?? []),
     color: listOf("color", delta.color ?? []),
-    volume: delta.volume ?? current.volume,
-    train: delta.train ?? current.train,
-    venue: delta.venue ?? current.venue,
-    season: delta.season ?? current.season,
-    time: delta.time ?? current.time,
+    volume: scalarOf("volume", delta.volume),
+    train: scalarOf("train", delta.train),
+    venue: scalarOf("venue", delta.venue),
+    season: scalarOf("season", delta.season),
+    time: scalarOf("time", delta.time),
     likes: union(current.likes, delta.likes ?? []),
     rejectedProductIds: union(current.rejectedProductIds, delta.rejectedProductIds ?? []),
     shownProductIds: union(current.shownProductIds, delta.shownProductIds ?? []),
-    maxPrice: delta.maxPrice ?? current.maxPrice,
+    maxPrice: scalarOf("maxPrice", delta.maxPrice),
     avoid: {
       silhouette: union(current.avoid.silhouette, delta.avoid?.silhouette ?? []),
       neckline: union(current.avoid.neckline, delta.avoid?.neckline ?? []),

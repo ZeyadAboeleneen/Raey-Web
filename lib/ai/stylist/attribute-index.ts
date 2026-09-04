@@ -30,6 +30,7 @@ interface IndexFile {
 const g = globalThis as typeof globalThis & {
   _stylistIndex?: Map<string, DressAttributes>
   _stylistIndexLoaded?: boolean
+  _stylistIndexMtime?: number
   _stylistIndexWriteQueue?: Promise<void>
 }
 
@@ -40,7 +41,19 @@ function indexPath(): string {
 }
 
 async function load(): Promise<Map<string, DressAttributes>> {
-  if (g._stylistIndexLoaded && g._stylistIndex) return g._stylistIndex
+  // Re-read when the file has changed underneath us. The backfill script
+  // (scripts/build-stylist-index.mjs) appends to this file for hours while the
+  // server is up; without an mtime check a long-running process would serve the
+  // catalogue as it looked at boot and never see a single newly-tagged gown.
+  let mtime = 0
+  try {
+    mtime = (await fs.stat(indexPath())).mtimeMs
+  } catch {
+    // No file yet — fall through and load an empty index.
+  }
+  if (g._stylistIndexLoaded && g._stylistIndex && g._stylistIndexMtime === mtime) {
+    return g._stylistIndex
+  }
 
   const map = new Map<string, DressAttributes>()
   try {
@@ -57,6 +70,7 @@ async function load(): Promise<Map<string, DressAttributes>> {
 
   g._stylistIndex = map
   g._stylistIndexLoaded = true
+  g._stylistIndexMtime = mtime
   return map
 }
 
@@ -66,16 +80,36 @@ async function persist(): Promise<void> {
   if (!map) return
 
   const write = async () => {
-    const body: IndexFile = {
-      version: ATTRIBUTE_INDEX_VERSION,
-      updatedAt: Date.now(),
-      entries: Object.fromEntries(map),
-    }
     const target = indexPath()
     const tmp = `${target}.tmp`
     try {
+      // Merge onto whatever is on disk rather than overwriting with our own
+      // in-memory view. The backfill script writes this same file for hours,
+      // and a server that booted with 50 rows would otherwise flatten a run
+      // that had since catalogued hundreds. Ours wins only for rows we hold.
+      let onDisk: Record<string, DressAttributes> = {}
+      try {
+        const raw = await fs.readFile(target, "utf8")
+        const parsed: IndexFile = JSON.parse(raw)
+        if (parsed?.entries && parsed.version === ATTRIBUTE_INDEX_VERSION) onDisk = parsed.entries
+      } catch {
+        // No readable file yet — we are creating it.
+      }
+
+      const body: IndexFile = {
+        version: ATTRIBUTE_INDEX_VERSION,
+        updatedAt: Date.now(),
+        entries: { ...onDisk, ...Object.fromEntries(map) },
+      }
       await fs.writeFile(tmp, JSON.stringify(body), "utf8")
       await fs.rename(tmp, target)
+      // Our own write is the newest state; keep the mtime guard in step so the
+      // next read doesn't needlessly reload what we just wrote.
+      try {
+        g._stylistIndexMtime = (await fs.stat(target)).mtimeMs
+      } catch {
+        g._stylistIndexMtime = undefined
+      }
     } catch (err: any) {
       console.warn("[Stylist] could not persist attribute index:", err?.code || "write failed")
     }

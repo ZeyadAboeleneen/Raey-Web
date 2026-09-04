@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "node --use-system-ca node_modules/next/dist/bin/next dev",
     "lint": "next lint",
     "start": "next start",
     "postinstall": "prisma generate"

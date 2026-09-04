@@ -40,11 +40,13 @@ import {
   mergePreferences,
   type StylistPreferences,
 } from "./preferences"
-import { findMatches, type RankedMatch } from "./matcher"
+import { findMatches, type MatchOptions, type RankedMatch, type VisualReference } from "./matcher"
+import { readInspirationImage } from "./vision-tagger"
 import { EXPLAIN_SYSTEM_PROMPT, UNDERSTAND_SYSTEM_PROMPT } from "./prompts"
 import {
   STYLIST_CHAT_MODEL,
   STYLIST_HISTORY_TURNS,
+  STYLIST_IMAGE_TIMEOUT_MS,
   STYLIST_MAX_RESULTS,
   STYLIST_MIN_RESULTS,
   STYLIST_TIMEOUT_MS,
@@ -131,6 +133,18 @@ const UNDERSTAND_SCHEMA = {
         volume: enumArray(VOLUMES),
       },
     },
+    clearFields: {
+      type: "ARRAY",
+      description:
+        "Preference categories to RESET because she just broadened her request (see WHEN SHE BROADENS HER REQUEST). Empty on most turns.",
+      items: {
+        type: "STRING",
+        enum: [
+          "occasion", "collection", "style", "silhouette", "neckline", "sleeves",
+          "embellishment", "color", "volume", "train", "venue", "season", "time", "maxPrice",
+        ],
+      },
+    },
   },
   required: ["message", "language", "readyToRecommend"],
 }
@@ -184,14 +198,21 @@ interface Understanding {
   readyToRecommend: boolean
   followUpQuestion: string
   quickReplies: string[]
-  delta: Partial<StylistPreferences>
+  delta: Partial<StylistPreferences> & { replace?: (keyof StylistPreferences)[] }
 }
+
+/** List-type preference keys `clearFields` is allowed to reset. */
+const CLEARABLE_FIELDS = [
+  "occasion", "collection", "style", "silhouette", "neckline", "sleeves",
+  "embellishment", "color", "volume", "train", "venue", "season", "time", "maxPrice",
+] as const satisfies readonly (keyof StylistPreferences)[]
 
 /** Call 1 — read the message into a reply and a validated preference delta. */
 async function understand(
   message: string,
   history: ChatTurn[],
-  current: StylistPreferences
+  current: StylistPreferences,
+  photoNote: string | null
 ): Promise<Understanding> {
   const ai = getClient()
 
@@ -220,7 +241,11 @@ async function understand(
       role: "user" as const,
       parts: [
         {
-          text: `Already known about this customer (do not ask about these again): ${known}\n\nHer new message:\n${message}`,
+          // The photo is not re-sent to this model: it has already been read
+          // into the shared vocabulary by the vision pass, and that reading is
+          // both denser and far cheaper than a second image upload against the
+          // same quota.
+          text: `Already known about this customer (do not ask about these again): ${known}\n\nHer new message:\n${message}${photoNote ? `\n\n${photoNote}` : ""}`,
         },
       ],
     },
@@ -253,6 +278,11 @@ async function understand(
   const p = parsed.preferences ?? {}
   const a = parsed.avoid ?? {}
   const price = Number(p.maxPrice)
+  const clearFields: (keyof StylistPreferences)[] = Array.isArray(parsed.clearFields)
+    ? parsed.clearFields.filter((f: any): f is (typeof CLEARABLE_FIELDS)[number] =>
+        (CLEARABLE_FIELDS as readonly string[]).includes(f)
+      )
+    : []
 
   return {
     message: String(parsed.message || "").trim(),
@@ -266,6 +296,7 @@ async function understand(
           .map((q: string) => q.trim().slice(0, 40))
       : [],
     delta: {
+      replace: clearFields,
       language: String(parsed.language || "en").slice(0, 12),
       occasion: coerceOne(p.occasion, OCCASIONS),
       collection: coerceOne(p.collection, COLLECTIONS),
@@ -298,7 +329,8 @@ async function understand(
 async function explain(
   matches: RankedMatch[],
   userMessage: string,
-  language: string
+  language: string,
+  inspiration: string | null
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>()
   if (matches.length === 0) return out
@@ -320,6 +352,9 @@ async function explain(
       volume: m.facts.volume,
       train: m.facts.train,
     },
+    // Read from this gown's own photograph — the source of truth for anything
+    // the fixed vocabulary above doesn't cover (slits, coverage, back detail…).
+    whatThePhotoShows: m.facts.description,
     matchedWhatSheAskedFor: m.facts.matched,
   }))
 
@@ -332,7 +367,11 @@ async function explain(
             role: "user",
             parts: [
               {
-                text: `The customer said (reply in this exact language and register, tagged "${language}"):\n"${userMessage}"\n\nDresses selected for her:\n${JSON.stringify(dresses, null, 1)}`,
+                text: `The customer said (reply in this exact language and register, tagged "${language}"):\n"${userMessage}"${
+                  inspiration
+                    ? `\n\nShe also sent a photo of a dress she likes. This is what that photo shows:\n"${inspiration}"\nSay for each gown below what it shares with that photo — the specific detail, not "it's similar".`
+                    : ""
+                }\n\nDresses selected for her:\n${JSON.stringify(dresses, null, 1)}`,
               },
             ],
           },
@@ -390,6 +429,122 @@ export interface StylistTurnInput {
   preferences: StylistPreferences
   /** Set by SHOW SIMILAR — ranks against that gown instead of the profile. */
   similarToProductId?: string | null
+  /** An inspiration photo she attached to this message ("something like this"). */
+  image?: { data: Buffer; mimeType: string } | null
+}
+
+/**
+ * How far to bend a request before admitting there is nothing to show.
+ *
+ * Every attribute she names is a veto by default, and vetoes multiply: the
+ * catalogue holds 243 mermaid gowns with long sleeves, but not one is tagged
+ * with 'minimal' embellishment, so adding the word "simple" turned five good
+ * answers into "I have nothing like that" — while the dresses she meant sat
+ * right there. Four of eight realistic asks came back empty this way.
+ *
+ * So secondary attributes are given up one tier at a time, softest first. A
+ * relaxed attribute is still SCORED, so the closest gowns keep ranking top —
+ * asking for a simple mermaid now returns the least-embellished mermaids
+ * rather than nothing at all.
+ *
+ * Colour is never on this ladder. It is the one thing a shopper means
+ * literally, and answering "black" with ivory is worse than answering
+ * honestly that there is none. (A colour read from a PHOTO is looser — see
+ * `relaxImageColor`, which runs after every rung here.)
+ */
+const RELAX_LADDER: readonly (readonly string[])[] = [
+  [],
+  ["embellishment", "volume", "train"],
+  ["embellishment", "volume", "train", "neckline"],
+  ["embellishment", "volume", "train", "neckline", "sleeves"],
+  ["embellishment", "volume", "train", "neckline", "sleeves", "silhouette"],
+]
+
+/** The categories an inspiration photo speaks to. */
+const PHOTO_DRIVEN_FIELDS = [
+  "silhouette", "neckline", "sleeves", "embellishment", "style", "color", "volume", "train",
+] as const satisfies readonly (keyof StylistPreferences)[]
+
+/**
+ * The colour a photographed gown actually *is*, dropping metallic accents.
+ *
+ * Vision tags a black gown with silver beadwork as ["black", "silver"], and
+ * carrying that whole list into the profile makes "silver" a wildcard that
+ * matches the large share of gowns with any metallic embellishment — which is
+ * exactly how a black inspiration photo came back full of ivory dresses. The
+ * beading is embellishment; the dress is black.
+ */
+function dominantColors<T extends string>(colors: T[]): T[] {
+  const solid = colors.filter((c) => c !== "gold" && c !== "silver")
+  return solid.length > 0 ? solid : colors
+}
+
+/** What the vision pass made of an attached photo, if there was one. */
+interface PhotoContext {
+  attributes?: VisualReference
+  /** Free-text reading of her photo, shown to the explanation model. */
+  description: string | null
+  /** Set when the photo could not be used, so the reply can say so honestly. */
+  issue: "not-a-dress" | "unreadable" | null
+}
+
+/**
+ * Reads an attached photo into the same vocabulary the catalogue is indexed
+ * in. Never throws: a photo that cannot be read degrades the turn to a normal
+ * text turn with an honest note, rather than failing it outright.
+ */
+async function readPhoto(image: { data: Buffer; mimeType: string }): Promise<PhotoContext> {
+  try {
+    const reading = await withTimeout(
+      readInspirationImage(image.data, image.mimeType),
+      STYLIST_IMAGE_TIMEOUT_MS
+    )
+    if (!reading.ok) return { description: null, issue: reading.reason }
+    return {
+      attributes: reading.attributes,
+      description: reading.attributes.description || null,
+      issue: null,
+    }
+  } catch (error) {
+    console.warn(`[AI Stylist] inspiration photo unreadable: ${classify(error).code}`)
+    return { description: null, issue: "unreadable" }
+  }
+}
+
+/** Tells the conversation model what her photo turned out to contain. */
+function photoNoteFor(photo: PhotoContext): string | null {
+  if (photo.issue === "not-a-dress") {
+    return "She attached a photo, but no dress could be made out in it. Tell her that warmly in one line and ask her to send another, or describe what she's after. Do not guess at what was in the photo."
+  }
+  if (photo.issue === "unreadable") {
+    return "She attached a photo that could not be opened. Apologise for it in one line and invite her to try again or describe what she wants. Do not guess at what was in the photo."
+  }
+  if (!photo.attributes) return null
+
+  const a = photo.attributes
+  return [
+    "She attached a photo of a dress she likes. Read from that photo:",
+    JSON.stringify({
+      silhouette: a.silhouette,
+      neckline: a.neckline,
+      sleeves: a.sleeves,
+      embellishment: a.embellishment,
+      style: a.style,
+      color: a.color,
+      volume: a.volume,
+      train: a.train,
+    }),
+    photo.description ? `Described: ${photo.description}` : "",
+    // The photo's own attributes are merged into the profile in code, so the
+    // model must NOT restate them here. When it did, its echo of the photo
+    // ("ivory") counted as a fresh statement and outranked what she had
+    // actually asked for in words — "do you have it in black?" returned ivory
+    // gowns while the reply claimed to be showing black ones.
+    "Speak as though you have seen the photo yourself — name one or two specific things in it, warmly. Set readyToRecommend true.",
+    "IMPORTANT: the photo's own attributes are already recorded for you. Put into 'preferences' ONLY what she states in her own WORDS — especially anything that CHANGES the photo, like 'but in black', 'with longer sleeves', 'less puffy'. If her words say nothing about the dress, leave 'preferences' empty.",
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
 /**
@@ -412,40 +567,115 @@ function noConfirmedMatchNote(language: string): string {
 
 /** Runs one full turn. Throws `StylistError`; the route maps it to safe copy. */
 export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTurnResult> {
+  // The photo is read first: what it contains shapes both the reply she gets
+  // and the ranking, so the conversation model needs it before it speaks.
+  const photo: PhotoContext = input.image
+    ? await readPhoto(input.image)
+    : { description: null, issue: null }
+
   let understanding: Understanding
   try {
-    understanding = await understand(input.message, input.history, input.preferences)
+    understanding = await understand(
+      input.message,
+      input.history,
+      input.preferences,
+      photoNoteFor(photo)
+    )
   } catch (error) {
     throw classify(error)
   }
 
-  const preferences = mergePreferences(input.preferences, understanding.delta)
+  // What the photo showed is folded into the profile HERE, deterministically,
+  // rather than trusting the conversation model to copy it into its own
+  // `preferences` output. Asked to do that it reliably drops most of them —
+  // an observed turn kept "ball-gown" and lost the high neckline, long
+  // sleeves and lace entirely — which ranks this turn correctly (the matcher
+  // is handed the attributes directly) but silently forgets the photo on the
+  // very next message. Reading a photo is observation, not interpretation, so
+  // it belongs on the deterministic side of the line like every other fact
+  // this system derives from an image.
+  //
+  // `replace` rather than union: the photo states a complete look, so it
+  // supersedes whatever these categories held before it arrived.
+  const withPhoto = photo.attributes
+    ? mergePreferences(input.preferences, {
+        replace: [...PHOTO_DRIVEN_FIELDS],
+        silhouette: photo.attributes.silhouette,
+        neckline: photo.attributes.neckline,
+        sleeves: photo.attributes.sleeves,
+        embellishment: photo.attributes.embellishment,
+        style: photo.attributes.style,
+        color: dominantColors(photo.attributes.color),
+        volume: photo.attributes.volume,
+        train: photo.attributes.train,
+      })
+    : input.preferences
+
+  // Her words are a correction to the photo, never an addition to it: "like
+  // this but in black" must end up black, not black-and-ivory. So any
+  // category she actually spoke about replaces what the photo put there.
+  const delta = photo.attributes
+    ? {
+        ...understanding.delta,
+        replace: [
+          ...(understanding.delta.replace ?? []),
+          ...PHOTO_DRIVEN_FIELDS.filter((key) => {
+            const stated = understanding.delta[key]
+            return Array.isArray(stated) ? stated.length > 0 : stated != null
+          }),
+        ],
+      }
+    : understanding.delta
+
+  const preferences = mergePreferences(withPhoto, delta)
 
   const wantsProducts =
     !!input.similarToProductId ||
+    !!photo.attributes ||
     understanding.readyToRecommend ||
     hasEnoughToRecommend(preferences)
 
   let recommendations: Recommendation[] = []
 
   if (wantsProducts) {
-    const matches = await findMatches(preferences, {
-      limit: STYLIST_MAX_RESULTS,
-      similarToProductId: input.similarToProductId ?? undefined,
-      // Keep bringing new gowns on refinement, unless that would leave nothing.
-      excludeShown: preferences.shownProductIds.length > 0,
-    })
+    // Progressively looser attempts, stopping at the first that returns
+    // enough. Each step gives up exactly one thing, strictest first: showing
+    // her something new, then matching her photo's colour. What is never
+    // given up is grounding — an un-catalogued gown is still not offered as
+    // an answer to a concrete ask (see findMatches).
+    // Giving up on colour is only ever allowed when the colour came from the
+    // PHOTO. A colour she typed is a hard requirement to the end: asked for
+    // black with a photo of an ivory gown, and with no black gown of that
+    // shape in the catalogue, the honest answer is nothing — this fallback
+    // once answered it with white ball-gowns.
+    const sheStatedColor = (understanding.delta.color ?? []).length > 0
+    const mayRelaxColor = !!photo.attributes && !sheStatedColor
 
-    const finalMatches =
-      matches.length >= STYLIST_MIN_RESULTS
-        ? matches
-        : await findMatches(preferences, {
-            limit: STYLIST_MAX_RESULTS,
-            similarToProductId: input.similarToProductId ?? undefined,
-            excludeShown: false,
-          })
+    const attempts: MatchOptions[] = [
+      { excludeShown: preferences.shownProductIds.length > 0 },
+      ...RELAX_LADDER.map((relaxFields) => ({ excludeShown: false, relaxFields })),
+      ...(mayRelaxColor
+        ? [{ excludeShown: false, relaxFields: RELAX_LADDER[RELAX_LADDER.length - 1], relaxImageColor: true }]
+        : []),
+    ]
 
-    const reasons = await explain(finalMatches, input.message, understanding.language)
+    let finalMatches: RankedMatch[] = []
+    for (const attempt of attempts) {
+      finalMatches = await findMatches(preferences, {
+        limit: STYLIST_MAX_RESULTS,
+        similarToProductId: input.similarToProductId ?? undefined,
+        imageAttributes: photo.attributes,
+        ...attempt,
+      })
+      if (finalMatches.length >= STYLIST_MIN_RESULTS) break
+    }
+
+    const reasons = await explain(
+      finalMatches,
+      input.message,
+      understanding.language,
+      photo.description
+    )
 
     recommendations = finalMatches.map((m) => ({
       productId: m.product.id,

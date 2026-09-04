@@ -17,6 +17,13 @@ export interface StylistMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  /**
+   * A small data-URL thumbnail of an inspiration photo she attached, kept only
+   * so the transcript still shows what she sent. Deliberately a thumbnail and
+   * not the uploaded image: sessionStorage is a few megabytes, and full-size
+   * photos in a transcript would exhaust it within a handful of turns.
+   */
+  image?: string
   /** Products shown with this message, if any. */
   recommendations?: StylistRecommendation[]
   quickReplies?: string[]

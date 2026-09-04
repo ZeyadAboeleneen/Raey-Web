@@ -12,6 +12,7 @@ import { trackEvent } from "@/lib/gtag"
 export type StylistEvent =
   | "ai_stylist_opened"
   | "ai_stylist_message_sent"
+  | "ai_stylist_image_attached"
   | "ai_dress_search"
   | "ai_recommendation_shown"
   | "ai_recommendation_clicked"
@@ -27,7 +28,8 @@ export interface StylistEventParams {
   result_count?: number
   /** Language tag only — never the message itself. */
   language?: string
-  mode?: "chat" | "describe"
+  /** Whether the turn carried an inspiration photo. Never the photo itself. */
+  with_image?: boolean
   reason_code?: string
   duration_ms?: number
 }

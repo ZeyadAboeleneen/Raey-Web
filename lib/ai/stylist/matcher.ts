@@ -40,6 +40,8 @@ export interface MatchFacts {
   color: string[]
   volume: string | null
   train: string | null
+  /** Plain-language description read from the gown's photo at tagging time. */
+  description: string
   /** Attribute names that matched what the shopper asked for. */
   matched: string[]
 }
@@ -108,6 +110,45 @@ const VENUE_AFFINITY: Record<string, { style: string[]; volume: string[] }> = {
 
 const overlap = <T>(a: T[], b: T[]): T[] => a.filter((x) => b.includes(x))
 
+/**
+ * Colours that read as the same decision from across a room.
+ *
+ * Exact colour matching is too brittle to filter on — ivory and champagne are
+ * the same choice to almost everyone — while no matching at all answers a
+ * black dress with an ivory one. Families are the useful middle.
+ *
+ * Metallics are deliberately their own family and are ignored when the photo
+ * shows anything else: gold and silver turn up as an accent on a large share
+ * of beaded gowns, so treating them as the garment's colour makes them a
+ * wildcard that matches nearly everything. A photo tagged black + silver is a
+ * black dress with silver beading, not a silver dress.
+ */
+const COLOR_FAMILY: Record<string, string> = {
+  white: "light", ivory: "light", champagne: "light", nude: "light", blush: "light",
+  black: "dark", navy: "dark", burgundy: "dark", grey: "dark",
+  red: "bold", green: "bold", blue: "bold", pink: "bold", lilac: "bold", multicolor: "bold",
+  gold: "metallic", silver: "metallic",
+}
+
+/**
+ * How strictly a colour request is enforced. See `contradictsRequest`.
+ *   exact  — she typed a colour and means it literally
+ *   family — the colour came from her photo; match the look, not the swatch
+ *   ignore — a retry that gave up on colour rather than show her nothing
+ */
+export type ColorMode = "exact" | "family" | "ignore"
+
+/** The families a set of colours belongs to, metallic accents set aside. */
+function colorFamilies(colors: string[]): string[] {
+  const families = new Set<string>()
+  for (const color of colors) {
+    const family = COLOR_FAMILY[color]
+    if (family) families.add(family)
+  }
+  if (families.size > 1) families.delete("metallic")
+  return Array.from(families)
+}
+
 /** A gown is excluded when it visibly carries something the shopper ruled out. */
 function violatesAvoidance(attrs: DressAttributes | undefined, p: StylistPreferences): boolean {
   if (!attrs) return false // nothing catalogued — cannot prove a violation
@@ -139,20 +180,42 @@ function violatesAvoidance(attrs: DressAttributes | undefined, p: StylistPrefere
  * colour or silhouette is — treating "not tagged romantic" as "confirmed not
  * romantic" would over-filter on a fuzzy dimension. Style stays a soft bonus.
  */
-function contradictsRequest(attrs: DressAttributes | undefined, p: StylistPreferences): boolean {
+function contradictsRequest(
+  attrs: DressAttributes | undefined,
+  p: StylistPreferences,
+  colorMode: ColorMode = "exact",
+  relaxed: ReadonlySet<string> = new Set()
+): boolean {
   if (!attrs) return false // nothing catalogued — cannot prove a contradiction either
 
   const conflicts = (requested: string[], actual: string[]) =>
     requested.length > 0 && actual.length > 0 && overlap(actual, requested).length === 0
 
+  /** A relaxed category stops vetoing, but still scores — see findMatches. */
+  const vetoes = (field: string, requested: string[], actual: string[]) =>
+    !relaxed.has(field) && conflicts(requested, actual)
+
+  // A colour she TYPED is meant literally — "black" is not a request for navy.
+  // A colour read from her photo is a description of a look, so it matches by
+  // family: ivory and champagne are the same decision, black and ivory are not.
+  const colorConflicts =
+    colorMode === "ignore"
+      ? false
+      : colorMode === "family"
+        ? conflicts(colorFamilies(p.color), colorFamilies(attrs.color))
+        : conflicts(p.color, attrs.color)
+
   return (
-    conflicts(p.color, attrs.color) ||
-    conflicts(p.silhouette, attrs.silhouette) ||
-    conflicts(p.neckline, attrs.neckline) ||
-    conflicts(p.sleeves, attrs.sleeves) ||
-    conflicts(p.embellishment, attrs.embellishment) ||
-    (p.volume !== null && attrs.volume !== null && attrs.volume !== p.volume) ||
-    (p.train !== null && attrs.train !== null && attrs.train !== p.train)
+    colorConflicts ||
+    vetoes("silhouette", p.silhouette, attrs.silhouette) ||
+    vetoes("neckline", p.neckline, attrs.neckline) ||
+    vetoes("sleeves", p.sleeves, attrs.sleeves) ||
+    vetoes("embellishment", p.embellishment, attrs.embellishment) ||
+    (!relaxed.has("volume") &&
+      p.volume !== null &&
+      attrs.volume !== null &&
+      attrs.volume !== p.volume) ||
+    (!relaxed.has("train") && p.train !== null && attrs.train !== null && attrs.train !== p.train)
   )
 }
 
@@ -214,10 +277,23 @@ function scoreProduct(
       color: attrs?.color ?? [],
       volume: attrs?.volume ?? null,
       train: attrs?.train ?? null,
+      description: attrs?.description ?? "",
       matched,
     },
   }
 }
+
+/**
+ * A look to rank against, rather than a set of requirements to satisfy.
+ *
+ * Comes either from a gown she tapped "show similar" on, or from an
+ * inspiration photo she uploaded — both read into the same vocabulary as the
+ * catalogue index, which is what makes the comparison meaningful.
+ */
+export type VisualReference = Pick<
+  DressAttributes,
+  "silhouette" | "neckline" | "sleeves" | "embellishment" | "style" | "color" | "volume" | "train"
+>
 
 export interface MatchOptions {
   limit?: number
@@ -225,6 +301,20 @@ export interface MatchOptions {
   excludeShown?: boolean
   /** Rank by similarity to this gown instead of the preference profile. */
   similarToProductId?: string
+  /** Rank by similarity to a photo the shopper sent. */
+  imageAttributes?: VisualReference
+  /**
+   * Drop the photo's colour as a hard constraint. Set on a retry, when
+   * honouring it exactly left too little to show.
+   */
+  relaxImageColor?: boolean
+  /**
+   * Attribute categories that stop excluding a gown outright on this pass.
+   * They keep scoring, so true matches still rank first — a relaxed category
+   * is a preference rather than a requirement. Set by the caller's retry
+   * ladder; see `runStylistTurn`.
+   */
+  relaxFields?: readonly string[]
   /** Allow inline cataloguing of un-tagged candidates. */
   allowWarm?: boolean
 }
@@ -277,12 +367,25 @@ export async function findMatches(
     void warmIndex(untagged).catch(() => {})
   }
 
-  const reference = options.similarToProductId
-    ? attributeMap.get(String(options.similarToProductId))
-    : undefined
+  // A look to rank against: her uploaded photo takes precedence over a
+  // "show similar" tap, since it is the more recent and more deliberate act.
+  const reference: VisualReference | undefined =
+    options.imageAttributes ??
+    (options.similarToProductId
+      ? attributeMap.get(String(options.similarToProductId))
+      : undefined)
 
-  // "Show similar" ranks against the reference gown's own attributes.
-  const target: StylistPreferences = reference
+  // Ranking runs against the reference look; FILTERING never does.
+  //
+  // The distinction matters enormously. A reference carries a value in every
+  // category at once — silhouette AND neckline AND sleeves AND embellishment
+  // AND colour AND volume AND train. Hard-filtering on all seven would demand
+  // a near-duplicate and return nothing at all, which is the opposite of what
+  // "show me something like this" asks for. Her *words* stay hard constraints
+  // (see contradictsRequest below); the look she showed us is what sorts the
+  // survivors. So "like this photo, but in black" filters to black and ranks
+  // by resemblance to the photo.
+  const scoringTarget: StylistPreferences = reference
     ? {
         ...p,
         silhouette: reference.silhouette,
@@ -290,9 +393,47 @@ export async function findMatches(
         sleeves: reference.sleeves,
         embellishment: reference.embellishment,
         style: reference.style,
-        color: reference.color,
-        volume: reference.volume,
-        train: reference.train,
+        // Her stated colour still leads when she named one — the photo only
+        // supplies a colour she never mentioned.
+        color: p.color.length > 0 ? p.color : reference.color,
+        volume: p.volume ?? reference.volume,
+        train: p.train ?? reference.train,
+      }
+    : p
+
+  // Colour is the one dimension a photo is allowed to constrain rather than
+  // merely rank. It is the most immediately visible thing about a dress, and
+  // unlike silhouette or neckline it is a plain fact — answering a photo of a
+  // black gown with ivory ones reads as never having opened the photo,
+  // however well the shape matches.
+  const colorMode: ColorMode = options.relaxImageColor
+    ? "ignore"
+    : options.imageAttributes
+      ? "family"
+      : "exact"
+
+  // What the photo showed is carried in the profile too (so it survives into
+  // later turns), but it must not become a hard filter on the way back out —
+  // that is the near-duplicate trap described above, and it really bites: an
+  // eight-attribute reading cut a photo search from five good matches to two.
+  // Strip the photo's own contribution back out here, leaving only what she
+  // asked for in WORDS to filter on. Colour is the deliberate exception,
+  // handled by `colorMode`.
+  const withoutPhoto = <T extends string>(stated: T[], fromPhoto: readonly string[]): T[] =>
+    stated.filter((value) => !fromPhoto.includes(value))
+
+  const relaxed = new Set(options.relaxFields ?? [])
+
+  const ref = options.imageAttributes
+  const filterBasis: StylistPreferences = ref
+    ? {
+        ...p,
+        silhouette: withoutPhoto(p.silhouette, ref.silhouette),
+        neckline: withoutPhoto(p.neckline, ref.neckline),
+        sleeves: withoutPhoto(p.sleeves, ref.sleeves),
+        embellishment: withoutPhoto(p.embellishment, ref.embellishment),
+        volume: p.volume && p.volume === ref.volume ? null : p.volume,
+        train: p.train && p.train === ref.train ? null : p.train,
       }
     : p
 
@@ -301,10 +442,10 @@ export async function findMatches(
     if (options.similarToProductId && product.id === String(options.similarToProductId)) continue
 
     const attrs = attributeMap.get(product.id)
-    if (violatesAvoidance(attrs, target)) continue
-    if (contradictsRequest(attrs, target)) continue
+    if (violatesAvoidance(attrs, p)) continue
+    if (contradictsRequest(attrs, filterBasis, colorMode, relaxed)) continue
 
-    const { score, facts } = scoreProduct(product, attrs, target)
+    const { score, facts } = scoreProduct(product, attrs, scoringTarget)
     ranked.push({ product, score, facts, grounded: !!attrs })
   }
 
@@ -324,15 +465,19 @@ export async function findMatches(
   // row with guesses. An open-ended ask (nothing about the garment itself, e.g.
   // just an occasion/venue) has nothing concrete to contradict, so padding is
   // fine there.
+  //
+  // A reference look counts as concrete for exactly the same reason: an
+  // un-catalogued gown cannot honestly be offered as "like the one you sent",
+  // because nothing is known about what it looks like.
   const hasConcreteAsk =
-    target.style.length > 0 ||
-    target.silhouette.length > 0 ||
-    target.neckline.length > 0 ||
-    target.sleeves.length > 0 ||
-    target.embellishment.length > 0 ||
-    target.color.length > 0 ||
-    target.volume !== null ||
-    target.train !== null
+    scoringTarget.style.length > 0 ||
+    scoringTarget.silhouette.length > 0 ||
+    scoringTarget.neckline.length > 0 ||
+    scoringTarget.sleeves.length > 0 ||
+    scoringTarget.embellishment.length > 0 ||
+    scoringTarget.color.length > 0 ||
+    scoringTarget.volume !== null ||
+    scoringTarget.train !== null
 
   const groundedMatches = ranked.filter((m) => m.grounded)
 

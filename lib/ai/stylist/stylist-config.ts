@@ -15,11 +15,41 @@ export const STYLIST_ENABLED = (process.env.AI_STYLIST_ENABLED ?? "true").toLowe
 /**
  * Conversation model. Needs strong multilingual ability (Egyptian Arabic and
  * Arabizi in particular) and structured JSON output.
+ *
+ * `gemini-flash-lite-latest` rather than `gemini-2.5-flash`: it sits on its
+ * own free-tier quota bucket, while 2.5-flash and flash-latest share one that
+ * a catalogue backfill can exhaust for the rest of the day — taking the live
+ * stylist down with it. It answered the whole consultation well in testing
+ * (correct Egyptian Arabic register, clean structured output) and is faster.
+ * Set AI_STYLIST_MODEL to move back to a heavier model on a paid key.
  */
-export const STYLIST_CHAT_MODEL = process.env.AI_STYLIST_MODEL || "gemini-2.5-flash"
+export const STYLIST_CHAT_MODEL = process.env.AI_STYLIST_MODEL || "gemini-flash-lite-latest"
 
 /** Vision model used to catalogue gown photographs into attributes. */
 export const STYLIST_VISION_MODEL = process.env.AI_STYLIST_VISION_MODEL || "gemini-2.5-flash"
+
+/**
+ * Model that reads a shopper's inspiration photo into the catalogue's
+ * vocabulary. A constrained-schema extraction, which the lite model does
+ * accurately (0.98 confidence on a test gown) and quickly.
+ *
+ * Note this currently matches STYLIST_CHAT_MODEL, so a photo turn puts all
+ * three of its upstream calls — read the photo, understand, explain — on one
+ * free-tier bucket. That was fine in testing, but it is the first thing to
+ * change if photo turns start hitting quota: point this at a model on the
+ * other bucket (`gemini-flash-latest`) via AI_STYLIST_INSPIRATION_MODEL and
+ * the photo read stops competing with the conversation.
+ */
+export const STYLIST_INSPIRATION_MODEL =
+  process.env.AI_STYLIST_INSPIRATION_MODEL || "gemini-flash-lite-latest"
+
+/**
+ * Ceiling for the photo read specifically, well under the conversation
+ * timeout. If reading her photo is going to fail, it must fail fast enough to
+ * still answer her as a normal text turn rather than spending the whole
+ * request budget retrying and then timing out with nothing to show.
+ */
+export const STYLIST_IMAGE_TIMEOUT_MS = int(process.env.AI_STYLIST_IMAGE_TIMEOUT_MS, 20_000)
 
 /** Where the derived attribute index is persisted. */
 export const STYLIST_INDEX_PATH =
@@ -49,3 +79,23 @@ export const STYLIST_TIMEOUT_MS = int(process.env.AI_STYLIST_TIMEOUT_MS, 45_000)
 
 /** Longest shopper message accepted, in characters. */
 export const STYLIST_MAX_MESSAGE_CHARS = int(process.env.AI_STYLIST_MAX_MESSAGE_CHARS, 1200)
+
+/**
+ * Inspiration photos ("I want something like this").
+ *
+ * The browser downscales before upload, so this ceiling is a guard against a
+ * hand-crafted payload rather than a real user's camera roll. Kept well under
+ * the body limit because every byte here is also sent upstream to the vision
+ * model on a shared free-tier quota.
+ */
+export const STYLIST_IMAGE_MAX_BYTES = int(process.env.AI_STYLIST_IMAGE_MAX_BYTES, 4_000_000)
+
+/** Formats the vision model accepts and the browser can produce. */
+export const STYLIST_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
+
+/**
+ * A tighter per-IP ceiling for photo turns specifically: each one costs an
+ * extra vision call, which is the scarce resource on the free tier. A text
+ * conversation is cheap; a hundred uploads is not.
+ */
+export const STYLIST_MAX_IMAGES_PER_HOUR = int(process.env.AI_STYLIST_MAX_IMAGES_PER_HOUR, 20)
