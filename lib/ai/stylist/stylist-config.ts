@@ -123,3 +123,53 @@ export const STYLIST_EXACT_MATCH_CANDIDATES = int(process.env.AI_STYLIST_EXACT_M
 export const STYLIST_EXACT_MATCH_THUMB_PX = int(process.env.AI_STYLIST_EXACT_MATCH_THUMB_PX, 384)
 
 export const STYLIST_EXACT_MATCH_TIMEOUT_MS = int(process.env.AI_STYLIST_EXACT_MATCH_TIMEOUT_MS, 20_000)
+
+/**
+ * Semantic search over the gowns' written descriptions.
+ *
+ * The controlled vocabulary is only eight categories wide, so everything the
+ * tagger wrote down beyond it has been unsearchable: 585 gowns mention sheer
+ * fabric, 524 describe their coverage, 116 have floral work, 41 have a leg
+ * slit, 31 a cape — and asking for any of it matched nothing at all, because
+ * those words simply aren't in the vocabulary. Embedding the descriptions
+ * makes that detail findable without giving up determinism: the similarity is
+ * a ranking signal added to the existing score, never a filter, so the model
+ * still never chooses which gowns exist.
+ */
+export const STYLIST_EMBEDDING_MODEL =
+  process.env.AI_STYLIST_EMBEDDING_MODEL || "gemini-embedding-001"
+
+/** Reduced from the model's native 3072 — 768 keeps the on-disk index small
+    enough to load per request while retaining retrieval quality. Vectors are
+    re-normalised after reduction, which Google requires below 3072. */
+export const STYLIST_EMBEDDING_DIMS = int(process.env.AI_STYLIST_EMBEDDING_DIMS, 768)
+
+export const STYLIST_EMBEDDINGS_PATH =
+  process.env.AI_STYLIST_EMBEDDINGS_PATH || ".raey-stylist-embeddings.json"
+
+/**
+ * Ceiling for the semantic bonus, in the same units as the attribute weights
+ * (silhouette is 30, neckline 22, colour 12). Sized to matter for a detail
+ * the vocabulary can't express while never outweighing the structured
+ * attributes she explicitly asked for.
+ */
+export const STYLIST_SEMANTIC_WEIGHT = int(process.env.AI_STYLIST_SEMANTIC_WEIGHT, 28)
+
+/**
+ * Where the semantic signal starts counting, measured over the real corpus
+ * with `scripts/calibrate-semantic.mjs`.
+ *
+ * Every vector describes a bridal gown written up by the same tagger, so even
+ * unrelated pairs sit high: genuine queries average ~0.62 and peak near 0.72,
+ * while a meaningless message ("hi") tops out at 0.600. The floor sits just
+ * above that noise peak, so an empty message earns nothing anywhere and only
+ * the narrow band that actually distinguishes a match is paid out.
+ */
+const float = (raw: string | undefined, fallback: number): number => {
+  const n = parseFloat(raw ?? "")
+  return Number.isFinite(n) ? n : fallback
+}
+export const STYLIST_SEMANTIC_FLOOR = float(process.env.AI_STYLIST_SEMANTIC_FLOOR, 0.63)
+export const STYLIST_SEMANTIC_CEILING = float(process.env.AI_STYLIST_SEMANTIC_CEILING, 0.72)
+
+export const STYLIST_EMBEDDING_TIMEOUT_MS = int(process.env.AI_STYLIST_EMBEDDING_TIMEOUT_MS, 8_000)

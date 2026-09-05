@@ -77,6 +77,14 @@ export interface StylistPreferences {
   avoid: Avoidances
   /** Budget ceiling in EGP, when the shopper mentions one. */
   maxPrice: number | null
+  /**
+   * The day she needs the dress for, as `YYYY-MM-DD`, when she names one.
+   *
+   * Gowns already booked across that date are dropped from the results — a
+   * bride should never fall for a card that turns out to be unavailable for
+   * the one date she cares about.
+   */
+  eventDate: string | null
 }
 
 export function emptyPreferences(): StylistPreferences {
@@ -108,7 +116,29 @@ export function emptyPreferences(): StylistPreferences {
       volume: [],
     },
     maxPrice: null,
+    eventDate: null,
   }
+}
+
+/**
+ * Accepts a `YYYY-MM-DD` the model extracted, if it is a real date a wedding
+ * could plausibly fall on. A misread year ("2019") or a parse failure must
+ * not silently filter the entire catalogue down to nothing.
+ */
+export function sanitizeEventDate(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const value = raw.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+
+  const date = new Date(`${value}T12:00:00Z`)
+  if (Number.isNaN(date.getTime())) return null
+
+  const today = new Date()
+  const earliest = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)
+  const latest = new Date(today.getTime() + 3 * 365 * 24 * 60 * 60 * 1000)
+  if (date < earliest || date > latest) return null
+
+  return value
 }
 
 const idList = (v: unknown, cap = 60): string[] =>
@@ -154,6 +184,7 @@ export function sanitizePreferences(raw: any): StylistPreferences {
       volume: coerceMany(raw?.avoid?.volume, VOLUMES),
     },
     maxPrice: Number.isFinite(price) && price > 0 ? price : null,
+    eventDate: sanitizeEventDate(raw.eventDate),
   }
 }
 
@@ -204,6 +235,7 @@ export function mergePreferences(
     rejectedProductIds: union(current.rejectedProductIds, delta.rejectedProductIds ?? []),
     shownProductIds: union(current.shownProductIds, delta.shownProductIds ?? []),
     maxPrice: scalarOf("maxPrice", delta.maxPrice),
+    eventDate: scalarOf("eventDate", delta.eventDate),
     avoid: {
       silhouette: union(current.avoid.silhouette, delta.avoid?.silhouette ?? []),
       neckline: union(current.avoid.neckline, delta.avoid?.neckline ?? []),

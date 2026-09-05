@@ -167,6 +167,15 @@ export async function POST(request: NextRequest) {
       ? body.similarToProductId
       : null
 
+  // Ids of the cards she is looking at. Treated purely as lookup keys — the
+  // server re-reads every field from the catalogue, so a tampered list can
+  // only ever name real products, never invent a price or a description.
+  const recentProductIds = Array.isArray(body?.recentProductIds)
+    ? body.recentProductIds
+        .filter((id: unknown): id is string => typeof id === "string" && /^\d{1,10}$/.test(id))
+        .slice(0, 10)
+    : []
+
   try {
     const result = await runStylistTurn({
       message,
@@ -174,6 +183,7 @@ export async function POST(request: NextRequest) {
       preferences: sanitizePreferences(body?.preferences),
       similarToProductId,
       image,
+      recentProductIds,
     })
 
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })

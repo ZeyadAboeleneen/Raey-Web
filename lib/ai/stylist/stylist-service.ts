@@ -38,15 +38,28 @@ import {
 import {
   hasEnoughToRecommend,
   mergePreferences,
+  sanitizeEventDate,
   type StylistPreferences,
 } from "./preferences"
-import { findMatches, type MatchOptions, type RankedMatch, type VisualReference } from "./matcher"
+import {
+  findMatches,
+  getProductsByIds,
+  type MatchOptions,
+  type RankedMatch,
+  type VisualReference,
+} from "./matcher"
+import { getAttributesFor } from "./attribute-index"
 import { readInspirationImage } from "./vision-tagger"
 import { identifyExactMatch, type ExactMatchCandidate } from "./exact-match"
+import { bestSimilarity, embedText } from "./embeddings"
+import { parseEventDate } from "./event-date"
+import { extractColors } from "./color-terms"
 import { loadProductImageBytes } from "../product-image"
 import { EXPLAIN_SYSTEM_PROMPT, UNDERSTAND_SYSTEM_PROMPT } from "./prompts"
 import {
   STYLIST_CHAT_MODEL,
+  STYLIST_EMBEDDING_TIMEOUT_MS,
+  STYLIST_SEMANTIC_FLOOR,
   STYLIST_EXACT_MATCH_CANDIDATES,
   STYLIST_EXACT_MATCH_TIMEOUT_MS,
   STYLIST_HISTORY_TURNS,
@@ -122,6 +135,11 @@ const UNDERSTAND_SCHEMA = {
         season: { type: "STRING", enum: [...SEASONS] },
         time: { type: "STRING", enum: [...TIMES] },
         maxPrice: { type: "NUMBER", description: "Budget ceiling in EGP if she names one." },
+        eventDate: {
+          type: "STRING",
+          description:
+            "The date she needs the dress for, as YYYY-MM-DD, ONLY if she states one ('my wedding is June 12', 'فرحي ٢٠ يونيو'). If she gives no year, assume the next time that date occurs. Omit entirely when she has not named a date.",
+        },
       },
     },
     avoid: {
@@ -211,12 +229,64 @@ const CLEARABLE_FIELDS = [
   "embellishment", "color", "volume", "train", "venue", "season", "time", "maxPrice",
 ] as const satisfies readonly (keyof StylistPreferences)[]
 
+/**
+ * The gowns currently on her screen, rebuilt from the catalogue.
+ *
+ * Without this the conversation model is blind the instant cards render: the
+ * history it receives is plain text, so "how much is the second one?" or
+ * "does that one have a slit?" arrive with no idea which dresses "one" refers
+ * to — and it deflects to "the team can confirm" while the app is holding the
+ * price and a full description of every one of them.
+ *
+ * Everything here is re-read server-side from the catalogue and the attribute
+ * index; the browser only supplies ids, which are a lookup key and nothing
+ * more.
+ */
+async function onScreenDresses(productIds: string[]): Promise<string | null> {
+  if (productIds.length === 0) return null
+
+  const [products, attributes] = await Promise.all([
+    getProductsByIds(productIds),
+    getAttributesFor(productIds),
+  ])
+  if (products.length === 0) return null
+
+  const dresses = products.map((p, i) => {
+    const attrs = attributes.get(p.id)
+    return {
+      position: `${i + 1}`,
+      name: p.name,
+      collection: p.collection,
+      // Exactly what her card shows, so the two can never disagree.
+      price: p.displayPrice
+        ? `${p.isSellable ? "" : "from "}${p.displayPrice.toLocaleString("en-EG")} EGP`
+        : "not listed",
+      forSale: p.isSellable,
+      silhouette: attrs?.silhouette ?? [],
+      neckline: attrs?.neckline ?? [],
+      sleeves: attrs?.sleeves ?? [],
+      embellishment: attrs?.embellishment ?? [],
+      color: attrs?.color ?? [],
+      volume: attrs?.volume ?? null,
+      train: attrs?.train ?? null,
+      whatThePhotoShows: attrs?.description ?? "",
+    }
+  })
+
+  return `The dresses currently on her screen, in the order she sees them (she may refer to them as "the first one", "the second", "the black one", or by name):\n${JSON.stringify(
+    dresses,
+    null,
+    1
+  )}`
+}
+
 /** Call 1 — read the message into a reply and a validated preference delta. */
 async function understand(
   message: string,
   history: ChatTurn[],
   current: StylistPreferences,
-  photoNote: string | null
+  photoNote: string | null,
+  onScreenNote: string | null
 ): Promise<Understanding> {
   const ai = getClient()
 
@@ -233,8 +303,14 @@ async function understand(
     venue: current.venue,
     occasion: current.occasion,
     collection: current.collection,
+    eventDate: current.eventDate,
     avoid: current.avoid,
   })
+
+  // The model has no clock, so "my wedding is June 12" would resolve to a
+  // year it invents — and a date in the past silently filters the catalogue
+  // to nothing. Give it today so it can work out which June 12 she means.
+  const today = new Date().toISOString().slice(0, 10)
 
   const contents = [
     ...history.slice(-STYLIST_HISTORY_TURNS).map((turn) => ({
@@ -249,7 +325,9 @@ async function understand(
           // into the shared vocabulary by the vision pass, and that reading is
           // both denser and far cheaper than a second image upload against the
           // same quota.
-          text: `Already known about this customer (do not ask about these again): ${known}\n\nHer new message:\n${message}${photoNote ? `\n\n${photoNote}` : ""}`,
+          text: `Today's date is ${today}.\n\nAlready known about this customer (do not ask about these again): ${known}${
+            onScreenNote ? `\n\n${onScreenNote}` : ""
+          }\n\nHer new message:\n${message}${photoNote ? `\n\n${photoNote}` : ""}`,
         },
       ],
     },
@@ -309,13 +387,26 @@ async function understand(
       neckline: coerceMany(p.neckline, NECKLINES),
       sleeves: coerceMany(p.sleeves, SLEEVES),
       embellishment: coerceMany(p.embellishment, EMBELLISHMENTS),
-      color: coerceMany(p.color, COLORS),
+      // Her own words are the fallback when the model returns nothing here.
+      // It drops colour reproducibly on a message carrying more than one
+      // intent — keeping "mermaid" while losing "black" — and a request for
+      // black answered with champagne is the worst result this stylist has.
+      color: (() => {
+        const fromModel = coerceMany(p.color, COLORS)
+        return fromModel.length > 0 ? fromModel : extractColors(message)
+      })(),
       volume: coerceOne(p.volume, VOLUMES),
       train: coerceOne(p.train, TRAINS),
       venue: coerceOne(p.venue, VENUES),
       season: coerceOne(p.season, SEASONS),
       time: coerceOne(p.time, TIMES),
       maxPrice: Number.isFinite(price) && price > 0 ? price : null,
+      // Read from her own words first. The model is asked for this as well,
+      // but under the full prompt it simply doesn't answer — it returned
+      // nothing for "my wedding is on 12 June 2027" while filling the same
+      // field correctly against a small schema. Its value is kept only as a
+      // fallback for phrasings the parser doesn't cover.
+      eventDate: parseEventDate(message) ?? sanitizeEventDate(p.eventDate),
       avoid: {
         silhouette: coerceMany(a.silhouette, SILHOUETTES),
         neckline: coerceMany(a.neckline, NECKLINES),
@@ -438,6 +529,9 @@ export interface StylistTurnInput {
   similarToProductId?: string | null
   /** An inspiration photo she attached to this message ("something like this"). */
   image?: { data: Buffer; mimeType: string } | null
+  /** Ids of the gowns already on her screen, so follow-up questions about
+      them ("how much is the second one?") can be answered from real data. */
+  recentProductIds?: string[]
 }
 
 /**
@@ -465,6 +559,11 @@ const RELAX_LADDER: readonly (readonly string[])[] = [
   ["embellishment", "volume", "train", "neckline"],
   ["embellishment", "volume", "train", "neckline", "sleeves"],
   ["embellishment", "volume", "train", "neckline", "sleeves", "silhouette"],
+  // Collection last: it is the only rung that crosses between the bridal and
+  // soirée rails, so it is given up only once nothing else is left. See the
+  // note in eligibleProducts — "my wedding is in June" makes the model set
+  // collection="wedding", which must not be what stops her seeing a black gown.
+  ["embellishment", "volume", "train", "neckline", "sleeves", "silhouette", "collection"],
 ]
 
 /** The categories an inspiration photo speaks to. */
@@ -612,13 +711,46 @@ function exactMatchReason(language: string): string {
   return "This is the exact dress from your photo! 🤍"
 }
 
+/**
+ * The vector for what she's looking for this turn, used to rank on the
+ * written descriptions rather than only the eight attribute categories.
+ *
+ * A photo's reading is preferred when there is one: it is a dense, concrete
+ * description of an actual gown, which is a far better query than the handful
+ * of words that usually accompany it ("something like this"). Otherwise her
+ * own message is embedded — the model is multilingual, so Arabic and Arabizi
+ * land in the same space as the English descriptions.
+ *
+ * Never throws: without a vector the matcher simply ranks the way it always
+ * has.
+ */
+async function queryVector(
+  message: string,
+  photoDescription: string | null
+): Promise<Float32Array | undefined> {
+  const text = photoDescription?.trim() || message.trim()
+  if (text.length < 3) return undefined
+  try {
+    const vector = await withTimeout(
+      embedText(text, "RETRIEVAL_QUERY"),
+      STYLIST_EMBEDDING_TIMEOUT_MS
+    )
+    return vector ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Runs one full turn. Throws `StylistError`; the route maps it to safe copy. */
 export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTurnResult> {
   // The photo is read first: what it contains shapes both the reply she gets
   // and the ranking, so the conversation model needs it before it speaks.
-  const photo: PhotoContext = input.image
-    ? await readPhoto(input.image)
-    : { description: null, issue: null }
+  const [photo, onScreenNote] = await Promise.all([
+    input.image
+      ? readPhoto(input.image)
+      : Promise.resolve<PhotoContext>({ description: null, issue: null }),
+    onScreenDresses(input.recentProductIds ?? []),
+  ])
 
   let understanding: Understanding
   try {
@@ -626,7 +758,8 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
       input.message,
       input.history,
       input.preferences,
-      photoNoteFor(photo)
+      photoNoteFor(photo),
+      onScreenNote
     )
   } catch (error) {
     throw classify(error)
@@ -676,10 +809,27 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
 
   const preferences = mergePreferences(withPhoto, delta)
 
+  // Computed before the decision to search, because it partly IS that
+  // decision — see below.
+  const embedding = await queryVector(input.message, photo.description)
+
+  // Does the catalogue actually hold anything resembling what she said?
+  //
+  // Without this, a request the vocabulary can't express — "a dress with a
+  // leg slit", "something with a cape" — extracts almost no structured
+  // preferences, so whether it searched at all came down to the model's
+  // `readyToRecommend` flag. The identical sentence searched on one run and
+  // asked a follow-up question on the next. A measured similarity is a far
+  // steadier signal than a model's mood, and it costs a millisecond.
+  const semanticallyConcrete = embedding
+    ? (await bestSimilarity(embedding)) > STYLIST_SEMANTIC_FLOOR
+    : false
+
   const wantsProducts =
     !!input.similarToProductId ||
     !!photo.attributes ||
     understanding.readyToRecommend ||
+    semanticallyConcrete ||
     hasEnoughToRecommend(preferences)
 
   let recommendations: Recommendation[] = []
@@ -712,6 +862,7 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
         limit: STYLIST_MAX_RESULTS,
         similarToProductId: input.similarToProductId ?? undefined,
         imageAttributes: photo.attributes,
+        queryEmbedding: embedding,
         ...attempt,
       })
       if (finalMatches.length >= STYLIST_MIN_RESULTS) break

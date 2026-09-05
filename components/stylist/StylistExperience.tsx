@@ -257,6 +257,11 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
             preferences,
             similarToProductId: options.similarToProductId ?? null,
             image: image ? { data: image.data, mimeType: image.mimeType } : null,
+            // The cards she is looking at right now. Only ids travel — the
+            // server re-reads name, price and details from the catalogue —
+            // but without them a follow-up like "how much is the second one?"
+            // reaches the stylist with no idea what "the second one" is.
+            recentProductIds: lastRecommendations.map((r) => r.productId),
             history: withUser.messages
               .slice(-12)
               .map((m) => ({ role: m.role, content: m.content })),
@@ -317,7 +322,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
         abortRef.current = null
       }
     },
-    [busy, session, rtl]
+    [busy, session, rtl, lastRecommendations]
   )
 
   function handleStartOver() {

@@ -17,6 +17,7 @@
 import path from "path"
 import fs from "fs/promises"
 import { loadProductImageBytes, usableProductImages } from "../product-image"
+import { warmEmbeddings } from "./embeddings"
 import { ATTRIBUTE_INDEX_VERSION, type DressAttributes } from "./attribute-types"
 import { STYLIST_INDEX_PATH, STYLIST_LAZY_TAG_BUDGET } from "./stylist-config"
 import { tagDressImage } from "./vision-tagger"
@@ -212,6 +213,14 @@ async function tagProductInternal(
 
   map.set(productId, entry)
   await persist()
+
+  // Give the gown its description vector straight away, so a dress that just
+  // became visible is also findable by the detail in its description rather
+  // than waiting for a separate pass. An embedding is a fraction of a cent
+  // and sub-second; failure only costs semantic ranking, so it is never
+  // allowed to fail the tagging that just succeeded.
+  void warmEmbeddings([entry], 1).catch(() => {})
+
   return { entry }
 }
 

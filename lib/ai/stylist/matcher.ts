@@ -14,9 +14,16 @@
 
 import { getProductsServer } from "@/lib/get-products-server"
 import { getAttributesFor, warmIndex } from "./attribute-index"
+import { loadEmbeddingIndex, similarity, warmEmbeddings } from "./embeddings"
 import type { DressAttributes } from "./attribute-types"
 import type { StylistPreferences } from "./preferences"
-import { STYLIST_MAX_RESULTS } from "./stylist-config"
+import {
+  STYLIST_LAZY_TAG_BUDGET,
+  STYLIST_MAX_RESULTS,
+  STYLIST_SEMANTIC_CEILING,
+  STYLIST_SEMANTIC_FLOOR,
+  STYLIST_SEMANTIC_WEIGHT,
+} from "./stylist-config"
 
 export interface CatalogProduct {
   id: string
@@ -28,6 +35,8 @@ export interface CatalogProduct {
   displayPrice: number | null
   isSellable: boolean
   productUrl: string
+  /** Ranges this gown is already booked out for. */
+  unavailableDates: { from: string; to: string }[]
 }
 
 /** Why a gown scored — used to ground the explanation, never invented prose. */
@@ -85,6 +94,12 @@ function toCatalogProduct(p: any): CatalogProduct | null {
         ? p.rentalPriceC
         : null
 
+  const unavailableDates = Array.isArray(p.unavailableDates)
+    ? p.unavailableDates.filter(
+        (r: any) => r && typeof r.from === "string" && typeof r.to === "string"
+      )
+    : []
+
   return {
     id,
     name: p.name || `RAEY ${id}`,
@@ -94,7 +109,33 @@ function toCatalogProduct(p: any): CatalogProduct | null {
     displayPrice,
     isSellable: p.isSellable === true,
     productUrl: `/products/${branch}/${id}`,
+    unavailableDates,
   }
+}
+
+/**
+ * Whether a gown is already booked across the day she needs it.
+ *
+ * Discovery-level only: it answers "is this gown out on that date", not "can
+ * this exact rental be committed", which depends on a full range and the
+ * exclusivity option chosen in the booking flow. Getting this wrong in the
+ * lenient direction shows her a dress she cannot have; the strict direction
+ * merely hides one. Ranges are compared on whole days so a booking stored
+ * with a mid-afternoon timestamp still blocks the whole of that day.
+ */
+function isBookedOn(product: CatalogProduct, eventDate: string): boolean {
+  const day = Date.parse(`${eventDate}T00:00:00Z`)
+  if (Number.isNaN(day)) return false
+  const dayEnd = day + 24 * 60 * 60 * 1000 - 1
+
+  for (const range of product.unavailableDates) {
+    const from = Date.parse(range.from)
+    const to = Date.parse(range.to)
+    if (Number.isNaN(from) || Number.isNaN(to)) continue
+    // Any overlap between her day and the booked range.
+    if (from <= dayEnd && to >= day) return true
+  }
+  return false
 }
 
 /** Venues imply a register; used as a light nudge, never a hard filter. */
@@ -219,6 +260,18 @@ function contradictsRequest(
   )
 }
 
+/**
+ * Turns a cosine similarity into points on the same scale as the attribute
+ * weights. Thresholds are measured, not guessed — see
+ * STYLIST_SEMANTIC_FLOOR in stylist-config.ts.
+ */
+function semanticBonus(cosine: number): number {
+  if (!Number.isFinite(cosine) || cosine <= STYLIST_SEMANTIC_FLOOR) return 0
+  const scaled =
+    (cosine - STYLIST_SEMANTIC_FLOOR) / (STYLIST_SEMANTIC_CEILING - STYLIST_SEMANTIC_FLOOR)
+  return STYLIST_SEMANTIC_WEIGHT * Math.min(1, scaled)
+}
+
 function scoreProduct(
   product: CatalogProduct,
   attrs: DressAttributes | undefined,
@@ -304,6 +357,14 @@ export interface MatchOptions {
   /** Rank by similarity to a photo the shopper sent. */
   imageAttributes?: VisualReference
   /**
+   * Unit vector for what she is asking for, matched against each gown's
+   * written description. Lets detail the eight-category vocabulary cannot
+   * express — a leg slit, a cape, sheer sleeves, how covered a gown is —
+   * influence ranking. Purely additive: it reorders eligible gowns and never
+   * removes one.
+   */
+  queryEmbedding?: Float32Array
+  /**
    * Drop the photo's colour as a hard constraint. Set on a retry, when
    * honouring it exactly left too little to show.
    */
@@ -317,6 +378,32 @@ export interface MatchOptions {
   relaxFields?: readonly string[]
   /** Allow inline cataloguing of un-tagged candidates. */
   allowWarm?: boolean
+}
+
+/**
+ * Resolves product ids straight from the live catalogue.
+ *
+ * Used to re-hydrate the gowns already on the shopper's screen so a follow-up
+ * question ("how much is the second one?") can be answered from real data.
+ * The ids arrive from the browser, so nothing about them is trusted beyond
+ * being a lookup key — every field returned here comes from the catalogue.
+ */
+export async function getProductsByIds(ids: string[]): Promise<CatalogProduct[]> {
+  if (ids.length === 0) return []
+  const wanted = new Set(ids.map(String))
+  const raw = await getProductsServer()
+
+  const found = new Map<string, CatalogProduct>()
+  for (const item of raw) {
+    const id = String(item?.id ?? "")
+    if (!wanted.has(id)) continue
+    const product = toCatalogProduct(item)
+    if (product) found.set(product.id, product)
+  }
+
+  // Preserve the order she saw them in — "the second one" has to mean the
+  // second card, not the second row the catalogue happened to return.
+  return ids.map((id) => found.get(String(id))).filter((p): p is CatalogProduct => !!p)
 }
 
 /** Pulls the live catalogue and applies the shopper's hard constraints. */
@@ -333,8 +420,22 @@ async function eligibleProducts(p: StylistPreferences, options: MatchOptions) {
     if (!product) continue
     if (rejected.has(product.id)) continue
     if (options.excludeShown && shown.has(product.id)) continue
-    if (p.collection && product.collection && product.collection !== p.collection) continue
+    // Mentioning her wedding is not the same as asking for the bridal rail.
+    // The model sets collection="wedding" from "my wedding is June 12", and
+    // RAEY's wedding collection is white — so a request for a black dress for
+    // a wedding filtered to nothing while the black gowns she'd have loved
+    // sat in soirée. The relax ladder drops this before ever giving up.
+    if (
+      p.collection &&
+      product.collection &&
+      product.collection !== p.collection &&
+      !options.relaxFields?.includes("collection")
+    ) {
+      continue
+    }
     if (p.maxPrice && product.displayPrice && product.displayPrice > p.maxPrice) continue
+    // Never recommend a gown that is already out on the one day she needs it.
+    if (p.eventDate && isBookedOn(product, p.eventDate)) continue
     products.push(product)
   }
   return products
@@ -357,14 +458,42 @@ export async function findMatches(
 
   const attributeMap = await getAttributesFor(products.map((x) => x.id))
 
-  // Cold index: nudge a few candidates into the catalogue for NEXT time.
-  // Deliberately not awaited — a vision call takes seconds, so blocking on a
-  // backfill here would add minutes to a shopper's turn and burn the upstream
-  // per-minute quota that this same turn still needs. Real backfilling is
-  // POST /api/ai/stylist/index.
-  if (options.allowWarm !== false && attributeMap.size < limit * 2) {
-    const untagged = products.filter((x) => !attributeMap.has(x.id)).slice(0, 20)
-    void warmIndex(untagged).catch(() => {})
+  // Absorb newly added stock on its own, a little at a time.
+  //
+  // A gown with no catalogued attributes is invisible to a concrete request —
+  // it can never be recommended — so new arrivals have to reach the index
+  // somehow. Requiring someone to run a script for that is a promise nobody
+  // keeps in production, and it is exactly how 45 live dresses stayed hidden
+  // from this stylist.
+  //
+  // The old trigger only fired when fewer than a handful of candidates were
+  // catalogued, which was true of a brand new install and false forever
+  // after, so in practice it had stopped running entirely. Now it tops up
+  // whenever anything is missing, which is nothing at all on a warm
+  // catalogue and a few gowns per request after new stock lands.
+  //
+  // Deliberately not awaited: a vision call takes seconds, and no shopper
+  // should wait on cataloguing that benefits the next visitor.
+  if (options.allowWarm !== false) {
+    const untagged = products.filter((x) => !attributeMap.has(x.id))
+    if (untagged.length > 0) {
+      void warmIndex(untagged.slice(0, 20)).catch(() => {})
+    }
+
+    // Independent of the above, deliberately. A handful of gowns can be
+    // permanently un-taggable — an unreadable photo, an image the model won't
+    // accept — and gating this behind "everything is tagged" let those few
+    // block description-search repair for the entire rest of the catalogue,
+    // forever.
+    void loadEmbeddingIndex()
+      .then((vectors) => {
+        const missing = products
+          .filter((x) => !vectors.has(x.id))
+          .map((x) => attributeMap.get(x.id))
+          .filter((a): a is DressAttributes => !!a)
+        if (missing.length > 0) return warmEmbeddings(missing, STYLIST_LAZY_TAG_BUDGET)
+      })
+      .catch(() => {})
   }
 
   // A look to rank against: her uploaded photo takes precedence over a
@@ -437,6 +566,10 @@ export async function findMatches(
       }
     : p
 
+  // Semantic vectors are only loaded when there is something to compare
+  // against, so a stylist with no embedding index behaves exactly as before.
+  const embeddings = options.queryEmbedding ? await loadEmbeddingIndex() : null
+
   const ranked: RankedMatch[] = []
   for (const product of products) {
     if (options.similarToProductId && product.id === String(options.similarToProductId)) continue
@@ -446,7 +579,20 @@ export async function findMatches(
     if (contradictsRequest(attrs, filterBasis, colorMode, relaxed)) continue
 
     const { score, facts } = scoreProduct(product, attrs, scoringTarget)
-    ranked.push({ product, score, facts, grounded: !!attrs })
+
+    let total = score
+    if (embeddings && options.queryEmbedding) {
+      const vector = embeddings.get(product.id)
+      if (vector) {
+        const bonus = semanticBonus(similarity(options.queryEmbedding, vector))
+        if (bonus > 0) {
+          total += bonus
+          facts.matched.push("description")
+        }
+      }
+    }
+
+    ranked.push({ product, score: total, facts, grounded: !!attrs })
   }
 
   ranked.sort((a, b) => {
