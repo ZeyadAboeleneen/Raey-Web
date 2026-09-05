@@ -15,8 +15,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { motion } from "framer-motion"
-import { ArrowUp, ImagePlus, RotateCcw, X } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { AlertCircle, ArrowUp, Heart, ImagePlus, RotateCcw, X } from "lucide-react"
 import StylistProductCard from "./StylistProductCard"
 import { trackStylist } from "@/lib/ai/stylist/stylist-analytics"
 import {
@@ -37,6 +37,23 @@ import {
 } from "@/lib/stylist-session"
 
 const WHATSAPP_NUMBER = "201015847000"
+const GOLD = "#B9975B"
+
+/** Small gold mark preceding the stylist's words — the same accent colour as
+    the launcher, and the same heart the stylist's own copy already uses
+    (🤍), so the reply visually traces back to who's speaking without a full
+    avatar illustration at this size. */
+function StylistMark() {
+  return (
+    <span
+      aria-hidden
+      className="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center"
+      style={{ backgroundColor: "rgba(185,151,91,0.12)" }}
+    >
+      <Heart className="h-3 w-3" style={{ color: GOLD }} strokeWidth={1.75} />
+    </span>
+  )
+}
 
 /** Copy pairs. The stylist's own words come from the model; this is chrome. */
 const COPY = {
@@ -401,14 +418,24 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
             : "flex-1 max-w-3xl w-full mx-auto px-5 sm:px-8 pt-10 pb-6"
         }
       >
-        <div className={embedded ? "flex items-center justify-between mb-6" : "flex items-center justify-between mb-10"} dir="ltr">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">RAEY AI Stylist</p>
-          <div className="flex items-center gap-4">
+        <div
+          className={
+            embedded
+              ? "flex items-center justify-between mb-6 pb-4 border-b border-black/[0.06]"
+              : "flex items-center justify-between mb-10"
+          }
+          dir="ltr"
+        >
+          <div className="flex items-center gap-2">
+            <StylistMark />
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">RAEY AI Stylist</p>
+          </div>
+          <div className="flex items-center gap-1">
             {!isEmpty && (
               <button
                 type="button"
                 onClick={handleStartOver}
-                className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-gray-400 hover:text-black transition-colors"
+                className="flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[10px] uppercase tracking-[0.18em] text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
               >
                 <RotateCcw className="h-3 w-3" />
                 {copy.startOver}
@@ -447,7 +474,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                   type="button"
                   onClick={() => send(example)}
                   dir="auto"
-                  className="px-4 py-2 border border-black/12 text-xs text-gray-600 hover:border-black hover:text-black transition-colors duration-300"
+                  className="px-4 py-2.5 rounded-full border border-black/12 text-xs text-gray-600 hover:border-black hover:bg-black hover:text-white transition-all duration-300"
                 >
                   {example}
                 </button>
@@ -473,13 +500,13 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                     <img
                       src={message.image}
                       alt=""
-                      className="inline-block max-h-40 w-auto rounded-sm border border-black/10"
+                      className="inline-block max-h-40 w-auto rounded-xl border border-black/10"
                     />
                   </div>
                 )}
                 <p
                   dir="auto"
-                  className="inline-block max-w-[85%] px-5 py-3 bg-black text-white text-sm leading-relaxed text-start"
+                  className="inline-block max-w-[85%] px-5 py-3 rounded-2xl bg-black text-white text-sm leading-relaxed text-start"
                 >
                   {message.content}
                 </p>
@@ -491,22 +518,25 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45 }}
               >
-                <p
-                  dir="auto"
-                  className="font-serif text-lg sm:text-xl font-light leading-relaxed text-black whitespace-pre-line max-w-2xl"
-                >
-                  {message.content}
-                </p>
+                <div className="flex items-start gap-2.5">
+                  <StylistMark />
+                  <p
+                    dir="auto"
+                    className="flex-1 min-w-0 font-serif text-lg sm:text-xl font-light leading-relaxed text-black whitespace-pre-line"
+                  >
+                    {message.content}
+                  </p>
+                </div>
 
                 {!!message.quickReplies?.length && (
-                  <div className="mt-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+                  <div className="mt-5 ms-[34px] flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
                     {message.quickReplies.map((chip) => (
                       <button
                         key={chip}
                         type="button"
                         dir="auto"
                         onClick={() => send(chip)}
-                        className="flex-shrink-0 snap-start px-4 py-2 border border-black/12 text-xs text-gray-700 hover:border-black hover:text-black transition-colors duration-300 whitespace-nowrap"
+                        className="flex-shrink-0 snap-start px-4 py-2 rounded-full border border-black/12 text-xs text-gray-700 hover:border-black hover:bg-black hover:text-white transition-all duration-300 whitespace-nowrap"
                       >
                         {chip}
                       </button>
@@ -516,7 +546,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
 
                 {!!message.recommendations?.length && (
                   <div className="mt-8">
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-gray-500 mb-5">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-gray-500 mb-5 ms-[34px]">
                       {copy.foundTitle}
                     </p>
                     <div className="flex gap-4 overflow-x-auto pb-3 -mx-5 px-5 sm:-mx-8 sm:px-8 snap-x snap-mandatory">
@@ -550,19 +580,35 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
           )}
 
           {busy && (
-            <motion.p
-              animate={{ opacity: [0.35, 1, 0.35] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-[11px] uppercase tracking-[0.25em] text-gray-400"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2.5"
+              role="status"
+              aria-label={copy.thinking}
             >
-              {copy.thinking}
-            </motion.p>
+              <StylistMark />
+              <span className="flex items-center gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-black/30"
+                    animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
+                    transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                  />
+                ))}
+              </span>
+            </motion.div>
           )}
 
           {error && (
-            <p dir="auto" className="text-sm text-gray-600 leading-relaxed border-s-2 border-black/15 ps-4">
-              {error}
-            </p>
+            <div
+              dir="auto"
+              className="flex items-start gap-2.5 ms-[34px] text-sm text-gray-700 leading-relaxed bg-black/[0.03] rounded-xl px-4 py-3"
+            >
+              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-gray-400" strokeWidth={1.75} />
+              <span>{error}</span>
+            </div>
           )}
         </div>
 
@@ -578,7 +624,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
             <button
               type="button"
               onClick={() => handleWhatsApp(lastRecommendations[0])}
-              className="w-full sm:w-auto px-10 py-4 bg-black text-white text-[11px] uppercase tracking-[0.25em] hover:bg-gray-800 transition-colors duration-300"
+              className="w-full sm:w-auto px-10 py-4 rounded-full bg-black text-white text-[11px] uppercase tracking-[0.25em] hover:bg-gray-800 hover:scale-[1.02] active:scale-100 transition-all duration-300"
             >
               {copy.conversionCta}
             </button>
@@ -604,7 +650,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                     <img
                       src={attachment.thumb}
                       alt=""
-                      className="h-14 w-14 object-cover rounded-sm border border-black/12"
+                      className="h-14 w-14 object-cover rounded-xl border border-black/12"
                     />
                     <button
                       type="button"
@@ -620,7 +666,12 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                   </span>
                 </>
               ) : (
-                <span className="text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                  <motion.span
+                    className="h-3 w-3 rounded-full border-2 border-black/15 border-t-black/50"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                  />
                   {copy.reading}…
                 </span>
               )}
@@ -632,7 +683,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
               e.preventDefault()
               send(input, { image: attachment })
             }}
-            className="flex items-end gap-3"
+            className="flex items-end gap-2"
           >
             <input
               ref={fileRef}
@@ -645,55 +696,63 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                 e.target.value = ""
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={busy || preparing}
-              aria-label={copy.attach}
-              title={copy.attach}
-              className="flex-shrink-0 h-11 w-11 rounded-full border border-black/12 text-gray-500 flex items-center justify-center hover:border-black hover:text-black disabled:opacity-30 transition-colors"
-            >
-              <ImagePlus className="h-4 w-4" />
-            </button>
 
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  send(input, { image: attachment })
-                }
-              }}
-              // Pasting a screenshot is how most people will actually send an
-              // inspiration photo, so it goes through the same path as the picker.
-              onPaste={(e) => {
-                const file = imageFromTransfer(e.clipboardData)
-                if (file) {
-                  e.preventDefault()
-                  void attachPhoto(file)
-                }
-              }}
-              onDrop={(e) => {
-                const file = imageFromTransfer(e.dataTransfer)
-                if (file) {
-                  e.preventDefault()
-                  void attachPhoto(file)
-                }
-              }}
-              rows={1}
-              dir="auto"
-              disabled={busy}
-              placeholder={copy.placeholder}
-              className="flex-1 resize-none bg-transparent text-sm leading-relaxed py-3 max-h-32 outline-none placeholder:text-gray-400 disabled:opacity-60"
-              style={{ minHeight: "44px" }}
-            />
+            {/* A visible, bordered field — not just text floating on the
+                background — so it reads unmistakably as "type here", with a
+                focus ring that follows the whole group including the attach
+                button rather than just the textarea. */}
+            <div className="flex-1 flex items-end gap-1 rounded-[26px] border border-black/15 bg-white pe-1.5 ps-1.5 py-1.5 transition-colors focus-within:border-black/40 focus-within:ring-4 focus-within:ring-black/[0.04]">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy || preparing}
+                aria-label={copy.attach}
+                title={copy.attach}
+                className="flex-shrink-0 h-9 w-9 rounded-full text-gray-500 flex items-center justify-center hover:bg-black/5 hover:text-black disabled:opacity-30 transition-colors"
+              >
+                <ImagePlus className="h-4 w-4" />
+              </button>
+
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    send(input, { image: attachment })
+                  }
+                }}
+                // Pasting a screenshot is how most people will actually send an
+                // inspiration photo, so it goes through the same path as the picker.
+                onPaste={(e) => {
+                  const file = imageFromTransfer(e.clipboardData)
+                  if (file) {
+                    e.preventDefault()
+                    void attachPhoto(file)
+                  }
+                }}
+                onDrop={(e) => {
+                  const file = imageFromTransfer(e.dataTransfer)
+                  if (file) {
+                    e.preventDefault()
+                    void attachPhoto(file)
+                  }
+                }}
+                rows={1}
+                dir="auto"
+                disabled={busy}
+                placeholder={copy.placeholder}
+                className="flex-1 resize-none bg-transparent text-sm leading-relaxed py-2 max-h-32 outline-none placeholder:text-gray-400 disabled:opacity-60"
+                style={{ minHeight: "36px" }}
+              />
+            </div>
+
             <button
               type="submit"
               disabled={busy || (!input.trim() && !attachment)}
               aria-label={copy.send}
-              className="flex-shrink-0 h-11 w-11 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-25 transition-opacity hover:bg-gray-800"
+              className="flex-shrink-0 h-11 w-11 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-25 transition-all hover:bg-gray-800 hover:scale-105 active:scale-95"
             >
               <ArrowUp className="h-4 w-4" />
             </button>
@@ -702,37 +761,46 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
       </div>
 
       {/* "Not for me" reasons */}
-      {rejecting && (
-        <div
-          className={
-            embedded
-              ? "absolute inset-0 z-[90] flex items-end justify-center p-4"
-              : "fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4"
-          }
-          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-          onClick={() => setRejecting(null)}
-        >
-          <div
-            dir={rtl ? "rtl" : "ltr"}
-            className="w-full max-w-sm bg-white p-7"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {rejecting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={
+              embedded
+                ? "absolute inset-0 z-[90] flex items-end justify-center p-4"
+                : "fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4"
+            }
+            style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+            onClick={() => setRejecting(null)}
           >
-            <h4 className="font-serif text-lg font-light mb-5">{copy.rejectTitle}</h4>
-            <div className="space-y-2">
-              {copy.rejectOptions.map((option, i) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => handleRejectReason(rejecting, COPY.en.rejectOptions[i])}
-                  className="w-full py-3 px-4 text-start border border-black/12 text-xs hover:border-black transition-colors duration-300"
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              dir={rtl ? "rtl" : "ltr"}
+              className="w-full max-w-sm bg-white rounded-2xl p-7 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="font-serif text-lg font-light mb-5">{copy.rejectTitle}</h4>
+              <div className="space-y-2">
+                {copy.rejectOptions.map((option, i) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => handleRejectReason(rejecting, COPY.en.rejectOptions[i])}
+                    className="w-full py-3 px-4 rounded-xl text-start border border-black/12 text-xs hover:border-black hover:bg-black/[0.02] transition-colors duration-300"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

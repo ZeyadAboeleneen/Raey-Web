@@ -40,6 +40,8 @@ export interface StylistRecommendation {
   isSellable: boolean
   productUrl: string
   reason: string
+  /** Confirmed to be the literal dress in a photo she uploaded, not just similar. */
+  isExactMatch?: boolean
 }
 
 export interface StylistSession {

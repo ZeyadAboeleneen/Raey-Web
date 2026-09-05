@@ -42,9 +42,13 @@ import {
 } from "./preferences"
 import { findMatches, type MatchOptions, type RankedMatch, type VisualReference } from "./matcher"
 import { readInspirationImage } from "./vision-tagger"
+import { identifyExactMatch, type ExactMatchCandidate } from "./exact-match"
+import { loadProductImageBytes } from "../product-image"
 import { EXPLAIN_SYSTEM_PROMPT, UNDERSTAND_SYSTEM_PROMPT } from "./prompts"
 import {
   STYLIST_CHAT_MODEL,
+  STYLIST_EXACT_MATCH_CANDIDATES,
+  STYLIST_EXACT_MATCH_TIMEOUT_MS,
   STYLIST_HISTORY_TURNS,
   STYLIST_IMAGE_TIMEOUT_MS,
   STYLIST_MAX_RESULTS,
@@ -412,6 +416,9 @@ export interface Recommendation {
   isSellable: boolean
   productUrl: string
   reason: string
+  /** True when `identifyExactMatch` confirmed this is literally the dress in
+      her uploaded photo, not merely a similar one. */
+  isExactMatch?: boolean
 }
 
 export interface StylistTurnResult {
@@ -548,6 +555,32 @@ function photoNoteFor(photo: PhotoContext): string | null {
 }
 
 /**
+ * Starting points offered when a turn produces neither dresses nor chips of
+ * its own — a greeting, or something we couldn't read as a request.
+ *
+ * These exist because the model cannot be relied on to populate
+ * `quickReplies` every time it should, and the cost of it forgetting is the
+ * worst moment in the whole product: she says "hi", gets a warm sentence
+ * back, and is left staring at an empty box with no idea what to type. A
+ * deterministic floor means that never happens.
+ */
+// Every chip is phrased as something she could have typed herself, because
+// tapping one sends it as her next message. Nothing here may describe an
+// action the chat cannot perform — an "I'll send a photo" chip would just post
+// those words and leave her no closer to sending one.
+const STARTER_CHIPS = {
+  en: ["Something simple", "Something dramatic", "Fitted / mermaid", "A ball gown", "With long sleeves"],
+  ar: ["حاجة بسيطة", "حاجة dramatic", "fitted / mermaid", "فستان منفوش", "بأكمام طويلة"],
+  arabizi: ["Haga simple", "Haga dramatic", "Fitted / mermaid", "Fostan menfosh", "B akmam tawila"],
+} as const
+
+function starterChipsFor(language: string): string[] {
+  if (/^arabizi/i.test(language)) return [...STARTER_CHIPS.arabizi]
+  if (/^ar|^mixed/i.test(language)) return [...STARTER_CHIPS.ar]
+  return [...STARTER_CHIPS.en]
+}
+
+/**
  * A short, honest, on-brand line for when a factual ask (colour, silhouette,
  * neckline, sleeves, embellishment, volume, or train) matched nothing the
  * system has actually catalogued — findMatches() returns zero rather than
@@ -563,6 +596,20 @@ function noConfirmedMatchNote(language: string): string {
     return "للأسف مفيش عندي حاليًا فستان مؤكد بالمواصفات دي في الكتالوج. حابة أوريكي أقرب حاجة ليها، ولا نغيّر في الوصف شوية؟ 🤍"
   }
   return "I don't have a confirmed match for that in the catalogue right now. Want me to show you the closest alternatives, or adjust what you're looking for? 🤍"
+}
+
+/**
+ * The line shown on a card `identifyExactMatch` confirmed as the literal same
+ * dress in her photo. Fixed rather than model-written: this claim is much
+ * stronger than an ordinary similarity sentence ("this IS your dress", not
+ * "this is like your dress"), so it is worded exactly once, correctly, rather
+ * than trusted to a model that has repeatedly mis-stated smaller things this
+ * session. Overrides whatever `explain()` wrote for that one card.
+ */
+function exactMatchReason(language: string): string {
+  if (/^arabizi/i.test(language)) return "Da howa nafs el fostan bezabt elly ba3atteeh! 🤍"
+  if (/^ar/i.test(language) || /^mixed/i.test(language)) return "ده هو نفس الفستان بالظبط اللي بعتيه! 🤍"
+  return "This is the exact dress from your photo! 🤍"
 }
 
 /** Runs one full turn. Throws `StylistError`; the route maps it to safe copy. */
@@ -670,6 +717,57 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
       if (finalMatches.length >= STYLIST_MIN_RESULTS) break
     }
 
+    // "Is one of these actually HER dress, not just similar to it?" — see
+    // exact-match.ts for why this exists. Only worth asking when there is a
+    // fresh photo this turn; a text-only or show-similar turn has nothing to
+    // compare against. A wider, looser candidate pool is built specifically
+    // for this check — the exact dress can rank outside the top 5 shown for
+    // style (an unusual colourway, say) while still being confirmable once a
+    // model actually looks at both photos side by side.
+    let exactMatchId: string | null = null
+    if (input.image && photo.attributes) {
+      try {
+        const candidatePool = await findMatches(preferences, {
+          limit: STYLIST_EXACT_MATCH_CANDIDATES,
+          imageAttributes: photo.attributes,
+          excludeShown: false,
+          relaxFields: RELAX_LADDER[RELAX_LADDER.length - 1],
+        })
+
+        const candidatesWithBytes = (
+          await Promise.all(
+            candidatePool.map(async (m): Promise<ExactMatchCandidate | null> => {
+              const bytes = await loadProductImageBytes(m.product.image)
+              return bytes ? { productId: m.product.id, bytes } : null
+            })
+          )
+        ).filter((c): c is ExactMatchCandidate => c !== null)
+
+        const result = await withTimeout(
+          identifyExactMatch(input.image, candidatesWithBytes),
+          STYLIST_EXACT_MATCH_TIMEOUT_MS
+        )
+
+        if (result) {
+          exactMatchId = result.productId
+          // Always lead with it, whether or not it happened to already be in
+          // the attribute-ranked list — finding the exact dress and then
+          // burying it at position 3 because that's where similarity scoring
+          // put it would be the same failure by a different route.
+          const pinned = candidatePool.find((m) => m.product.id === result.productId)
+          if (pinned) {
+            finalMatches = [
+              pinned,
+              ...finalMatches.filter((m) => m.product.id !== result.productId),
+            ].slice(0, STYLIST_MAX_RESULTS)
+          }
+        }
+      } catch (error) {
+        // Enhancement, not a requirement — proceed on similarity ranking alone.
+        console.warn(`[AI Stylist] exact-match unavailable: ${classify(error).code}`)
+      }
+    }
+
     const reasons = await explain(
       finalMatches,
       input.message,
@@ -686,7 +784,11 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
       price: m.product.displayPrice,
       isSellable: m.product.isSellable,
       productUrl: m.product.productUrl,
-      reason: reasons.get(m.product.id) ?? "",
+      reason:
+        m.product.id === exactMatchId
+          ? exactMatchReason(understanding.language)
+          : reasons.get(m.product.id) ?? "",
+      isExactMatch: m.product.id === exactMatchId,
     }))
 
     preferences.shownProductIds = Array.from(
@@ -706,11 +808,22 @@ export async function runStylistTurn(input: StylistTurnInput): Promise<StylistTu
       ? `${understanding.message}\n\n${noConfirmedMatchNote(understanding.language)}`
       : understanding.message
 
+  // Never leave her with nothing to act on. A turn that shows no dresses and
+  // offers no chips is a dead end — most often a greeting, where the model was
+  // asked for starting points and didn't produce any. Falling back to a fixed
+  // set costs nothing and removes the blank-page moment entirely.
+  const quickReplies =
+    understanding.quickReplies.length > 0
+      ? understanding.quickReplies
+      : recommendations.length === 0
+        ? starterChipsFor(understanding.language)
+        : []
+
   return {
     message,
     language: understanding.language,
     followUpQuestion: understanding.followUpQuestion,
-    quickReplies: understanding.quickReplies,
+    quickReplies,
     recommendations,
     preferences,
   }

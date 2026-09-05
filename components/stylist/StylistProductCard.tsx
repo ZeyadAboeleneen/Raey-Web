@@ -66,6 +66,15 @@ export default function StylistProductCard({
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+        {product.isExactMatch && (
+          <span
+            className="absolute top-3 end-3 px-2.5 py-1 rounded-full text-[9px] uppercase tracking-[0.16em] text-white flex items-center gap-1 w-fit"
+            style={{ backgroundColor: GOLD }}
+          >
+            <Sparkles className="h-2.5 w-2.5" />
+            {rtl ? "نفس فستانك" : "Your exact dress"}
+          </span>
+        )}
         <div className="absolute bottom-0 inset-x-0 p-4 text-white">
           <p className="text-[9px] uppercase tracking-[0.22em] text-white/70 mb-1">
             {product.collection}
@@ -93,7 +102,7 @@ export default function StylistProductCard({
         <Link
           href={product.productUrl}
           onClick={() => onOpen(product)}
-          className="w-full py-2.5 text-center border border-black/15 text-[10px] uppercase tracking-[0.18em] hover:border-black transition-colors duration-300"
+          className="w-full py-2.5 text-center rounded-full border border-black/15 text-[10px] uppercase tracking-[0.18em] hover:border-black hover:bg-black hover:text-white transition-all duration-300"
         >
           {labels.viewDress}
         </Link>
@@ -102,7 +111,7 @@ export default function StylistProductCard({
           <Link
             href={`${product.productUrl}?tryon=1`}
             onClick={() => onTryOn(product)}
-            className="w-full py-2.5 flex items-center justify-center gap-2 border border-black/15 text-[10px] uppercase tracking-[0.18em] hover:border-black transition-colors duration-300"
+            className="w-full py-2.5 flex items-center justify-center gap-2 rounded-full border border-black/15 text-[10px] uppercase tracking-[0.18em] hover:border-black transition-colors duration-300"
           >
             {labels.tryItOn}
             <Sparkles className="h-3 w-3" style={{ color: GOLD }} />
@@ -113,7 +122,7 @@ export default function StylistProductCard({
           <button
             type="button"
             onClick={() => onShowSimilar(product)}
-            className="flex-1 py-2 flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-gray-500 hover:text-black transition-colors"
+            className="flex-1 py-2 rounded-full flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-gray-500 hover:text-black hover:bg-black/5 transition-colors"
           >
             <Copy className="h-3 w-3" />
             {labels.showSimilar}
@@ -121,7 +130,7 @@ export default function StylistProductCard({
           <button
             type="button"
             onClick={() => onReject(product)}
-            className="flex-1 py-2 flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-gray-400 hover:text-black transition-colors"
+            className="flex-1 py-2 rounded-full flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
           >
             <ThumbsDown className="h-3 w-3" />
             {labels.notForMe}

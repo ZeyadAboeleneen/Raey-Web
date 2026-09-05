@@ -99,3 +99,27 @@ export const STYLIST_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"
  * conversation is cheap; a hundred uploads is not.
  */
 export const STYLIST_MAX_IMAGES_PER_HOUR = int(process.env.AI_STYLIST_MAX_IMAGES_PER_HOUR, 20)
+
+/**
+ * "Is this actually one of OUR dresses?" recognition.
+ *
+ * The attribute-similarity ranking (matcher.ts) only ever finds gowns that
+ * LOOK alike by 8 loose tags — silhouette, colour, neckline, and so on. It has
+ * no concept of "this literally is the same garment", so a shopper's photo of
+ * a RAEY dress worn by a different model, in a different photo, can lose to a
+ * merely-similar dress in the ranking, or land the shopper on an entirely
+ * different gown that happens to share the same tags. This pass compares her
+ * photo directly against a shortlist of catalogue photos to catch that case.
+ */
+export const STYLIST_EXACT_MATCH_MODEL =
+  process.env.AI_STYLIST_EXACT_MATCH_MODEL || "gemini-flash-lite-latest"
+
+/** How many attribute-ranked candidates get shown to the recognition pass. */
+export const STYLIST_EXACT_MATCH_CANDIDATES = int(process.env.AI_STYLIST_EXACT_MATCH_CANDIDATES, 12)
+
+/** Side each candidate thumbnail is resized to before the comparison call —
+    keeps every image at Gemini's flat 258-token tile rate regardless of the
+    catalogue photo's real size. */
+export const STYLIST_EXACT_MATCH_THUMB_PX = int(process.env.AI_STYLIST_EXACT_MATCH_THUMB_PX, 384)
+
+export const STYLIST_EXACT_MATCH_TIMEOUT_MS = int(process.env.AI_STYLIST_EXACT_MATCH_TIMEOUT_MS, 20_000)
