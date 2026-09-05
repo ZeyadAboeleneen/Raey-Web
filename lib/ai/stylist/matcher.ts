@@ -152,6 +152,34 @@ const VENUE_AFFINITY: Record<string, { style: string[]; volume: string[] }> = {
 const overlap = <T>(a: T[], b: T[]): T[] => a.filter((x) => b.includes(x))
 
 /**
+ * Wording the tagger reaches for when a gown is worked all over.
+ *
+ * The vocabulary can say WHICH kinds of work a dress has but never HOW MUCH,
+ * and at RAEY that is the distinction that matters: 937 of 988 gowns carry
+ * beading of some sort, so the tag alone separates almost nothing. The
+ * written description does carry it — "heavily embellished", "densely
+ * covered", "fully saturated" — and only about 20 gowns in the whole
+ * catalogue avoid that language entirely. Those twenty are the ones a
+ * shopper means by "من غير شغل".
+ */
+const DENSE_WORK =
+  /heav(y|il)|dens(e|ely)|fully|completely|saturat|all-?over|encrusted|covered (in|with)|intricate|elaborate|ornate|lavish/i
+
+/**
+ * How plain a gown reads, 0 (worked all over) to 1 (clean).
+ *
+ * "minimal" is a DEGREE, not a feature like lace or feathers — but the
+ * vocabulary lists it alongside them, so asking for it matched the single
+ * gown tagged that way and nothing else. Scoring plainness instead lets the
+ * request be answered by how little work a dress actually has.
+ */
+function plainness(attrs: DressAttributes): number {
+  const workTags = attrs.embellishment.filter((t) => t !== "minimal").length
+  const fromTags = 1 - Math.min(1, workTags / 4)
+  return DENSE_WORK.test(attrs.description || "") ? fromTags * 0.25 : fromTags
+}
+
+/**
  * Colours that read as the same decision from across a room.
  *
  * Exact colour matching is too brittle to filter on — ivory and champagne are
@@ -251,7 +279,17 @@ function contradictsRequest(
     vetoes("silhouette", p.silhouette, attrs.silhouette) ||
     vetoes("neckline", p.neckline, attrs.neckline) ||
     vetoes("sleeves", p.sleeves, attrs.sleeves) ||
-    vetoes("embellishment", p.embellishment, attrs.embellishment) ||
+    // A request for "minimal" is deliberately exempt from the veto. It is a
+    // degree rather than a feature, and vetoing on it excluded 987 of 988
+    // gowns — which then sent the relax ladder straight to dropping
+    // embellishment altogether, answering "a dress with no work at all" with
+    // the most heavily beaded gowns in the shop. Plainness is ranked instead
+    // (see `plainness`), so she gets the cleanest gowns that do exist.
+    vetoes(
+      "embellishment",
+      p.embellishment.filter((v) => v !== "minimal"),
+      attrs.embellishment
+    ) ||
     (!relaxed.has("volume") &&
       p.volume !== null &&
       attrs.volume !== null &&
@@ -294,9 +332,39 @@ function scoreProduct(
     add("silhouette", overlap(attrs.silhouette, p.silhouette))
     add("neckline", overlap(attrs.neckline, p.neckline))
     add("sleeves", overlap(attrs.sleeves, p.sleeves))
-    add("embellishment", overlap(attrs.embellishment, p.embellishment))
     add("style", overlap(attrs.style, p.style))
-    add("color", overlap(attrs.color, p.color))
+
+    // Work she named ("lace", "beading") scores as a normal match. Asking for
+    // "minimal" instead scores on how plain the gown actually is, because the
+    // tag says nothing useful here — nearly every RAEY gown carries some
+    // beading, and only one is tagged minimal at all.
+    const wantsPlain = p.embellishment.includes("minimal")
+    const namedWork = p.embellishment.filter((v) => v !== "minimal")
+    add("embellishment", overlap(attrs.embellishment, namedWork))
+    if (wantsPlain) {
+      const clean = plainness(attrs)
+      if (clean > 0) {
+        score += WEIGHTS.embellishment * clean
+        matched.push("embellishment")
+      }
+    }
+
+    // Colour is scored on whether the gown IS that colour, not merely whether
+    // the colour appears somewhere on it.
+    //
+    // The tagger lists colours most-dominant-first, so a white gown with
+    // burgundy embroidery is ["white", ..., "burgundy"]. Treating that as an
+    // equal match to a genuinely burgundy gown is how a request for burgundy
+    // came back as a grey dress, a black dress and a white one — all three
+    // technically "tagged burgundy", none of them burgundy to look at, while
+    // twelve actually-burgundy gowns sat unshown. An accent still counts for
+    // something (she may well like it), just never as much as the real thing.
+    const colorHits = overlap(attrs.color, p.color)
+    if (colorHits.length > 0) {
+      const isDominant = p.color.includes(attrs.color[0])
+      score += WEIGHTS.color * (isDominant ? 1 : 0.3)
+      matched.push("color")
+    }
 
     if (p.volume && attrs.volume === p.volume) {
       score += WEIGHTS.volume

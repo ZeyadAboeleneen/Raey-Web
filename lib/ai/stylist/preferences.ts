@@ -279,5 +279,32 @@ export function hasEnoughToRecommend(p: StylistPreferences): boolean {
     p.collection !== null,
   ].filter(Boolean).length
 
-  return signals >= 2
+  return signals >= 2 || hasConcreteGarmentAsk(p)
+}
+
+/**
+ * Whether she has named something concrete about the garment itself.
+ *
+ * The two-signal threshold above is right for vague context — an occasion and
+ * a venue tell you little on their own. But it also swallowed requests that
+ * could not be more actionable: "I want a navy dress" is one signal, so
+ * whether she saw any of the 29 navy gowns came down to the model happening
+ * to set readyToRecommend, and the identical sentence showed five dresses on
+ * one run and none on the next.
+ *
+ * A named colour, silhouette, neckline, sleeve, embellishment, volume or
+ * train is a fact the matcher can act on immediately, so one is enough.
+ * Style is excluded deliberately: "something romantic" really is too vague to
+ * start pulling gowns on alone.
+ */
+export function hasConcreteGarmentAsk(p: StylistPreferences): boolean {
+  return (
+    p.color.length > 0 ||
+    p.silhouette.length > 0 ||
+    p.neckline.length > 0 ||
+    p.sleeves.length > 0 ||
+    p.embellishment.length > 0 ||
+    p.volume !== null ||
+    p.train !== null
+  )
 }
