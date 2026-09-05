@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Script from "next/script"
-import { Playfair_Display, Crimson_Text } from 'next/font/google'
+import { Playfair_Display, Crimson_Text, Cairo, Noto_Naskh_Arabic } from 'next/font/google'
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { ProductProvider } from "@/lib/product-context"
@@ -49,6 +49,31 @@ const crimsonText = Crimson_Text({
   fallback: ['serif'],
 })
 
+// globals.css names "Cairo" and "Noto Serif Arabic" for RTL text, but neither
+// was ever actually loaded — the browser was silently falling back to
+// whatever Arabic font happened to exist on that OS. Most fallbacks don't
+// shape Arabic letter-joining correctly, which is what reads as "cut up" /
+// disconnected letters rather than a normal flowing script. Loading real web
+// fonts for both weights fixes it everywhere the site shows Arabic,
+// including the AI Stylist.
+const cairo = Cairo({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-cairo',
+  display: 'swap',
+  preload: true,
+  fallback: ['Tahoma', 'sans-serif'],
+})
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-noto-naskh-arabic',
+  display: 'swap',
+  preload: false,
+  fallback: ['Tahoma', 'serif'],
+})
+
 export const metadata: Metadata = {
   title: "Raey – Soirée & Couture Dresses",
   description: "Step into the world of Raey. Discover couture-inspired soirée gowns, modern bridal looks, and bespoke eveningwear crafted for unforgettable moments.",
@@ -95,7 +120,7 @@ export default async function RootLayout({
   ])
 
   return (
-    <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable}`}>
+    <html lang="en" className={`${playfairDisplay.variable} ${crimsonText.variable} ${cairo.variable} ${notoNaskhArabic.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <Script id="google-tag-manager" strategy="afterInteractive">

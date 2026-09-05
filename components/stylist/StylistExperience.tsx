@@ -156,7 +156,9 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
   const [attachment, setAttachment] = useState<PreparedImage | null>(null)
   const [preparing, setPreparing] = useState(false)
 
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const lastMessageRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -177,8 +179,43 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
   }, [session])
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [session.messages.length, busy])
+    const scrollArea = scrollAreaRef.current
+    if (!scrollArea) return
+    const lastMessage = session.messages[session.messages.length - 1]
+    const scrollToReplyTop = lastMessage?.role === "assistant" && lastMessageRef.current
+
+    // A reply with recommendations can run well past one screen — the reply
+    // text, then the cards, then the conversion block. Scrolling to the very
+    // bottom of all that (the old behaviour) landed her past the cards
+    // themselves, so she had to scroll back UP to see the dresses she just
+    // asked for. Scrolling the new message's TOP into view instead means she
+    // reads the reply and the cards in the order they actually appear.
+    if (embedded) {
+      // Deliberately NOT scrollIntoView here: it walks every scrollable
+      // ancestor up the DOM tree looking for one it can scroll, and does not
+      // stop just because a nearer one (this panel) is `position: fixed`. In
+      // the embedded panel that meant it happily scrolled the storefront PAGE
+      // behind it too, throwing away the shopper's place on the actual site
+      // the moment the stylist replied. Setting scrollTop on this container
+      // directly touches only the chat's own scroll region, never the page.
+      if (scrollToReplyTop) {
+        const delta =
+          lastMessageRef.current!.getBoundingClientRect().top -
+          scrollArea.getBoundingClientRect().top
+        scrollArea.scrollTo({ top: scrollArea.scrollTop + delta - 12, behavior: "smooth" })
+      } else {
+        scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: "smooth" })
+      }
+    } else {
+      // The full page (/stylist) has no fixed overlay sitting over unrelated
+      // content, so scrolling the window itself is safe here.
+      if (scrollToReplyTop) {
+        lastMessageRef.current!.scrollIntoView({ behavior: "smooth", block: "start" })
+      } else {
+        endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+      }
+    }
+  }, [session.messages.length, busy, embedded])
 
   const lastRecommendations = useMemo(() => {
     for (let i = session.messages.length - 1; i >= 0; i--) {
@@ -411,53 +448,64 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
 
   const isEmpty = session.messages.length === 0
 
+  const header = (
+    <div
+      className={
+        embedded
+          ? "flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-black/[0.06] bg-white"
+          : "flex items-center justify-between mb-10"
+      }
+      dir="ltr"
+    >
+      <div className="flex items-center gap-2">
+        <StylistMark />
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">RAEY AI Stylist</p>
+      </div>
+      <div className="flex items-center gap-1">
+        {!isEmpty && (
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[10px] uppercase tracking-[0.18em] text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" />
+            {copy.startOver}
+          </button>
+        )}
+        {embedded && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="h-7 w-7 flex items-center justify-center rounded-full text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div
       className={embedded ? "relative flex flex-col h-full" : "flex flex-col min-h-[calc(100vh-80px)]"}
       dir={rtl ? "rtl" : "ltr"}
     >
+      {/* Pulled out of the scrollable transcript below so it stays put while
+          a long conversation scrolls under it, instead of riding away with
+          the messages. Only meaningful in the embedded panel, which is the
+          one with its own scroll region — the full page scrolls natively. */}
+      {embedded && header}
+
       <div
+        ref={scrollAreaRef}
         className={
           embedded
             ? "flex-1 min-h-0 overflow-y-auto w-full px-5 pt-6 pb-6"
             : "flex-1 max-w-3xl w-full mx-auto px-5 sm:px-8 pt-10 pb-6"
         }
       >
-        <div
-          className={
-            embedded
-              ? "flex items-center justify-between mb-6 pb-4 border-b border-black/[0.06]"
-              : "flex items-center justify-between mb-10"
-          }
-          dir="ltr"
-        >
-          <div className="flex items-center gap-2">
-            <StylistMark />
-            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">RAEY AI Stylist</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {!isEmpty && (
-              <button
-                type="button"
-                onClick={handleStartOver}
-                className="flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[10px] uppercase tracking-[0.18em] text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
-              >
-                <RotateCcw className="h-3 w-3" />
-                {copy.startOver}
-              </button>
-            )}
-            {embedded && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                className="h-7 w-7 flex items-center justify-center rounded-full text-gray-400 hover:text-black hover:bg-black/5 transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
+        {!embedded && header}
 
         {isEmpty && (
           <motion.div
@@ -490,10 +538,12 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
 
         {/* Transcript */}
         <div className="space-y-10">
-          {session.messages.map((message) =>
-            message.role === "user" ? (
+          {session.messages.map((message, index) => {
+            const isLast = index === session.messages.length - 1
+            return message.role === "user" ? (
               <motion.div
                 key={message.id}
+                ref={isLast ? lastMessageRef : undefined}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35 }}
@@ -519,6 +569,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
             ) : (
               <motion.div
                 key={message.id}
+                ref={isLast ? lastMessageRef : undefined}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45 }}
@@ -582,7 +633,7 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                 )}
               </motion.div>
             )
-          )}
+          })}
 
           {busy && (
             <motion.div
@@ -748,7 +799,13 @@ export default function StylistExperience({ embedded = false, onClose }: Stylist
                 dir="auto"
                 disabled={busy}
                 placeholder={copy.placeholder}
-                className="flex-1 resize-none bg-transparent text-sm leading-relaxed py-2 max-h-32 outline-none placeholder:text-gray-400 disabled:opacity-60"
+                // text-base (16px) below sm, not text-sm: iOS Safari
+                // auto-zooms the page on focus for any input under 16px, and
+                // reliably fails to zoom back out again after — sending a
+                // message left mobile shoppers stuck zoomed in. Fixing the
+                // font size stops the zoom from ever triggering, rather than
+                // trying to force it back afterward.
+                className="flex-1 resize-none bg-transparent text-base sm:text-sm leading-relaxed py-2 max-h-32 outline-none placeholder:text-gray-400 disabled:opacity-60"
                 style={{ minHeight: "36px" }}
               />
             </div>

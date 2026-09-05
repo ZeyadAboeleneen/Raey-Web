@@ -120,19 +120,44 @@
   [dir="rtl"] {
     direction: rtl;
     text-align: right;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Noto Sans Arabic", "Arabic UI Display", "Tahoma", Arial, sans-serif !important;
+    /* var(--font-cairo) is an actually-loaded web font (see app/layout.tsx) —
+       the system-font fallbacks after it stay only as a safety net if the
+       webfont somehow fails to load, not as the primary source. Relying on
+       "Noto Sans Arabic" / "Arabic UI Display" being present on the visitor's
+       OS was the original bug: most systems don't have them, so the browser
+       silently substituted a font that doesn't shape Arabic letter-joining
+       correctly, which reads as disconnected/"cut up" letters. */
+    font-family: var(--font-cairo), -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif !important;
     letter-spacing: 0 !important;
   }
-  
+
+  /* Tracked uppercase labels ("VIEW DRESS", "SHOW SIMILAR"...) are a
+     deliberate editorial look on ENGLISH text, set via Tailwind's
+     tracking-[…] utilities directly on the label element. That class beats
+     the [dir="rtl"] rule above for any element that carries it, because a
+     rule declared on the element itself always wins over one inherited from
+     an ancestor — !important only settles ties between rules that target the
+     SAME element, and this ancestor rule never was one for these labels.
+     Letter-spacing forces Arabic glyphs into their isolated form regardless
+     of the font, so every tracked label rendered in Arabic ("شوفي الفستان",
+     "جربيه", "وريني شبهه"...) came out with its letters visibly disconnected.
+     Resetting it on every descendant closes that gap for good. */
+  [dir="rtl"] * {
+    letter-spacing: 0 !important;
+  }
+
   [dir="ltr"] {
     direction: ltr;
     text-align: left;
   }
   
-  /* Better Arabic typography for serif */
+  /* Better Arabic typography for serif — same fix as above: use the loaded
+     webfont instead of naming a font that has to already exist on the
+     device. Noto Naskh Arabic is the serif-styled one, for headings and the
+     stylist's editorial-style replies. */
   [dir="rtl"] .font-serif,
   [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4 {
-    font-family: "Cairo", "Noto Serif Arabic", "Arabic Typesetting", "Simplified Arabic", "Amiri", serif !important;
+    font-family: var(--font-noto-naskh-arabic), var(--font-cairo), Tahoma, serif !important;
     letter-spacing: 0 !important;
     font-weight: 400;
   }

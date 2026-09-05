@@ -27,8 +27,13 @@ import StylistExperience from "./StylistExperience"
 
 const GOLD = "#B9975B"
 
-/** Sections where a floating CTA would be noise or in the way. */
-const HIDDEN_PREFIXES = ["/stylist", "/admin", "/checkout", "/cart", "/auth", "/debug", "/slideshow"]
+/**
+ * Where the stylist actually belongs: once she's chosen a collection, not on
+ * the homepage before she has. The wedding/soiree choice is the moment "find
+ * me a dress" becomes the relevant offer — earlier than that it's a floating
+ * distraction over marketing content.
+ */
+const SHOWN_PREFIXES = ["/wedding", "/soiree"]
 
 export default function StylistLauncher() {
   const pathname = usePathname()
@@ -42,7 +47,7 @@ export default function StylistLauncher() {
   }, [pathname])
 
   if (!pathname) return null
-  if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null
+  if (!SHOWN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null
 
   return (
     <>
